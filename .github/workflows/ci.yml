@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      # Only the publishable pair. The service role key and the model key are
+      # never available to CI: a build does not need them, and a leaked secret
+      # in Actions logs is permanent.
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+
+  # Playwright is deliberately not run here. Daniyal verifies in the browser
+  # himself, and CI has no database credentials to run against.
+
+  migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Warn on new migrations
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "No base commit to compare against, skipping."
+            exit 0
+          fi
+          NEW=$(git diff --name-only --diff-filter=A "$BASE" HEAD -- supabase/migrations || true)
+          if [ -n "$NEW" ]; then
+            echo "New migrations in this change:"
+            echo "$NEW"
+            echo ""
+            echo "Data law 10: migrations deploy BEFORE the code that reads them."
+            echo "Confirm each was applied via the Supabase MCP and mirrored here."
+          else
+            echo "No new migrations."
+          fi

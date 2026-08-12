@@ -1,26 +1,117 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Design tokens. DESIGN.md section 2 is the contract; this file is the
+   implementation. A color defined only inside a media query is a bug, because
+   the explicit theme toggle then has nothing to override. */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --bg: #fbfafc;
+  --surface: #ffffff;
+  --surface-2: #f6f5fa;
+  --line: #e7e5f0;
+  --ink: #16162b;
+  --ink-2: #5c5872;
+  --ink-3: #8b87a0;
+  --brand: #14137b;
+  --brand-soft: #eeeef9;
+  --good: #12703c;
+  --warn: #8a5200;
+  --bad: #a82020;
+
+  --radius-control: 6px;
+  --radius-card: 10px;
+
+  --shadow-raised: 0 1px 2px rgb(20 19 123 / 0.05), 0 6px 20px rgb(20 19 123 / 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f1a;
+    --surface: #171727;
+    --surface-2: #1e1e30;
+    --line: #2c2c42;
+    --ink: #edecf5;
+    --ink-2: #a19db5;
+    --ink-3: #726e88;
+    --brand: #9e9cf0;
+    --brand-soft: #22213f;
+    --good: #5fd68a;
+    --warn: #e3b265;
+    --bad: #f08a8a;
+
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 28px rgb(0 0 0 / 0.32);
   }
 }
 
+:root[data-theme="dark"] {
+  --bg: #0f0f1a;
+  --surface: #171727;
+  --surface-2: #1e1e30;
+  --line: #2c2c42;
+  --ink: #edecf5;
+  --ink-2: #a19db5;
+  --ink-3: #726e88;
+  --brand: #9e9cf0;
+  --brand-soft: #22213f;
+  --good: #5fd68a;
+  --warn: #e3b265;
+  --bad: #f08a8a;
+
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 28px rgb(0 0 0 / 0.32);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+}
+
+html {
+  color-scheme: light dark;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Digits that sit in columns must line up. DESIGN.md contract rule 5. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reasoning prose is the content of this product, so it gets a measure.
+   DESIGN.md contract rule 6. */
+.prose-measure {
+  max-width: 68ch;
+}
+
+/* Focus is always visible. Contract rule 11. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
