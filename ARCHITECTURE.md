@@ -24,11 +24,14 @@ It exists to remove decision fatigue. The measure of success is that Adrian open
 | Language | TypeScript | 5.9.3 |
 | Styling | Tailwind via `@tailwindcss/postcss`, tokens in `globals.css` | 4.3.3 |
 | Icons | lucide-react, 16px, stroke 1.5 | 1.28.0 |
-| Database | Supabase Postgres | project `alac-os` |
-| Auth | Supabase Auth, cookie sessions via `@supabase/ssr` | 0.7.x |
+| Database | Neon Postgres 17, via the Vercel Marketplace | resource `alac-os-db`, region `iad1`, free plan |
+| DB driver | `@neondatabase/serverless` for queries, `pg` for migrations | 1.x / 8.x |
+| Auth | Own: email and password, hashed, signed httpOnly session cookie | |
 | Reasoning | OpenAI API, server only | `openai` 6.x |
-| Hosting | Vercel | |
+| Hosting | Vercel | project `alac-os` |
 | CI | GitHub Actions: typecheck, lint, build | |
+
+Two connection strings, and the difference matters. `DATABASE_URL` is pooled through PgBouncer and is what request handlers use. `DATABASE_URL_UNPOOLED` is a direct connection and is what migrations and long-running importers use, because the pooler does not support session-level state such as advisory locks.
 
 Dependencies are pinned. Test after any bump.
 
@@ -39,16 +42,18 @@ Known: Next 16.2.12 pulls transitive `postcss` and `sharp` advisories. `npm audi
 Multi-tenant from birth even though ALAC is the only tenant on day one. Retrofitting tenancy is the most expensive migration there is.
 
 - Every tenant table carries `org_id uuid not null references orgs(id) on delete cascade`.
-- RLS is enabled in the **same migration that creates the table**. A table without policies is a leak, not a todo.
-- Policies never inline a membership subquery. They call `is_org_member(org_id)` or `has_org_role(org_id, role)`, both `security definer`, both defined once in the identity migration.
-- Reads go through the cookie-session server client, so a missing policy shows up as empty data rather than a leak.
-- The service-role key lives in exactly one module, `src/lib/server/supabase-admin.ts`, marked `server-only`. Its permitted callers are listed there. A new caller updates that list in the same commit.
+- **Enforcement lives in server code, not in database policies.** Neon is Postgres without a JWT-aware auth layer in front of it, so there is no `auth.uid()` for a policy to read. Every query therefore runs through the helpers in `src/lib/server/db.ts`, which require a session and take `org_id` as an explicit argument.
+- **The rule that makes this safe: no route handler, page, or action ever builds SQL itself.** Data access is confined to `src/lib/server/queries/`, every function there takes `orgId` as its first parameter, and the value comes from the verified session, never from a request body or URL.
+- `org_id` stays on every table and every index. Switching to database-level RLS later is then a policy migration and nothing else, with no schema change and no data backfill.
+- The unpooled connection string is read by exactly one module, `src/lib/server/db.ts`, marked `server-only`. It never reaches a client component.
+
+This is a deliberate trade. Database policies fail closed, which is stronger, and they were the plan while the database was Supabase. With Neon and a two to three person tenant, the honest engineering choice is one enforcement point in code that is actually correct, rather than a JWT plumbing exercise finished the night before a demo.
 
 ## 4. The ten data laws
 
 Carried from `pulse/PLAYBOOK.md`. These are not style preferences.
 
-1. **Any write touching two or more tables is a Postgres function called via RPC.** supabase-js has no transactions. Sequential client-side writes are a bug even when they pass.
+1. **Any write touching two or more tables runs inside one transaction.** With Neon this is a real `BEGIN` / `COMMIT` through a `pg` client, wrapped by the `tx()` helper in `src/lib/server/db.ts`. Sequential autocommit writes are a bug even when they pass. Multi-step writes that will be called from more than one place are Postgres functions, so the transaction boundary lives with the logic rather than with the caller.
 2. **Unique constraints are the race guards.** Insert with conflict handling. Never check-then-insert.
 3. **Claim before irreversible side effects.** The `agent_runs` row exists before the first OpenAI call, never after.
 4. **Delete database rows before storage blobs.**
@@ -57,7 +62,8 @@ Carried from `pulse/PLAYBOOK.md`. These are not style preferences.
 7. **Every new env var lands in the table in section 8 and in the Vercel config in the same commit as the code that reads it.**
 8. **Pin dependencies.** Test after bumps.
 9. **No fallback recipients, no silent partial success.** Every batch action returns honest counts. A scoring run that fails 12 of 150 items says so.
-10. **Deploy order: migrations before the code that needs them.** Apply via the Supabase MCP, mirror the identical SQL into `supabase/migrations/` in the same commit.
+10. **Deploy order: migrations before the code that needs them.** Migrations are numbered SQL files in `migrations/`, applied by `npm run migrate` over the unpooled connection, recorded in a `schema_migrations` table, and each runs inside a transaction so a failure leaves nothing half applied.
+11. **Tenant scoping is a function argument, never an ambient default.** Every query function takes `orgId` first, sourced from the verified session. See section 3.
 
 ## 5. The decision engine
 
@@ -110,12 +116,14 @@ src/app/(app)/           dashboard portfolio accounts people today rhythm messag
 src/app/api/             score, draft, plan
 src/components/          shell, portfolio, decision, recommendations, rhythm, messaging, ui
 src/lib/scoring/         compute.ts weights.ts normalize.ts tiers.ts   (pure, testable, no IO)
+src/lib/server/db.ts     sql(), tx(), server-only, the ONLY module reading the connection string
+src/lib/server/auth.ts   password hashing, session cookie, requireSession()
+src/lib/server/queries/  every data access function, each taking orgId first
 src/lib/server/ai/       openai.ts prompts pricing.ts run.ts           (server only)
 src/lib/server/import/   tam.ts connections.ts match.ts
-src/lib/supabase/        client.ts server.ts types.ts
 src/config/              brand.ts icp.ts
-scripts/                 import-tam.mjs import-connections.mjs score.mjs verify-ai.mjs
-supabase/migrations/     mirrored SQL, applied via MCP first
+migrations/              numbered SQL, applied by npm run migrate, tracked in schema_migrations
+scripts/                 migrate.mjs import-tam.mjs import-connections.mjs score.mjs verify-ai.mjs
 e2e/                     Playwright specs, written here, run by Daniyal
 ```
 
@@ -125,11 +133,13 @@ Branding lives in `src/config/brand.ts` only. Never hardcode the product name an
 
 Law 7: a new row here and in the Vercel config lands in the same commit as the code that reads it.
 
+Provisioned automatically by the Neon integration and pulled with `vercel env pull`: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, plus a set of `PG*` and `POSTGRES_*` aliases the app does not read.
+
 | Var | Client exposed | Required | Purpose, and what unset does |
 | --- | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | yes | yes | Supabase project URL. Unset: the app cannot boot. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | yes | yes | Browser key. RLS is the boundary, so this is safe to ship. Unset: no reads. |
-| `SUPABASE_SERVICE_ROLE_KEY` | no | yes | Bypasses RLS. Only `src/lib/server/supabase-admin.ts` may read it. Used by importers and scheduled runs. |
+| `DATABASE_URL` | no | yes | Pooled Neon connection, used by every request handler. Unset: the app cannot boot. |
+| `DATABASE_URL_UNPOOLED` | no | yes | Direct connection for migrations and importers, which need session state the pooler does not carry. |
+| `SESSION_SECRET` | no | yes | Signs the session cookie. Rotating it logs everyone out, which is the intended emergency lever. Unset: auth refuses to start rather than falling back to an insecure default. |
 | `NEXT_PUBLIC_SITE_URL` | yes | deployed only | Absolute origin so auth redirects land on the right host. Unset locally is fine. |
 | `OPENAI_API_KEY` | no | for reasoning | RecruiterGTM's key. Server only. Unset: deterministic scores still work, the reasoning pass is disabled and the UI says so rather than inventing text. |
 | `OPENAI_MODEL` | no | no | Model override. Changing it means changing `MODEL_RATES` in `src/lib/server/ai/pricing.ts` in the same commit, or `agent_runs.cost_usd` lies. |

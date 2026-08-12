@@ -27,10 +27,15 @@ If you are adding a fixture, invent the data. Do not copy a real row "just for n
 ```bash
 npm install
 cp .env.example .env.local     # then fill it in
+npm run migrate                # apply schema
 npm run dev
 ```
 
-Database migrations live in `supabase/migrations/` and are applied before the code that reads them. Seed data is loaded with `npm run import:tam` and `npm run import:people`, both of which read from `ALAC_DATA_DIR` and are safe to run twice.
+The database is Neon Postgres. `DATABASE_URL` and `DATABASE_URL_UNPOOLED` come from `vercel env pull` if the project is linked, or from a Neon connection string directly.
+
+Migrations are numbered SQL files in `migrations/`, applied by `npm run migrate` over the unpooled connection and recorded in `schema_migrations`. Each one runs in a transaction, so a failure leaves nothing half applied. Migrations always deploy before the code that reads them.
+
+Seed data is loaded with `npm run import:tam` and `npm run import:people`, both of which read from `ALAC_DATA_DIR` and are safe to run twice.
 
 ## Commands
 

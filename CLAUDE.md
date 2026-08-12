@@ -14,9 +14,10 @@ BD intelligence layer for ALAC HR Solutions. Detail lives in `ARCHITECTURE.md` (
 
 ## Hard rules
 
-- **RPC rule.** Any write touching two or more tables is a Postgres function called via RPC. No exceptions. supabase-js has no transactions.
-- **RLS from birth.** A table's migration enables RLS and adds policies in that same migration, using `is_org_member` / `has_org_role`. Every tenant table carries `org_id`.
-- **Migrations first.** Apply via the Supabase MCP, mirror the identical SQL into `supabase/migrations/`, deploy migrations before the code that reads them.
+- **Transaction rule.** Any write touching two or more tables runs inside one transaction, via the `tx()` helper. Sequential autocommit writes are a bug even when they pass.
+- **Tenant scoping is an argument.** Every function in `src/lib/server/queries/` takes `orgId` first, and it comes from the verified session, never from a request body or URL. Route handlers and pages never build SQL themselves.
+- **Only `src/lib/server/db.ts` reads a connection string.** It is `server-only`. Nothing else touches `DATABASE_URL`.
+- **Migrations first.** Numbered SQL in `migrations/`, applied with `npm run migrate` over the unpooled URL, before the code that reads them.
 - **Race guards are unique constraints.** Insert with conflict handling. Never check-then-insert.
 - **Claim before side effects.** The `agent_runs` row exists before the first OpenAI call, never after.
 - **Never fabricate.** A reasoning pass that cites a signal id it was not given is rejected and counted as failed. No API key means the reasoning panel says so, it does not invent prose.
@@ -44,6 +45,7 @@ BD intelligence layer for ALAC HR Solutions. Detail lives in `ARCHITECTURE.md` (
 | `npm run build` | Production build, the pre-push gate |
 | `npm run typecheck` | Types only |
 | `npm run lint` | ESLint |
+| `npm run migrate` | Apply pending migrations over the unpooled connection |
 | `npm run verify:ai` | Confirm the OpenAI key and model rates resolve |
 | `npm run import:tam` | Load accounts from `ALAC_DATA_DIR` |
 | `npm run import:people` | Load warm contacts and match them to accounts |
