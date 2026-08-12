@@ -7,7 +7,9 @@
 
 import pg from "pg";
 import dotenv from "dotenv";
-import { computeScore, tierForRank } from "../src/lib/scoring/compute.mjs";
+// Tier boundaries are applied in SQL below, in one ranked update, rather than
+// per row in JS.
+import { computeScore } from "../src/lib/scoring/compute.mjs";
 
 dotenv.config({ path: ".env.local", quiet: true });
 
