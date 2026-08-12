@@ -55,30 +55,54 @@ try {
 
   for (const [name, domain, vertical] of DREAM) {
     const nd = normDomain(domain);
-    const { rows } = await client.query(
-      `insert into accounts (org_id, company_name, norm_name, domain, norm_domain, vertical,
-                             defense_verdict, tier, tier_locked, source)
-       values ($1,$2,$3,$4,$5,$6,'FIT','top25',true,'dream100')
-       on conflict (org_id, norm_domain) where norm_domain is not null
-       do update set tier = 'top25', tier_locked = true, tier_set_at = now(),
-                     defense_verdict = 'FIT', updated_at = now(),
-                     -- The export has rows with a blank Company, where the
-                     -- importer fell back to the domain as the display name.
-                     -- A curated name is better than "saronic.com".
-                     company_name = excluded.company_name,
-                     norm_name = excluded.norm_name,
-                     vertical = coalesce(accounts.vertical, excluded.vertical)
-       returning id, (xmax = 0) as inserted`,
-      [orgId, name, normCompany(name), domain, nd, vertical],
+    const nn = normCompany(name);
+
+    // The same company appears under different domains in the export
+    // (epirus.com and epirusinc.com, neros.com and neros.tech). Keying only on
+    // domain pins an empty shell while the row holding the real open-role and
+    // funding data sits unpinned, so the portfolio shows the target with zero
+    // signal. Match on normalized NAME first and prefer whichever row carries
+    // the most data.
+    const { rows: existing } = await client.query(
+      `select id, open_roles_count, last_funding_date, norm_domain
+         from accounts
+        where org_id = $1 and (norm_name = $2 or norm_domain = $3)
+        order by open_roles_count desc nulls last, last_funding_date desc nulls last
+        limit 1`,
+      [orgId, nn, nd],
     );
-    if (rows[0].inserted) created++;
+
+    let accountId;
+    if (existing.length) {
+      accountId = existing[0].id;
+      await client.query(
+        `update accounts
+            set tier = 'top25', tier_locked = true, tier_set_at = now(),
+                company_name = $2, norm_name = $3,
+                defense_verdict = 'FIT',
+                vertical = coalesce(vertical, $4),
+                updated_at = now()
+          where id = $1`,
+        [accountId, name, nn, vertical],
+      );
+    } else {
+      const { rows } = await client.query(
+        `insert into accounts (org_id, company_name, norm_name, domain, norm_domain, vertical,
+                               defense_verdict, tier, tier_locked, source)
+         values ($1,$2,$3,$4,$5,$6,'FIT','top25',true,'dream100')
+         returning id`,
+        [orgId, name, nn, domain, nd, vertical],
+      );
+      accountId = rows[0].id;
+      created++;
+    }
     pinned++;
 
     await client.query(
       `insert into signals (org_id, account_id, kind, headline, occurred_at, source, source_ref)
        values ($1,$2,'news_mention',$3,current_date,'dream100 seed',$4)
        on conflict do nothing`,
-      [orgId, rows[0].id, "Named tier-1 target account", `dream100:${nd}`],
+      [orgId, accountId, "Named tier-1 target account", `dream100:${nn}`],
     );
   }
 
