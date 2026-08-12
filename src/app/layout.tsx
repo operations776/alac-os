@@ -17,7 +17,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/* suppressHydrationWarning is scoped to this element and covers exactly
+          one case: browser extensions such as Grammarly and password managers
+          inject attributes into body before React hydrates, which React then
+          reports as a mismatch. It suppresses attribute noise on body only, so
+          a genuine hydration bug inside the tree still surfaces. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }
