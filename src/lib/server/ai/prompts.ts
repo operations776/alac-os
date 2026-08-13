@@ -66,7 +66,7 @@ export function buildUserPrompt(a: AccountInput): string {
   if (a.contacts.length) {
     lines.push('WARM CONTACTS (first-degree connections of the ALAC team):')
     for (const c of a.contacts) {
-      lines.push(`- ${c.name}${c.title ? ` — ${c.title}` : ''}${c.decisionMaker ? ' [decision maker]' : ''}`)
+      lines.push(`- ${c.name}${c.title ? `, ${c.title}` : ''}${c.decisionMaker ? ' [decision maker]' : ''}`)
     }
   } else {
     lines.push('WARM CONTACTS: none. This is a cold account.')

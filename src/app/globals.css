@@ -1,63 +1,91 @@
 @import "tailwindcss";
 
 /* Design tokens. DESIGN.md section 2 is the contract; this file is the
-   implementation. A color defined only inside a media query is a bug, because
-   the explicit theme toggle then has nothing to override. */
+   implementation.
+
+   The surface language is flight instrumentation: a graphite bezel, recessed
+   panel faces, and a single luminous readout colour for measured quantities.
+   Ground is warm graphite rather than blue-black, so it reads as a machined
+   panel rather than a generic dark theme.
+
+   A colour defined only inside a media query is a bug, because the explicit
+   theme toggle then has nothing to override. Every token is declared on bare
+   :root first, then redefined for each theme. */
 
 :root {
-  --bg: #fbfafc;
-  --surface: #ffffff;
-  --surface-2: #f6f5fa;
-  --line: #e7e5f0;
-  --ink: #16162b;
-  --ink-2: #5c5872;
-  --ink-3: #8b87a0;
-  --brand: #14137b;
-  --brand-soft: #eeeef9;
-  --good: #12703c;
-  --warn: #8a5200;
-  --bad: #a82020;
+  color-scheme: dark;
+
+  /* Ground and panel faces. */
+  --bg: #131316;
+  --surface: #1b1b1f;
+  --surface-2: #232329;
+  --line: #33333c;
+  --line-strong: #45454f;
+
+  /* Text. Every value clears WCAG AA (4.5:1) against --bg, --surface, and
+     --surface-2, so a caption stays legible inside a recessed well and not
+     only on the panel face. --ink-3 is set by the --surface-2 case, which is
+     the tightest of the three. */
+  --ink: #f2f1ee;
+  --ink-2: #b6b4ae;
+  --ink-3: #918f87;
+
+  /* Interaction. The ALAC navy lifted to carry on a dark ground. Navy is a
+     verb: this colour appears only on clickable, selected, or focused things. */
+  --brand: #9a99f2;
+  --brand-soft: #26263f;
+  --brand-line: #4a4a86;
+
+  /* Measured quantity. The readout colour. Sodium amber, the colour of a
+     lit instrument face. Applied to scores, counts, and totals, and to
+     nothing that is not a number the engine computed. */
+  --readout: #f0b757;
+  --readout-dim: #6d5225;
+
+  /* Status. Never colour alone: every status also carries an icon and a word. */
+  --good: #6ede9b;
+  --warn: #f0b757;
+  --bad: #ff8f8f;
 
   --radius-control: 6px;
   --radius-card: 10px;
 
-  --shadow-raised: 0 1px 2px rgb(20 19 123 / 0.05), 0 6px 20px rgb(20 19 123 / 0.05);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px rgb(0 0 0 / 0.45);
+
+  /* The etched bezel edge. A 1px top highlight over the panel border reads as
+     a milled edge catching light, which is what separates an instrument face
+     from a flat rectangle. */
+  --bezel: inset 0 1px 0 rgb(255 255 255 / 0.045);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f0f1a;
-    --surface: #171727;
-    --surface-2: #1e1e30;
-    --line: #2c2c42;
-    --ink: #edecf5;
-    --ink-2: #a19db5;
-    --ink-3: #726e88;
-    --brand: #9e9cf0;
-    --brand-soft: #22213f;
-    --good: #5fd68a;
-    --warn: #e3b265;
-    --bad: #f08a8a;
+/* The product is dark by default and by intent. The light theme remains
+   available for anyone who forces it, and carries the same token contract. */
+:root[data-theme="light"] {
+  color-scheme: light;
 
-    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 28px rgb(0 0 0 / 0.32);
-  }
-}
+  --bg: #eceae5;
+  --surface: #ffffff;
+  --surface-2: #f4f2ee;
+  --line: #d9d5cd;
+  --line-strong: #bcb7ac;
 
-:root[data-theme="dark"] {
-  --bg: #0f0f1a;
-  --surface: #171727;
-  --surface-2: #1e1e30;
-  --line: #2c2c42;
-  --ink: #edecf5;
-  --ink-2: #a19db5;
-  --ink-3: #726e88;
-  --brand: #9e9cf0;
-  --brand-soft: #22213f;
-  --good: #5fd68a;
-  --warn: #e3b265;
-  --bad: #f08a8a;
+  --ink: #1a1a1e;
+  --ink-2: #4e4c47;
+  --ink-3: #736f67;
 
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 28px rgb(0 0 0 / 0.32);
+  --brand: #14137b;
+  --brand-soft: #e8e8f6;
+  --brand-line: #b9b8e2;
+
+  --readout: #7a4c00;
+  --readout-dim: #e8d3ac;
+
+  --good: #16663b;
+  --warn: #7a4c00;
+  --bad: #a3201f;
+
+  --shadow-raised: 0 1px 2px rgb(20 19 123 / 0.06), 0 6px 20px rgb(20 19 123 / 0.06);
+  --bezel: inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 @theme inline {
@@ -65,32 +93,54 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
+  --color-readout: var(--readout);
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
-}
 
-html {
-  color-scheme: light dark;
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-readout), ui-monospace, monospace;
+  --font-placard: var(--font-placard), var(--font-archivo), sans-serif;
 }
 
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  font-family: var(--font-archivo), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif;
   font-size: 13.5px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Digits that sit in columns must line up. DESIGN.md contract rule 5. */
+/* Digits that sit in columns must line up. DESIGN.md contract rule 5.
+   Numbers also take the mono face, so a column of figures is a column of
+   equal-width glyphs rather than a proportional approximation of one. */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+.readout {
+  font-family: var(--font-mono-readout), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "ss01";
+  letter-spacing: -0.01em;
+}
+
+/* Panel silkscreen. Condensed, spaced, uppercase: the label language of a
+   physical instrument placard. Used for eyebrows and column headers only. */
+.placard {
+  font-family: var(--font-placard), var(--font-archivo), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-weight: 600;
 }
 
 /* Reasoning prose is the content of this product, so it gets a measure.
@@ -99,11 +149,82 @@ body {
   max-width: 68ch;
 }
 
+/* The instrument face. A panel is a surface plus a milled top edge. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--bezel);
+}
+
+/* Recessed well: where raw arithmetic and traces sit, one step below the face. */
+.well {
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 0 rgb(0 0 0 / 0.25);
+}
+
+/* The graticule. A faint measurement grid behind the page ground, the way a
+   plotting board is ruled before anything is drawn on it. It is decoration
+   with a job: it makes the panels read as instruments mounted on a surface.
+   Kept under 4 percent contrast so it never competes with data. */
+.graticule {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--ink) 3.5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--ink) 3.5%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center top;
+}
+
 /* Focus is always visible. Contract rule 11. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
   border-radius: var(--radius-control);
+}
+
+/* Skip link: keyboard users land on it before the nav. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 50;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-control);
+  padding: 8px 12px;
+  transition: top 120ms ease;
+}
+.skip-link:focus {
+  top: 8px;
+}
+
+/* The sweep. One signature motion: a single pass of light across the top edge
+   of the primary readout when a page loads, the way a radar sweep refreshes a
+   plot. It runs once, it is not a loop, and reduced motion removes it. */
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.sweep-line {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sweep-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--readout), transparent);
+  animation: sweep 1400ms ease-out 1 both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -113,5 +234,11 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* A sweep with no motion is a static bar of colour, which is worse than
+     nothing. Remove it entirely rather than freezing it mid-pass. */
+  .sweep-line {
+    display: none;
   }
 }

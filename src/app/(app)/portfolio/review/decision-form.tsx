@@ -49,7 +49,7 @@ export function DecisionForm({ id, company }: { id: string; company: string }) {
         <div className="flex flex-col gap-2.5">
           <label
             htmlFor={`note-${id}`}
-            className="text-[12px] text-[var(--ink-2)]"
+            className="text-[12px] leading-relaxed text-[var(--ink-2)]"
           >
             Why is this wrong for {company}? Optional, but this is what stops the
             engine proposing it again.
@@ -62,16 +62,17 @@ export function DecisionForm({ id, company }: { id: string; company: string }) {
             autoFocus
             maxLength={2000}
             placeholder="They went quiet after the last round, not worth a slot yet."
-            className="w-full resize-y rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[13px] outline-none focus:border-[var(--brand)]"
+            className="w-full resize-y rounded-[6px] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2 text-[13px] text-[var(--ink)] outline-none transition-colors placeholder:text-[var(--ink-3)] focus:border-[var(--brand)]"
           />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={onReject}
               disabled={pending}
-              className="rounded-md bg-[var(--ink-1)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--surface)] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color-mix(in_oklab,var(--bad)_45%,transparent)] bg-[color-mix(in_oklab,var(--bad)_14%,transparent)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--bad)] transition-colors hover:border-[var(--bad)] disabled:opacity-50"
             >
-              {pending ? "Rejecting…" : "Confirm reject"}
+              <X size={16} strokeWidth={1.5} />
+              {pending ? "Rejecting" : "Confirm reject"}
             </button>
             <button
               type="button"
@@ -80,37 +81,39 @@ export function DecisionForm({ id, company }: { id: string; company: string }) {
                 setNote("");
               }}
               disabled={pending}
-              className="rounded-md border border-[var(--line)] px-3 py-1.5 text-[12.5px] disabled:opacity-50"
+              className="rounded-[6px] border border-[var(--line-strong)] px-3 py-1.5 text-[12.5px] transition-colors hover:border-[var(--ink-3)] disabled:opacity-50"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={onApprove}
             disabled={pending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--brand)] px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--brand-line)] bg-[var(--brand-soft)] px-3.5 py-1.5 text-[12.5px] font-semibold text-[var(--brand)] transition-colors hover:border-[var(--brand)] disabled:opacity-50"
           >
-            <Check size={14} strokeWidth={2} />
-            {pending ? "Applying…" : "Approve"}
+            <Check size={16} strokeWidth={1.5} />
+            {pending ? "Applying" : "Approve"}
           </button>
           <button
             type="button"
             onClick={() => setRejecting(true)}
             disabled={pending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] px-3 py-1.5 text-[12.5px] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--line-strong)] px-3 py-1.5 text-[12.5px] transition-colors hover:border-[var(--ink-3)] disabled:opacity-50"
           >
-            <X size={14} strokeWidth={2} />
+            <X size={16} strokeWidth={1.5} />
             Reject
           </button>
         </div>
       )}
 
       {error ? (
-        <p className="mt-2 text-[12.5px] text-[var(--bad)]">{error}</p>
+        <p role="alert" className="mt-2.5 text-[12.5px] text-[var(--bad)]">
+          {error}
+        </p>
       ) : null}
     </div>
   );

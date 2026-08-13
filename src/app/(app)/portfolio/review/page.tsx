@@ -5,7 +5,9 @@ import {
   pendingRecommendations,
   reviewCounts,
 } from "@/lib/server/queries/recommendations";
-import { Card, CardHeader, Badge, EmptyState, Eyebrow, formatDate } from "@/components/ui/primitives";
+import {
+  Badge, Card, CardHeader, EmptyState, PageHeader, formatDate,
+} from "@/components/ui/primitives";
 import { DecisionForm } from "./decision-form";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +23,13 @@ const TIER_LABEL: Record<string, string> = {
 export default async function ReviewPage() {
   const orgId = await getOrgId();
   if (!orgId) {
-    return <EmptyState title="No organization" body="Seed an org before reviewing." />;
+    return (
+      <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
+        <Card>
+          <EmptyState title="No organization" body="Seed an org before reviewing." />
+        </Card>
+      </div>
+    );
   }
 
   const [queue, counts] = await Promise.all([
@@ -30,26 +38,23 @@ export default async function ReviewPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-5">
-      <header>
-        <Eyebrow>Friday review</Eyebrow>
-        <h1 className="mt-1 text-[26px] font-semibold tracking-[-0.02em]">
-          {counts.pending === 0
+    <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
+      <PageHeader
+        eyebrow="Friday review"
+        title={
+          counts.pending === 0
             ? "Nothing to decide"
-            : `${counts.pending} ${counts.pending === 1 ? "decision" : "decisions"} waiting`}
-        </h1>
-        <p className="prose-measure mt-1.5 text-[13.5px] leading-relaxed text-[var(--ink-2)]">
-          The engine proposes, you decide. Approving a tier change moves the account
-          immediately. Rejecting records why, which is what teaches the engine your
-          judgement rather than repeating the same call next week.
+            : `${counts.pending} ${counts.pending === 1 ? "decision" : "decisions"} waiting`
+        }
+        lede="The engine proposes, you decide. Approving a tier change moves the account immediately. Rejecting records why, which is what teaches the engine your judgement rather than repeating the same call next week."
+      />
+
+      {counts.approved_30d + counts.rejected_30d > 0 ? (
+        <p className="readout -mt-3 mb-5 text-[12px] text-[var(--ink-3)]">
+          Last 30 days: {counts.approved_30d} approved, {counts.rejected_30d} rejected.
+          {counts.expired > 0 ? ` ${counts.expired} expired unreviewed.` : ""}
         </p>
-        {counts.approved_30d + counts.rejected_30d > 0 ? (
-          <p className="mt-2 text-[12px] text-[var(--ink-3)]">
-            Last 30 days: {counts.approved_30d} approved, {counts.rejected_30d} rejected.
-            {counts.expired > 0 ? ` ${counts.expired} expired unreviewed.` : ""}
-          </p>
-        ) : null}
-      </header>
+      ) : null}
 
       {queue.length === 0 ? (
         <Card>
@@ -70,7 +75,12 @@ export default async function ReviewPage() {
                     <Badge tone={r.kind === "promote_tier" ? "good" : "warn"}>
                       {TIER_LABEL[r.from_tier ?? "unassigned"] ?? r.from_tier}
                     </Badge>
-                    <ArrowRight size={14} strokeWidth={1.5} className="text-[var(--ink-3)]" />
+                    <ArrowRight
+                      size={16}
+                      strokeWidth={1.5}
+                      className="shrink-0 text-[var(--ink-3)]"
+                      aria-label="changes to"
+                    />
                     <Badge tone={r.kind === "promote_tier" ? "good" : "neutral"}>
                       {TIER_LABEL[r.to_tier ?? "unassigned"] ?? r.to_tier}
                     </Badge>
@@ -78,27 +88,25 @@ export default async function ReviewPage() {
                 }
               />
 
-              <div className="grid gap-0 md:grid-cols-[1fr_280px]">
+              <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_292px]">
                 <div className="flex flex-col gap-3.5 px-5 py-4">
-                  <p className="prose-measure text-[13.5px] leading-[1.55] text-[var(--ink-2)]">
+                  <p className="prose-measure text-[13.5px] leading-[1.6] text-[var(--ink-2)]">
                     {r.rationale}
                   </p>
 
                   {r.why_now ? (
-                    <div className="border-t border-[var(--line)] pt-3">
-                      <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)]">
+                    <div className="border-t border-[var(--line)] pt-3.5">
+                      <div className="placard mb-1.5 text-[10px] text-[var(--ink-3)]">
                         Why this account matters
                       </div>
-                      <p className="prose-measure text-[13.5px] leading-[1.55]">{r.why_now}</p>
+                      <p className="prose-measure text-[13.5px] leading-[1.6]">{r.why_now}</p>
                     </div>
                   ) : null}
 
                   {r.risks ? (
-                    <div className="border-t border-[var(--line)] pt-3">
-                      <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)]">
-                        Risks
-                      </div>
-                      <p className="prose-measure text-[13.5px] leading-[1.55] text-[var(--ink-2)]">
+                    <div className="border-t border-[var(--line)] pt-3.5">
+                      <div className="placard mb-1.5 text-[10px] text-[var(--ink-3)]">Risks</div>
+                      <p className="prose-measure text-[13.5px] leading-[1.6] text-[var(--ink-2)]">
                         {r.risks}
                       </p>
                     </div>
@@ -109,10 +117,10 @@ export default async function ReviewPage() {
 
                 {/* The facts that justify the move, so the decision does not
                     require opening another page. */}
-                <aside className="border-t border-[var(--line)] px-5 py-4 md:border-l md:border-t-0">
+                <aside className="well border-t border-[var(--line)] px-5 py-4 md:border-l md:border-t-0">
                   <Link
                     href={`/accounts/${r.account_id}`}
-                    className="text-[13.5px] font-semibold hover:underline"
+                    className="rounded-[6px] text-[13.5px] font-semibold hover:text-[var(--brand)] hover:underline"
                   >
                     {r.company_name}
                   </Link>
@@ -124,9 +132,9 @@ export default async function ReviewPage() {
                     <Row label="Location" value={r.hq_location ?? "unknown"} />
                   </dl>
                   {r.next_best_action ? (
-                    <div className="mt-3 border-t border-[var(--line)] pt-3">
-                      <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)]">
-                        <Lock size={11} strokeWidth={1.5} />
+                    <div className="mt-3.5 border-t border-[var(--line)] pt-3">
+                      <div className="placard mb-1.5 flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
+                        <Lock size={16} strokeWidth={1.5} />
                         If you approve
                       </div>
                       <p className="text-[12.5px] leading-relaxed text-[var(--ink-2)]">
@@ -147,8 +155,8 @@ export default async function ReviewPage() {
 function Row({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-[var(--ink-3)]">{label}</dt>
-      <dd className="tabular text-right font-medium">{value}</dd>
+      <dt className="shrink-0 text-[var(--ink-3)]">{label}</dt>
+      <dd className="readout min-w-0 text-right text-[12px] font-medium">{value}</dd>
     </div>
   );
 }

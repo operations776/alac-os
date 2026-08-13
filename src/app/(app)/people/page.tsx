@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { sql } from "@/lib/server/db";
 import { getOrgId } from "@/lib/server/queries/portfolio";
-import { Card, Badge, Eyebrow, EmptyState, formatDate } from "@/components/ui/primitives";
+import {
+  Badge, Blank, Card, EmptyState, PageHeader, Th, formatDate,
+} from "@/components/ui/primitives";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,13 @@ type PersonRow = {
 export default async function PeoplePage() {
   const orgId = await getOrgId();
   if (!orgId) {
-    return <div className="p-8"><EmptyState title="No data yet" body="Run the importers first." /></div>;
+    return (
+      <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
+        <Card>
+          <EmptyState title="No data yet" body="Run the importers first." />
+        </Card>
+      </div>
+    );
   }
 
   // Matched contacts at hiring companies first: that is the actionable end of
@@ -51,84 +59,99 @@ export default async function PeoplePage() {
   const s = stats[0];
 
   return (
-    <div className="mx-auto max-w-[1180px] px-8 py-7">
-      <header className="mb-5">
-        <Eyebrow>Warm network</Eyebrow>
-        <h1 className="mt-1.5 text-[24px] font-extrabold leading-[1.2] tracking-[-0.02em]">
-          {s.total.toLocaleString()} first degree contacts
-        </h1>
-        <p className="mt-1.5 max-w-[68ch] text-[14px] text-[var(--ink-2)]">
-          {s.matched} are matched to a company in the portfolio and {s.decision_makers} hold a decision
-          making title. These need no introduction, which is why they are the shortest path to a
-          conversation.
-        </p>
-      </header>
+    <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
+      <PageHeader
+        eyebrow="Warm network"
+        title={`${s.total.toLocaleString()} first degree contacts`}
+        lede={
+          <>
+            {s.matched} are matched to a company in the portfolio and {s.decision_makers} hold a decision
+            making title. These need no introduction, which is why they are the shortest path to a
+            conversation.
+          </>
+        }
+      />
 
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--line)]">
-                {["Name", "Title", "Company", "Open roles", "Connected"].map((h, i) => (
-                  <th
-                    key={h}
-                    className={`px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] ${
-                      i === 3 ? "text-right" : "text-left"
-                    }`}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => (
-                <tr key={p.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--surface-2)]">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[13.5px] font-semibold">{p.full_name}</span>
-                      {p.is_decision_maker ? <Badge tone="good">DM</Badge> : null}
-                    </div>
-                    {p.linkedin_url ? (
-                      <a
-                        href={p.linkedin_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[11.5px] text-[var(--ink-3)] hover:text-[var(--brand)]"
-                      >
-                        LinkedIn <ExternalLink size={11} strokeWidth={1.5} />
-                      </a>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2.5 text-[13px] text-[var(--ink-2)]">{p.title ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-[13px]">
-                    {p.account_id ? (
-                      <Link
-                        href={`/accounts/${p.account_id}`}
-                        className="font-medium hover:text-[var(--brand)] hover:underline"
-                      >
-                        {p.account_name}
-                      </Link>
-                    ) : (
-                      <span className="text-[var(--ink-3)]">{p.company_text ?? "—"}</span>
-                    )}
-                  </td>
-                  <td className="tabular px-4 py-2.5 text-right text-[13px]">
-                    {p.open_roles_count ? p.open_roles_count : <span className="text-[var(--ink-3)]">—</span>}
-                  </td>
-                  <td className="px-4 py-2.5 text-[12.5px] text-[var(--ink-2)]">
-                    {formatDate(p.connected_on) ?? <span className="text-[var(--ink-3)]">—</span>}
-                  </td>
+      <Card className="overflow-hidden">
+        {rows.length === 0 ? (
+          <EmptyState
+            title="No contacts loaded"
+            body="The connections list has not been imported for this organization, so there is no warm network to work from."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--line)] bg-[var(--surface-2)]">
+                  <Th>Name</Th>
+                  <Th>Title</Th>
+                  <Th>Company</Th>
+                  <Th align="right">Open roles</Th>
+                  <Th>Connected</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-[var(--line)] last:border-0 transition-colors hover:bg-[var(--surface-2)]"
+                  >
+                    <td className="px-4 py-2.5 align-top">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13.5px] font-semibold">{p.full_name}</span>
+                        {p.is_decision_maker ? (
+                          <Badge tone="good">Decision maker</Badge>
+                        ) : null}
+                      </div>
+                      {p.linkedin_url ? (
+                        <a
+                          href={p.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-0.5 inline-flex items-center gap-1 rounded-[6px] text-[11.5px] text-[var(--ink-3)] transition-colors hover:text-[var(--brand)]"
+                        >
+                          LinkedIn <ExternalLink size={16} strokeWidth={1.5} />
+                        </a>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2.5 align-top text-[13px] text-[var(--ink-2)]">
+                      {p.title ?? <Blank label="title unknown" />}
+                    </td>
+                    <td className="px-4 py-2.5 align-top text-[13px]">
+                      {p.account_id ? (
+                        <Link
+                          href={`/accounts/${p.account_id}`}
+                          className="rounded-[6px] font-medium hover:text-[var(--brand)] hover:underline"
+                        >
+                          {p.account_name}
+                        </Link>
+                      ) : p.company_text ? (
+                        <span className="text-[var(--ink-3)]" title="Not matched to a portfolio account">
+                          {p.company_text}
+                        </span>
+                      ) : (
+                        <Blank label="no company recorded" />
+                      )}
+                    </td>
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13px]">
+                      {p.open_roles_count ? p.open_roles_count : <Blank />}
+                    </td>
+                    <td className="readout px-4 py-2.5 align-top text-[12px] text-[var(--ink-2)]">
+                      {formatDate(p.connected_on) ?? <Blank />}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
-      <p className="mt-3 text-[12px] text-[var(--ink-3)]">
-        Showing the 100 most actionable of {s.total.toLocaleString()}.
-      </p>
+      {rows.length > 0 ? (
+        <p className="readout mt-3 text-[12px] text-[var(--ink-3)]">
+          Showing the {rows.length} most actionable of {s.total.toLocaleString()}.
+        </p>
+      ) : null}
     </div>
   );
 }

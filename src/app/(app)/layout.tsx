@@ -17,13 +17,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!session) redirect("/signin");
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh flex-col lg:flex-row">
+      <a href="#main" className="skip-link text-[13px] font-semibold">
+        Skip to content
+      </a>
       <Nav
         userName={session.fullName || session.email}
         userRole={session.role}
         signOut={signOutAction}
       />
-      <main className="min-w-0 flex-1 bg-[var(--bg)]">{children}</main>
+      <main
+        id="main"
+        tabIndex={-1}
+        className="graticule min-w-0 flex-1 bg-[var(--bg)] lg:h-dvh lg:overflow-y-auto"
+      >
+        {children}
+      </main>
     </div>
   );
 }
