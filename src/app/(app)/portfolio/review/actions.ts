@@ -1,27 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getOrgId } from "@/lib/server/queries/portfolio";
+import { currentSession } from "@/lib/server/auth";
 import {
   approveRecommendation,
   rejectRecommendation,
 } from "@/lib/server/queries/recommendations";
 
 /**
- * orgId comes from the server, never from the form. A recommendation id in a
- * hidden field is a client-supplied value, so every query is scoped by the
- * org resolved here and a mismatched id simply matches no row.
+ * Both the org and the actor come from the verified session, never from the
+ * form. A recommendation id in a hidden field is client-supplied, so every
+ * query is scoped by the session's org and a mismatched id matches no row.
  */
 export async function approve(formData: FormData) {
-  const orgId = await getOrgId();
-  if (!orgId) return { ok: false, error: "No organization in session" };
+  const session = await currentSession();
+  if (!session) return { ok: false, error: "Your session expired. Sign in again." };
 
   const id = String(formData.get("id") ?? "");
   if (!id) return { ok: false, error: "Missing recommendation" };
 
-  // Auth lands in ALAC-15. Until then the actor is unattributed rather than
-  // faked, which is the honest state: resolved_by stays null.
-  const done = await approveRecommendation(orgId, id, null);
+  const done = await approveRecommendation(session.orgId, id, session.userId);
   revalidatePath("/portfolio/review");
   revalidatePath("/portfolio");
   revalidatePath("/dashboard");
@@ -31,8 +29,8 @@ export async function approve(formData: FormData) {
 }
 
 export async function reject(formData: FormData) {
-  const orgId = await getOrgId();
-  if (!orgId) return { ok: false, error: "No organization in session" };
+  const session = await currentSession();
+  if (!session) return { ok: false, error: "Your session expired. Sign in again." };
 
   const id = String(formData.get("id") ?? "");
   if (!id) return { ok: false, error: "Missing recommendation" };
@@ -40,7 +38,7 @@ export async function reject(formData: FormData) {
   const raw = String(formData.get("note") ?? "").trim();
   const note = raw.length ? raw.slice(0, 2000) : null;
 
-  const done = await rejectRecommendation(orgId, id, null, note);
+  const done = await rejectRecommendation(session.orgId, id, session.userId, note);
   revalidatePath("/portfolio/review");
   revalidatePath("/dashboard");
   return done

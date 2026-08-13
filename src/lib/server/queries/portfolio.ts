@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "../db";
+import { currentSession } from "../auth";
 
 // Every function here takes orgId first. Tenancy is enforced in server code,
 // so a query that forgets the scope is the bug this convention exists to make
@@ -26,10 +27,17 @@ export type AccountRow = {
   top_signal: string | null;
 };
 
-/** The single org this deployment serves. */
+/**
+ * The org for the signed-in user, from the verified session cookie.
+ *
+ * This used to return "the first org in the table", which was fine for a
+ * single-tenant demo and wrong as a habit: tenant scoping has to come from
+ * the session, never from ambient state. Every page and action already calls
+ * this, so they all became correctly scoped the moment it changed.
+ */
 export async function getOrgId(): Promise<string | null> {
-  const rows = (await sql`select id from orgs order by created_at limit 1`) as { id: string }[];
-  return rows[0]?.id ?? null;
+  const session = await currentSession();
+  return session?.orgId ?? null;
 }
 
 /** Accounts in one tier, ranked, with the strongest signal for context. */

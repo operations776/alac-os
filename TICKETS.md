@@ -27,7 +27,7 @@ Status values: `todo`, `doing`, `done`, `cut`.
 | ALAC-12 | import_accounts_batch RPC + import-tam.mjs, quote-aware, fails under 8,000 records | todo |
 | ALAC-13 | Dream-client seed and pin. Required: Anduril ranks P6 with 0 roles, Saronic and Helsing absent from the export | todo |
 | ALAC-14 | import_people_batch RPC + import-connections.mjs + unmatched report | todo |
-| ALAC-15 | Auth: signin, signup, middleware, requireSession, first signup calls bootstrap_org | todo |
+| ALAC-15 | Auth: signin, session cookie, layout guard, getOrgId from session, create-user script | done |
 
 ## Day 2, 8 Aug: the engine
 

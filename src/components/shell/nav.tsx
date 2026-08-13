@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Columns3, Building2, Users, Activity, ClipboardCheck } from "lucide-react";
+import { LayoutGrid, Columns3, Building2, Users, Activity, ClipboardCheck, LogOut } from "lucide-react";
 import { brand } from "@/config/brand";
 
 // Lucide only, 16px, stroke 1.5. No emoji. DESIGN.md section 7.
@@ -19,7 +19,15 @@ const NAV = [
   { href: "/engine", label: "Engine", Icon: Activity, exact: false },
 ];
 
-export function Nav() {
+export function Nav({
+  userName,
+  userRole,
+  signOut,
+}: {
+  userName: string;
+  userRole: string;
+  signOut: () => Promise<void>;
+}) {
   const pathname = usePathname();
 
   return (
@@ -59,8 +67,24 @@ export function Nav() {
         })}
       </nav>
 
-      <div className="mt-auto px-2 pt-4 text-[11px] leading-relaxed text-[var(--ink-3)]">
-        Scores are computed, not guessed. Every number opens its own arithmetic.
+      <div className="mt-auto flex flex-col gap-3 pt-4">
+        <p className="px-2 text-[11px] leading-relaxed text-[var(--ink-3)]">
+          Scores are computed, not guessed. Every number opens its own arithmetic.
+        </p>
+
+        <div className="border-t border-[var(--line)] px-2 pt-3">
+          <div className="truncate text-[12.5px] font-medium">{userName}</div>
+          <div className="text-[11px] capitalize text-[var(--ink-3)]">{userRole}</div>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-[var(--ink-3)] hover:text-[var(--ink)]"
+            >
+              <LogOut size={13} strokeWidth={1.5} />
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
     </aside>
   );

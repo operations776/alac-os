@@ -144,6 +144,7 @@ Provisioned automatically by the Neon integration and pulled with `vercel env pu
 | `OPENAI_API_KEY` | no | for reasoning | RecruiterGTM's key. Server only. Unset: deterministic scores still work, the reasoning pass is disabled and the UI says so rather than inventing text. |
 | `OPENAI_MODEL` | no | no | Model override. Changing it means changing `MODEL_RATES` in `src/lib/server/ai/pricing.ts` in the same commit, or `agent_runs.cost_usd` lies. |
 | `ALAC_DATA_DIR` | no | importers only | Absolute path to the client workspace holding the real CSVs. Deliberately outside this public repo. |
+| `ALAC_SEED_PASSWORD` | no | `create:user` only | Password for `npm run create:user`. Unset: one is generated and printed once. Never committed, never a default. |
 | `SOURCEWHALE_API_KEY` | no | phase 2 | Read-oriented sync. See section 9. Unset: the CSV bridge covers the same code path. |
 | `CRON_SECRET` | no | phase 2 | Shared secret for scheduled runs. |
 
