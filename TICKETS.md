@@ -38,8 +38,8 @@ Status values: `todo`, `doing`, `done`, `cut`.
 | ALAC-18 | Bulk scoring run over every account, wrapped in an agent_run | todo |
 | ALAC-19 | OpenAI client, pricing.ts, verify:ai script | done |
 | ALAC-20 | Reasoning pass, forced schema, cited-id grounding check, attach_reasoning RPC | done |
-| ALAC-21 | recommendations migration + resolve_recommendation and set_account_tier RPCs | todo |
-| ALAC-22 | Tier proposals with hysteresis and tier_locked respect | todo |
+| ALAC-21 | recommendations migration + resolve_recommendation and set_account_tier RPCs | done |
+| ALAC-22 | Tier proposals with hysteresis and tier_locked respect | done |
 
 ## Day 3, 9 Aug: shell and portfolio
 
@@ -56,7 +56,7 @@ Status values: `todo`, `doing`, `done`, `cut`.
 | ID | Ticket | Status |
 | --- | --- | --- |
 | ALAC-28 | /accounts/[id] decision card: why now, evidence, breakdown, timeline, people | todo |
-| ALAC-29 | /portfolio/review: recommendation queue, approve, reject, reject with note | todo |
+| ALAC-29 | /portfolio/review: recommendation queue, approve, reject, reject with note | done |
 | ALAC-30 | activities table + feed on the account | todo |
 | ALAC-31 | /engine and /engine/[runId]: runs, params, cost, per-item outcomes | todo |
 

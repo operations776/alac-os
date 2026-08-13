@@ -315,6 +315,17 @@ async function main() {
         throw new Error(`raw id leaked into prose: ${polluted.join(', ')}`)
       }
 
+      // The schema says 0 to 1, and one run returned a value outside it and
+      // lost an otherwise good explanation to a constraint violation. A
+      // confidence of 95 obviously means 0.95, so rescale rather than discard;
+      // anything still out of range after that is clamped.
+      let confidence = Number(parsed.confidence)
+      if (!Number.isFinite(confidence)) confidence = null
+      else {
+        if (confidence > 1 && confidence <= 100) confidence = confidence / 100
+        confidence = Math.min(1, Math.max(0, confidence))
+      }
+
       const opinion =
         parsed.tier_opinion === 'none' ? null : parsed.tier_opinion
 
@@ -325,7 +336,7 @@ async function main() {
                next_best_action = ${parsed.next_best_action},
                risks            = ${parsed.risks || null},
                cited_signal_ids = ${parsed.cited_signal_ids ?? []},
-               confidence       = ${parsed.confidence},
+               confidence       = ${confidence},
                model            = ${MODEL},
                prompt_version   = ${PROMPT_VERSION},
                agent_run_id     = ${run.id},

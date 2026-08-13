@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Columns3, Building2, Users, Activity } from "lucide-react";
+import { LayoutGrid, Columns3, Building2, Users, Activity, ClipboardCheck } from "lucide-react";
 import { brand } from "@/config/brand";
 
 // Lucide only, 16px, stroke 1.5. No emoji. DESIGN.md section 7.
+//
+// `exact` exists because /portfolio/review is a child of /portfolio. Without
+// it the prefix match lights up both rows at once and the sidebar stops
+// telling you where you are.
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", Icon: LayoutGrid },
-  { href: "/portfolio", label: "Portfolio", Icon: Columns3 },
-  { href: "/accounts", label: "Accounts", Icon: Building2 },
-  { href: "/people", label: "People", Icon: Users },
-  { href: "/engine", label: "Engine", Icon: Activity },
+  { href: "/dashboard", label: "Dashboard", Icon: LayoutGrid, exact: false },
+  { href: "/portfolio", label: "Portfolio", Icon: Columns3, exact: true },
+  { href: "/portfolio/review", label: "Review", Icon: ClipboardCheck, exact: false },
+  { href: "/accounts", label: "Accounts", Icon: Building2, exact: false },
+  { href: "/people", label: "People", Icon: Users, exact: false },
+  { href: "/engine", label: "Engine", Icon: Activity, exact: false },
 ];
 
 export function Nav() {
@@ -32,8 +37,10 @@ export function Nav() {
       </div>
 
       <nav className="flex flex-col gap-0.5">
-        {NAV.map(({ href, label, Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+        {NAV.map(({ href, label, Icon, exact }) => {
+          const active = exact
+            ? pathname === href
+            : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}

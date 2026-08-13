@@ -43,6 +43,17 @@ function tierForRank(rank) {
 
 const RANKS = { top25: 3, next25: 2, watch: 1 }
 
+// Enum values are storage, not English. The rationale is read by a person, so
+// it gets the label rather than the database spelling.
+const TIER_LABEL = {
+  top25: 'the Top 25',
+  next25: 'the Next 25',
+  watch: 'the Watch list',
+  unassigned: 'no tier',
+  removed: 'removed',
+}
+const label = (t) => TIER_LABEL[t] ?? 'no tier'
+
 /** Positive when `to` is better than `from`. */
 function direction(from, to) {
   return (RANKS[to] ?? 0) - (RANKS[from] ?? 0)
@@ -204,11 +215,11 @@ async function main() {
       for (const p of proposals) {
         const headline =
           p.kind === 'promote_tier'
-            ? `Promote ${p.company} to ${p.to_tier}`
-            : `Demote ${p.company} to ${p.to_tier ?? 'untiered'}`
+            ? `Move ${p.company} up to ${label(p.to_tier)}`
+            : `Move ${p.company} down to ${label(p.to_tier)}`
         const rationale =
           `Ranked ${p.rank} of ${ranked.length} by deterministic score (${p.score}/100), ` +
-          `which places it in ${p.to_tier ?? 'no tier'}. Currently ${p.from_tier ?? 'untiered'}.`
+          `which places it in ${label(p.to_tier)}. It currently sits in ${label(p.from_tier)}.`
 
         // Data law 2: the partial unique index is the race guard. A pending
         // recommendation of this kind already existing means the queue already
