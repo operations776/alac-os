@@ -12,7 +12,8 @@
     "verify:ai": "node scripts/verify-ai.mjs",
     "import:tam": "node scripts/import-tam.mjs",
     "import:people": "node scripts/import-connections.mjs",
-    "score": "node scripts/score.mjs",
+    "score": "node scripts/score.mjs && node scripts/reason.mjs",
+  "reason": "node scripts/reason.mjs",
     "migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {

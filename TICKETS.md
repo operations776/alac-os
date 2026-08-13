@@ -36,8 +36,8 @@ Status values: `todo`, `doing`, `done`, `cut`.
 | ALAC-16 | account_scores migration, account_score_deltas view, record_score RPC | todo |
 | ALAC-17 | Deterministic scorer: compute.ts, weights.ts, breakdown jsonb | todo |
 | ALAC-18 | Bulk scoring run over every account, wrapped in an agent_run | todo |
-| ALAC-19 | OpenAI client, pricing.ts, verify:ai script | todo |
-| ALAC-20 | Reasoning pass, forced schema, cited-id grounding check, attach_reasoning RPC | todo |
+| ALAC-19 | OpenAI client, pricing.ts, verify:ai script | done |
+| ALAC-20 | Reasoning pass, forced schema, cited-id grounding check, attach_reasoning RPC | done |
 | ALAC-21 | recommendations migration + resolve_recommendation and set_account_tier RPCs | todo |
 | ALAC-22 | Tier proposals with hysteresis and tier_locked respect | todo |
 

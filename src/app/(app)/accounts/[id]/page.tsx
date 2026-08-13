@@ -146,6 +146,38 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             </div>
           </Card>
 
+          {/* What to do about it, and what would make it a waste of time. Only
+              rendered when the reasoning pass actually produced them, so an
+              empty state here means "not run", never a fabricated suggestion. */}
+          {score?.next_best_action || score?.risks ? (
+            <Card>
+              <CardHeader
+                title="What to do next"
+                sub={score.model ? `Written by ${score.model}, grounded in the signals above` : undefined}
+              />
+              <div className="flex flex-col gap-4 px-5 py-4">
+                {score.next_best_action ? (
+                  <div>
+                    <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)]">
+                      Next best action
+                    </div>
+                    <p className="prose-measure text-[14px] leading-[1.55]">{score.next_best_action}</p>
+                  </div>
+                ) : null}
+                {score.risks ? (
+                  <div>
+                    <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)]">
+                      Risks
+                    </div>
+                    <p className="prose-measure text-[14px] leading-[1.55] text-[var(--ink-2)]">
+                      {score.risks}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </Card>
+          ) : null}
+
           {/* The arithmetic. This is what turns a number into a decision. */}
           <Card>
             <CardHeader title="How this score was calculated" sub="Five components, then penalties" />
