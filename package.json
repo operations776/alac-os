@@ -13,8 +13,9 @@
     "import:tam": "node scripts/import-tam.mjs",
     "import:people": "node scripts/import-connections.mjs",
     "score": "node scripts/score.mjs && node scripts/reason.mjs",
-  "reason": "node scripts/reason.mjs",
-    "migrate": "node scripts/migrate.mjs"
+    "reason": "node scripts/reason.mjs",
+    "migrate": "node scripts/migrate.mjs",
+    "propose": "node scripts/propose.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
