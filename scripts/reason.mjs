@@ -74,12 +74,13 @@ You do not produce the score. The score is already computed by a deterministic f
 
 Rules you must follow:
 
-1. Ground every factual claim in the evidence supplied to you. Each signal has an id. When you assert something happened, cite the id of the signal it came from in cited_signal_ids. Never cite an id that was not supplied. A response citing anything else is discarded.
-2. Do not invent facts. No headcount, funding, contract award, or person that is not in the input. If the input is thin, say the input is thin. "Little recent signal on this account" is a useful sentence; a plausible invented one is not.
-3. Do not restate the score. Adrian can read the number. Tell him what it means and what to do.
-4. next_best_action is a concrete first move for a recruiting firm selling a search engagement: who to contact and on what pretext. Not "conduct further research".
-5. If you think the number is wrong, say so in risks and set tier_opinion. That becomes a recommendation for a human to approve. You never move the number yourself.
-6. Write like a person briefing a colleague. No preamble, no bullet-point resumes of the input, no hedging padding.`
+1. Ground every factual claim in the evidence supplied to you. Each signal has an id. When you assert something happened, put the id of the signal it came from in the cited_signal_ids array. Never cite an id that was not supplied. A response citing anything else is discarded.
+2. Ids belong ONLY in the cited_signal_ids array. Never write an id, a UUID, or the text "id=" inside why_now, next_best_action, or risks. Adrian reads those three fields as plain English; a database key in the middle of a sentence is a bug.
+3. Do not invent facts. No headcount, funding, contract award, or person that is not in the input. If the input is thin, say the input is thin. "Little recent signal on this account" is a useful sentence; a plausible invented one is not.
+4. Do not restate the score or re-narrate its arithmetic. Adrian sees the number and the full breakdown on the same screen. "44 open roles, signaling strong hiring activity" tells him nothing he cannot already see. Tell him what it MEANS: what is likely happening inside that company, and what it implies for a search engagement.
+5. next_best_action is a concrete first move: who to contact and on what pretext. Name the actual person when one is supplied. Not "conduct further research".
+6. tier_opinion is for DISAGREEMENT ONLY. Return null when the current tier looks right, which is the normal case. Only name a tier when you think the deterministic score put this account in the wrong place, and when you do, say why in risks. This field creates work for a human, so an opinion that merely agrees with the score is noise.
+7. Write like a person briefing a colleague. No preamble, no bullet-point resumes of the input, no hedging padding.`
 
 const SCHEMA = {
   type: 'object',
@@ -151,6 +152,20 @@ function buildUserPrompt(a) {
 function ungroundedCitations(cited, supplied) {
   const allowed = new Set(supplied.map((s) => s.id))
   return (cited ?? []).filter((id) => !allowed.has(id))
+}
+
+/**
+ * Ids are for the citation array, never for the prose. The model leaked raw
+ * UUIDs into readable sentences in 2 of the first 5 rows, so this is checked
+ * rather than trusted: a database key in the middle of a briefing paragraph is
+ * the kind of detail that makes the whole product look unfinished.
+ */
+const ID_IN_PROSE = /\bid=|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+
+function prosePollution(parsed) {
+  return ['why_now', 'next_best_action', 'risks'].filter(
+    (f) => parsed[f] && ID_IN_PROSE.test(parsed[f]),
+  )
 }
 
 async function main() {
@@ -293,6 +308,11 @@ async function main() {
         throw new Error(
           `ungrounded citation(s): ${bogus.slice(0, 3).join(', ')}`,
         )
+      }
+
+      const polluted = prosePollution(parsed)
+      if (polluted.length) {
+        throw new Error(`raw id leaked into prose: ${polluted.join(', ')}`)
       }
 
       const opinion =
