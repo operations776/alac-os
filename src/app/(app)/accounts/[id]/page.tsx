@@ -45,24 +45,20 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
-      <Link
-        href="/portfolio"
-        className="mb-4 inline-flex items-center gap-1.5 rounded-[6px] text-[13px] text-[var(--ink-2)] transition-colors hover:text-[var(--brand)]"
-      >
+      <Link href="/portfolio" className="btn btn-ghost mb-4 -ml-4">
         <ArrowLeft size={16} strokeWidth={1.5} /> Portfolio
       </Link>
 
-      {/* The identity plate and the primary readout, side by side. The score
-          sits in its own instrument bezel rather than floating as loose type. */}
+      {/* The identity plate and the primary readout, side by side. */}
       <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="min-w-0 flex-1">
           <Eyebrow>{account.vertical ?? "Account"}</Eyebrow>
-          <h1 className="mt-2 flex flex-wrap items-center gap-2.5 text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] text-balance">
+          <h1 className="display mt-2.5 flex flex-wrap items-center gap-3 text-[24px] leading-[1.15] sm:text-[30px]">
             {account.company_name}
             {account.tier_locked ? (
               <span
                 title="Pinned by a human, the engine may not demote it"
-                className="inline-flex items-center gap-1 rounded-full border border-[var(--brand-line)] bg-[var(--brand-soft)] px-2 py-[3px] text-[11px] font-semibold text-[var(--brand)]"
+                className="placard inline-flex items-center gap-1.5 border border-[var(--brand)] bg-[var(--brand-soft)] px-2.5 py-[5px] text-[9.5px] text-[var(--brand)]"
               >
                 <Lock size={16} strokeWidth={1.5} />
                 Pinned
@@ -70,13 +66,13 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             ) : null}
           </h1>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-[var(--ink-3)]">
+          <div className="readout mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] text-[var(--ink-3)]">
             {account.domain ? (
               <a
                 href={`https://${account.domain}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-[6px] transition-colors hover:text-[var(--brand)]"
+                className="link inline-flex items-center gap-1.5"
               >
                 {account.domain} <ExternalLink size={16} strokeWidth={1.5} />
               </a>
@@ -102,7 +98,8 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_336px]">
         <div className="flex flex-col gap-5">
           {/* Why now leads the page. It is the question the product exists to
-              answer, so it gets the largest text and its evidence sits under it. */}
+              answer, so it gets the largest text and its evidence sits
+              directly under it. Position and type size are the emphasis. */}
           <Card>
             <CardHeader
               title="Why now"
@@ -110,7 +107,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             />
             <div className="px-5 py-4">
               {score?.why_now ? (
-                <p className="prose-measure text-[16px] leading-[1.6]">{score.why_now}</p>
+                <p className="prose-measure text-[14px] leading-[1.75]">{score.why_now}</p>
               ) : (
                 <p className="prose-measure text-[13.5px] leading-relaxed text-[var(--ink-2)]">
                   No written reasoning yet. The deterministic score below is complete and auditable on its
@@ -120,8 +117,10 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               )}
 
               {signals.length > 0 ? (
-                <div className="well mt-4 rounded-[6px] border border-[var(--line)] px-4 py-3.5">
-                  <div className="placard mb-2.5 text-[10px] text-[var(--ink-3)]">Evidence on file</div>
+                <div className="well mt-5 px-4 py-3.5">
+                  <div className="placard mb-2.5 text-[9.5px] text-[var(--ink-3)]">
+                    Evidence on file
+                  </div>
                   <ul className="flex flex-col">
                     {signals.slice(0, 5).map((s, i) => (
                       <li

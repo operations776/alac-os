@@ -47,21 +47,21 @@ export default async function PortfolioPage() {
               {/* Column header reads as a channel strip: name, count, mean. */}
               <div className="border-b border-[var(--line)] px-4 py-3.5">
                 <div className="flex items-baseline gap-2.5">
-                  <h2 className="text-[15px] font-semibold">{col.label}</h2>
-                  <span className="readout text-[12.5px] text-[var(--ink-2)]">
+                  <h2 className="display text-[13px]">{col.label}</h2>
+                  <span className="readout text-[12.5px] text-[var(--readout)]">
                     {(count?.n ?? 0).toLocaleString()}
                   </span>
-                  <span className="ml-auto shrink-0 text-[11.5px] text-[var(--ink-3)]">
+                  <span className="placard ml-auto shrink-0 text-[9px] text-[var(--ink-3)]">
                     {count?.avg_score != null ? (
                       <>
-                        avg <span className="readout text-[var(--ink-2)]">{count.avg_score}</span>
+                        avg <span className="readout text-[var(--readout)]">{count.avg_score}</span>
                       </>
                     ) : (
                       "no mean yet"
                     )}
                   </span>
                 </div>
-                <p className="mt-1 text-[12px] text-[var(--ink-3)]">{col.blurb}</p>
+                <p className="mt-1.5 text-[11.5px] text-[var(--ink-3)]">{col.blurb}</p>
                 {count?.avg_score != null ? (
                   <div className="mt-2.5">
                     <TickScale value={count.avg_score} max={100} ticks={10} height={6} />
@@ -90,7 +90,7 @@ export default async function PortfolioPage() {
                         </span>
                         <Link
                           href={`/accounts/${a.id}`}
-                          className="min-w-0 flex-1 truncate rounded-[6px] text-[13.5px] font-semibold hover:text-[var(--brand)] hover:underline"
+                          className="link min-w-0 flex-1 truncate text-[13px] font-medium"
                         >
                           {a.company_name}
                         </Link>

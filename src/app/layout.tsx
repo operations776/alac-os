@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Saira_Condensed, Spline_Sans_Mono } from "next/font/google";
+import { JetBrains_Mono, Orbitron, Share_Tech_Mono } from "next/font/google";
 import { brand } from "@/config/brand";
 import "./globals.css";
 
@@ -9,28 +9,31 @@ import "./globals.css";
  * fonts.googleapis.com, and self hosting also removes the render blocking
  * request this app used to avoid by shipping no webfont at all.
  *
- * Archivo, the grotesque, carries UI and headings.
- * Saira Condensed is the placard face, used for panel labels and column heads.
- * Spline Sans Mono is the readout: every number the engine computed.
+ * Orbitron is the display face: geometric, mechanical, headings only.
+ * JetBrains Mono carries body, UI, and every number the engine computed.
+ * Share Tech Mono is the placard face, for HUD labels and column heads.
+ *
+ * Nothing here is proportional. The product is a terminal and a proportional
+ * face in it reads as a document that wandered into the wrong window.
  */
-const archivo = Archivo({
+const display = Orbitron({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-archivo",
-  axes: ["wdth"],
+  variable: "--font-display",
 });
 
-const placard = Saira_Condensed({
+const body = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-placard",
-  weight: ["500", "600", "700"],
+  variable: "--font-body",
 });
 
-const readout = Spline_Sans_Mono({
+// Share Tech Mono ships a single weight, so it has to be named explicitly.
+const label = Share_Tech_Mono({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-mono-readout",
+  variable: "--font-label",
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {
@@ -46,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`h-full ${archivo.variable} ${placard.variable} ${readout.variable}`}
+      className={`h-full ${display.variable} ${body.variable} ${label.variable}`}
     >
       {/* suppressHydrationWarning is scoped to this element and covers exactly
           one case: browser extensions such as Grammarly and password managers

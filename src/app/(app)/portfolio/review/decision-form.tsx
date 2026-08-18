@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
+import { Button } from "@/components/ui/primitives";
 import { approve, reject } from "./actions";
 
 /**
@@ -44,15 +45,15 @@ export function DecisionForm({ id, company }: { id: string; company: string }) {
   }
 
   return (
-    <div className="border-t border-[var(--line)] pt-3.5">
+    <div className="border-t border-[var(--line)] pt-4">
       {rejecting ? (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-3">
           <label
             htmlFor={`note-${id}`}
-            className="text-[12px] leading-relaxed text-[var(--ink-2)]"
+            className="text-[11.5px] leading-relaxed text-[var(--ink-2)]"
           >
-            Why is this wrong for {company}? Optional, but this is what stops the
-            engine proposing it again.
+            Why is this wrong for {company}?
+            Optional, but this is what stops the engine proposing it again.
           </label>
           <textarea
             id={`note-${id}`}
@@ -62,56 +63,41 @@ export function DecisionForm({ id, company }: { id: string; company: string }) {
             autoFocus
             maxLength={2000}
             placeholder="They went quiet after the last round, not worth a slot yet."
-            className="w-full resize-y rounded-[6px] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2 text-[13px] text-[var(--ink)] outline-none transition-colors placeholder:text-[var(--ink-3)] focus:border-[var(--brand)]"
+            className="field resize-y"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={onReject}
-              disabled={pending}
-              className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color-mix(in_oklab,var(--bad)_45%,transparent)] bg-[color-mix(in_oklab,var(--bad)_14%,transparent)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--bad)] transition-colors hover:border-[var(--bad)] disabled:opacity-50"
-            >
+            <Button type="button" variant="danger" onClick={onReject} disabled={pending}>
               <X size={16} strokeWidth={1.5} />
               {pending ? "Rejecting" : "Confirm reject"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
                 setRejecting(false);
                 setNote("");
               }}
               disabled={pending}
-              className="rounded-[6px] border border-[var(--line-strong)] px-3 py-1.5 text-[12.5px] transition-colors hover:border-[var(--ink-3)] disabled:opacity-50"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onApprove}
-            disabled={pending}
-            className="inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--brand-line)] bg-[var(--brand-soft)] px-3.5 py-1.5 text-[12.5px] font-semibold text-[var(--brand)] transition-colors hover:border-[var(--brand)] disabled:opacity-50"
-          >
+          <Button type="button" variant="primary" onClick={onApprove} disabled={pending}>
             <Check size={16} strokeWidth={1.5} />
             {pending ? "Applying" : "Approve"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setRejecting(true)}
-            disabled={pending}
-            className="inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--line-strong)] px-3 py-1.5 text-[12.5px] transition-colors hover:border-[var(--ink-3)] disabled:opacity-50"
-          >
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setRejecting(true)} disabled={pending}>
             <X size={16} strokeWidth={1.5} />
             Reject
-          </button>
+          </Button>
         </div>
       )}
 
       {error ? (
-        <p role="alert" className="mt-2.5 text-[12.5px] text-[var(--bad)]">
+        <p role="alert" className="placard mt-3 text-[10px] leading-relaxed text-[var(--bad)]">
           {error}
         </p>
       ) : null}

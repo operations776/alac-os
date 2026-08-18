@@ -126,7 +126,7 @@ export function ScoreLadder({
 
               {/* The rung. */}
               <span className="relative h-[13px] min-w-0 flex-1">
-                <span className="absolute inset-0 rounded-[2px] bg-[color-mix(in_oklab,var(--ink)_6%,transparent)]" />
+                <span className="absolute inset-0 bg-[var(--bg)] shadow-[inset_0_0_0_1px_var(--line)]" />
                 {/* Graduations every 10 points, so a rung can be read against
                     the same scale as the composite readout. */}
                 <span
@@ -136,16 +136,19 @@ export function ScoreLadder({
                       "repeating-linear-gradient(to right, color-mix(in oklab, var(--ink) 14%, transparent) 0 1px, transparent 1px 10%)",
                   }}
                 />
+                {/* The span this term covers, with a hard leading edge. The
+                    edge is on the side the term travelled to, so a penalty is
+                    marked on the left and reads as a retreat. */}
                 <span
-                  className="absolute inset-y-0 rounded-[1px]"
+                  className="absolute inset-y-0"
                   style={{
                     left: `${startPct}%`,
                     width: `${Math.max(widthPct, s.signed === 0 ? 0 : 0.6)}%`,
                     background: isPenalty
-                      ? "color-mix(in oklab, var(--bad) 55%, transparent)"
-                      : "color-mix(in oklab, var(--readout) 55%, transparent)",
-                    borderLeft: isPenalty ? "1.5px solid var(--bad)" : "none",
-                    borderRight: isPenalty ? "none" : "1.5px solid var(--readout)",
+                      ? "color-mix(in oklab, var(--bad) 30%, transparent)"
+                      : "color-mix(in oklab, var(--readout) 30%, transparent)",
+                    borderLeft: isPenalty ? "2px solid var(--bad)" : "none",
+                    borderRight: isPenalty ? "none" : "2px solid var(--readout)",
                   }}
                 />
               </span>
@@ -176,7 +179,7 @@ export function ScoreLadder({
                 )}
               </span>
 
-              <span className="readout w-[34px] shrink-0 text-right text-[11.5px] font-medium text-[var(--ink)]">
+              <span className="readout w-[34px] shrink-0 text-right text-[11.5px] text-[var(--readout)]">
                 {s.to}
               </span>
             </li>
@@ -195,7 +198,7 @@ export function ScoreLadder({
           <TickScale value={total} max={100} ticks={10} height={13} />
         </span>
         <span className="w-[60px] shrink-0" />
-        <span className="readout w-[34px] shrink-0 text-right text-[14px] font-medium text-[var(--readout)]">
+        <span className="readout w-[34px] shrink-0 text-right text-[15px] text-[var(--readout)]">
           {total}
         </span>
       </div>

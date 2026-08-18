@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
-      <a href="#main" className="skip-link text-[13px] font-semibold">
+      <a href="#main" className="skip-link placard text-[10px]">
         Skip to content
       </a>
       <Nav

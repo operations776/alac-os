@@ -118,10 +118,7 @@ export default async function ReviewPage() {
                 {/* The facts that justify the move, so the decision does not
                     require opening another page. */}
                 <aside className="well border-t border-[var(--line)] px-5 py-4 md:border-l md:border-t-0">
-                  <Link
-                    href={`/accounts/${r.account_id}`}
-                    className="rounded-[6px] text-[13.5px] font-semibold hover:text-[var(--brand)] hover:underline"
-                  >
+                  <Link href={`/accounts/${r.account_id}`} className="link text-[13px] font-medium">
                     {r.company_name}
                   </Link>
                   <dl className="mt-3 flex flex-col gap-2 text-[12.5px]">

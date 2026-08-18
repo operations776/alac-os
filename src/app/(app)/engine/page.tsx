@@ -32,14 +32,10 @@ function RunBar({ ok, failed }: { ok: number; failed: number }) {
   return (
     <span
       aria-hidden="true"
-      className="relative mt-1.5 flex h-[5px] w-full min-w-[70px] overflow-hidden rounded-[2px] bg-[var(--surface-2)]"
+      className="relative mt-2 flex h-[4px] w-full min-w-[70px] overflow-hidden border border-[var(--line)] bg-[var(--bg)]"
     >
-      <span
-        style={{ width: `${okPct}%`, background: "color-mix(in oklab, var(--good) 60%, transparent)" }}
-      />
-      <span
-        style={{ width: `${100 - okPct}%`, background: "var(--bad)" }}
-      />
+      <span style={{ width: `${okPct}%`, background: "var(--good)" }} />
+      <span style={{ width: `${100 - okPct}%`, background: "var(--bad)" }} />
     </span>
   );
 }

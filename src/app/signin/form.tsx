@@ -2,21 +2,15 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/primitives";
 import { signInAction } from "./actions";
-
-const FIELD =
-  "rounded-[6px] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2 text-[13.5px] text-[var(--ink)] outline-none transition-colors focus:border-[var(--brand)]";
 
 function Submit() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="mt-1 w-full rounded-[6px] border border-[var(--brand-line)] bg-[var(--brand-soft)] px-3 py-2.5 text-[13.5px] font-semibold text-[var(--brand)] transition-colors hover:border-[var(--brand)] disabled:opacity-50"
-    >
-      {pending ? "Signing in" : "Sign in"}
-    </button>
+    <Button type="submit" variant="primary" disabled={pending} className="mt-1 w-full">
+      {pending ? "Authenticating" : "Authenticate"}
+    </Button>
   );
 }
 
@@ -24,12 +18,11 @@ export function SignInForm() {
   const [state, action] = useActionState(signInAction, { error: null });
 
   return (
-    <form action={action} className="panel relative overflow-hidden p-5">
-      <div className="sweep-line" />
-      <div className="flex flex-col gap-3.5">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="placard text-[10px] text-[var(--ink-3)]">
-            Email
+    <form action={action} className="panel p-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="email" className="placard text-[9.5px] text-[var(--ink-3)]">
+            Operator
           </label>
           <input
             id="email"
@@ -38,13 +31,13 @@ export function SignInForm() {
             autoComplete="username"
             required
             autoFocus
-            className={FIELD}
+            className="field"
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="password" className="placard text-[10px] text-[var(--ink-3)]">
-            Password
+        <div className="flex flex-col gap-2">
+          <label htmlFor="password" className="placard text-[9.5px] text-[var(--ink-3)]">
+            Passphrase
           </label>
           <input
             id="password"
@@ -52,12 +45,12 @@ export function SignInForm() {
             type="password"
             autoComplete="current-password"
             required
-            className={FIELD}
+            className="field"
           />
         </div>
 
         {state.error ? (
-          <p role="alert" className="text-[12.5px] text-[var(--bad)]">
+          <p role="alert" className="placard text-[10px] leading-relaxed text-[var(--bad)]">
             {state.error}
           </p>
         ) : null}

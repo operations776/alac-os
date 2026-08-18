@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -9,10 +9,14 @@ import {
 
 // Hand rolled primitives, per DESIGN.md. No component library.
 //
-// The visual language is flight instrumentation. A card is a panel with a
-// milled bezel edge, a label is a silkscreened placard, and a number the
-// engine computed is a readout in the sodium amber reserved for measured
-// quantities. Nothing that is not measured borrows that colour.
+// All atmosphere lives in the background. These components are deliberately
+// plain: square panels with one hairline, grey text, and exactly two accent
+// colours doing semantic work. Green means interactive, cyan means the engine
+// computed this number. Nothing here glows, is cut, or moves.
+//
+// Control recipes (.btn, .field, .link, .panel, .well) live in globals.css
+// rather than as Tailwind strings here, so the control language has one
+// definition and a restyle is one file.
 
 /* -------------------------------------------------------------------------
    Panels
@@ -29,8 +33,9 @@ export function Card({
 }
 
 /**
- * A panel header. The rule beneath it is doubled: a hard line plus a hairline
- * of the same colour at low alpha, which is how a bezel meets a panel face.
+ * A panel header. Title, optional sub line, optional action. A panel that
+ * matters more than its neighbour says so with its heading and its position
+ * on the page, never with an accent bar or a ring.
  */
 export function CardHeader({
   title,
@@ -42,25 +47,24 @@ export function CardHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="flex items-baseline gap-3 border-b border-[var(--line)] px-5 py-3.5">
+    // flex-wrap so the right slot drops below the title on a phone instead of
+    // squeezing the heading into a two line column beside it.
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 border-b border-[var(--line)] px-5 py-3.5">
       <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold leading-[1.35] tracking-[-0.005em] text-balance">
-          {title}
-        </h2>
-        {sub ? <p className="mt-1 text-[12px] text-[var(--ink-3)]">{sub}</p> : null}
+        <h2 className="display text-[13px] leading-[1.4]">{title}</h2>
+        {sub ? (
+          <p className="mt-1.5 text-[11.5px] leading-snug text-[var(--ink-3)]">{sub}</p>
+        ) : null}
       </div>
       {right ? <div className="ml-auto shrink-0">{right}</div> : null}
     </div>
   );
 }
 
-/**
- * Section label in the placard face. Condensed, spaced, uppercase: the label
- * language of a physical instrument panel.
- */
+/** Section label in the placard face, above a page or panel title. */
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <p className="placard text-[10.5px] leading-[1.4] text-[var(--ink-3)]">{children}</p>
+    <p className="placard text-[10px] leading-[1.4] text-[var(--ink-3)]">{children}</p>
   );
 }
 
@@ -80,14 +84,12 @@ export function PageHeader({
   right?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end gap-x-6 gap-y-3">
+    <header className="mb-7 flex flex-wrap items-end gap-x-6 gap-y-4">
       <div className="min-w-0 flex-1">
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="mt-2 text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] text-balance">
-          {title}
-        </h1>
+        <h1 className="display mt-2.5 text-[26px] leading-[1.12] sm:text-[32px]">{title}</h1>
         {lede ? (
-          <p className="prose-measure mt-2 text-[14px] leading-[1.55] text-[var(--ink-2)]">
+          <p className="prose-measure mt-3 text-[13px] leading-[1.65] text-[var(--ink-2)]">
             {lede}
           </p>
         ) : null}
@@ -95,6 +97,33 @@ export function PageHeader({
       {right ? <div className="shrink-0">{right}</div> : null}
     </header>
   );
+}
+
+/* -------------------------------------------------------------------------
+   Controls
+   ---------------------------------------------------------------------- */
+
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+
+/**
+ * The one button in the product. Variants map to intent, not to appetite:
+ * primary is the single action on a view, danger always confirms first.
+ */
+export function Button({
+  variant = "secondary",
+  className = "",
+  ...props
+}: ComponentProps<"button"> & { variant?: ButtonVariant }) {
+  return <button className={`btn btn-${variant} ${className}`} {...props} />;
+}
+
+/** The same recipe for an element that navigates rather than acts. */
+export function ButtonLink({
+  variant = "secondary",
+  className = "",
+  ...props
+}: ComponentProps<"a"> & { variant?: ButtonVariant }) {
+  return <a className={`btn btn-${variant} ${className}`} {...props} />;
 }
 
 /* -------------------------------------------------------------------------
@@ -114,7 +143,7 @@ export type Tone = keyof typeof TONE_ICON;
 /**
  * Status is never colour alone: every tone carries a word, and `withIcon`
  * adds the third channel for the states where colour is doing real work.
- * DESIGN.md rule 2.
+ * DESIGN.md contract rule 7.
  */
 export function Badge({
   tone = "neutral",
@@ -126,18 +155,24 @@ export function Badge({
   children: ReactNode;
 }) {
   const tones: Record<Tone, string> = {
-    neutral:
-      "bg-[var(--surface-2)] text-[var(--ink-2)] border-[var(--line-strong)]",
-    good: "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-[var(--good)] border-[color-mix(in_oklab,var(--good)_35%,transparent)]",
-    warn: "bg-[color-mix(in_oklab,var(--warn)_12%,transparent)] text-[var(--warn)] border-[color-mix(in_oklab,var(--warn)_35%,transparent)]",
-    bad: "bg-[color-mix(in_oklab,var(--bad)_12%,transparent)] text-[var(--bad)] border-[color-mix(in_oklab,var(--bad)_35%,transparent)]",
-    brand:
-      "bg-[var(--brand-soft)] text-[var(--brand)] border-[var(--brand-line)]",
+    neutral: "bg-[var(--surface-2)] text-[var(--ink-2)]",
+    good: "bg-[color-mix(in_oklab,var(--good)_14%,transparent)] text-[var(--good)]",
+    warn: "bg-[color-mix(in_oklab,var(--warn)_14%,transparent)] text-[var(--warn)]",
+    bad: "bg-[color-mix(in_oklab,var(--bad)_14%,transparent)] text-[var(--bad)]",
+    brand: "bg-[var(--brand-soft)] text-[var(--brand)]",
+  };
+  const borders: Record<Tone, string> = {
+    neutral: "var(--line-strong)",
+    good: "color-mix(in oklab, var(--good) 55%, transparent)",
+    warn: "color-mix(in oklab, var(--warn) 55%, transparent)",
+    bad: "color-mix(in oklab, var(--bad) 55%, transparent)",
+    brand: "color-mix(in oklab, var(--brand) 55%, transparent)",
   };
   const Icon = TONE_ICON[tone];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[11px] font-semibold ${tones[tone]}`}
+      className={`placard inline-flex items-center gap-1.5 border px-2.5 py-[5px] text-[9.5px] leading-none ${tones[tone]}`}
+      style={{ borderColor: borders[tone] }}
     >
       {withIcon ? <Icon size={16} strokeWidth={1.5} className="shrink-0" /> : null}
       {children}
@@ -150,8 +185,9 @@ export function Badge({
    ---------------------------------------------------------------------- */
 
 /**
- * A linear tick scale, the way a value is drawn on an instrument: ruled
- * graduations, a filled travel, and an index mark at the reading.
+ * A linear tick scale: ruled graduations, a filled travel, and a hard index
+ * mark at the reading. A data graphic, so it keeps its colour, but it does
+ * not glow: the mark is a 2px rule, not a light source.
  *
  * This is the app's one repeated visual idea. It replaces every rounded
  * progress bar in the product, and it appears at three sizes: inline beside a
@@ -192,34 +228,39 @@ export function TickScale({
   return (
     <div
       aria-hidden="true"
-      className={`relative w-full overflow-hidden rounded-[2px] ${className}`}
+      className={`relative w-full overflow-hidden ${className}`}
       style={{ height }}
     >
-      {/* The unlit travel, recessed. */}
-      <div className="absolute inset-0 bg-[var(--surface-2)] shadow-[inset_0_1px_0_rgb(0_0_0/0.28)]" />
+      {/* The empty travel, recessed. */}
+      <div className="absolute inset-0 border border-[var(--line)] bg-[var(--surface-2)]" />
 
       {/* Graduations across the full travel. */}
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `repeating-linear-gradient(to right, color-mix(in oklab, var(--ink) 22%, transparent) 0 1px, transparent 1px ${100 / Math.max(ticks, 1)}%)`,
+          backgroundImage: `repeating-linear-gradient(to right, color-mix(in oklab, var(--ink) 20%, transparent) 0 1px, transparent 1px ${100 / Math.max(ticks, 1)}%)`,
         }}
       />
 
-      {/* The lit travel. Flat fill, no gradient: a gradient would imply a
+      {/* The filled travel. Flat fill, no gradient: a gradient would imply a
           value that is not there. */}
       <div
         className="absolute inset-y-0 left-0"
         style={{
           width: `${pct}%`,
-          background: `color-mix(in oklab, ${color} 30%, transparent)`,
-          borderRight: pct > 0 && pct < 100 ? `1.5px solid ${color}` : "none",
+          background: `color-mix(in oklab, ${color} 26%, transparent)`,
         }}
       />
 
       {/* The index mark: the exact reading, drawn hard against the travel. */}
-      {pct >= 100 ? (
-        <div className="absolute inset-y-0 right-0 w-[1.5px]" style={{ background: color }} />
+      {pct > 0 ? (
+        <div
+          className="absolute inset-y-0 w-[2px]"
+          style={{
+            left: `calc(${pct}% - ${pct >= 100 ? 2 : 1}px)`,
+            background: color,
+          }}
+        />
       ) : null}
     </div>
   );
@@ -247,8 +288,8 @@ export function GaugeRow({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <span className="text-[13px] text-[var(--ink-2)]">{label}</span>
-        <span className="readout shrink-0 text-[13px] font-medium text-[var(--ink)]">
+        <span className="text-[12px] text-[var(--ink-2)]">{label}</span>
+        <span className="readout shrink-0 text-[12.5px] text-[var(--readout)]">
           {display ?? (
             <>
               {value}
@@ -267,8 +308,8 @@ export function GaugeRow({
    ---------------------------------------------------------------------- */
 
 /**
- * A measured number with its placard label. The value takes the readout face
- * and, when it is a live count the engine produced, the readout colour.
+ * A measured number with its placard label. Cyan by default, because every
+ * value in this row is something the engine counted.
  */
 export function Stat({
   label,
@@ -281,32 +322,26 @@ export function Stat({
   hint?: string;
   tone?: "good" | "warn" | "bad" | "readout";
 }) {
-  const color =
-    tone === "readout"
-      ? "var(--readout)"
-      : tone
-        ? `var(--${tone})`
-        : "var(--ink)";
+  const color = tone && tone !== "readout" ? `var(--${tone})` : "var(--readout)";
   return (
     <div className="panel relative overflow-hidden px-4 py-3.5">
-      <div className="placard text-[10px] text-[var(--ink-3)]">{label}</div>
-      <div
-        className="readout mt-1.5 text-[26px] font-medium leading-none tracking-[-0.03em]"
-        style={{ color }}
-      >
+      <div className="placard text-[9.5px] text-[var(--ink-3)]">{label}</div>
+      <div className="readout mt-2 text-[28px] leading-none" style={{ color }}>
         {value}
       </div>
       {hint ? (
-        <div className="mt-1.5 text-[11.5px] leading-snug text-[var(--ink-3)]">{hint}</div>
+        <div className="mt-2 text-[11px] leading-snug text-[var(--ink-3)]">{hint}</div>
       ) : null}
     </div>
   );
 }
 
 /**
- * A score as it appears in a list or table. Ink by default; the readout amber
- * marks the band worth acting on, and the band is always stated in the title
- * so the colour is never the only signal.
+ * A score as it appears in a list or table. The band drives brightness rather
+ * than hue: a high score reads bright cyan, a low one sits dim, so a column of
+ * scores reads as one instrument at different intensities instead of a traffic
+ * light. The band is always stated in the title, so brightness is never the
+ * only signal.
  */
 export function ScoreDot({ score }: { score: number | null }) {
   if (score == null) {
@@ -318,10 +353,14 @@ export function ScoreDot({ score }: { score: number | null }) {
   }
   const band = score >= 80 ? "high" : score >= 60 ? "mid" : "low";
   const color =
-    band === "high" ? "var(--readout)" : band === "mid" ? "var(--ink)" : "var(--ink-3)";
+    band === "high"
+      ? "var(--readout)"
+      : band === "mid"
+        ? "var(--ink)"
+        : "var(--ink-3)";
   return (
     <span
-      className="readout text-[14px] font-medium"
+      className="readout text-[13.5px]"
       style={{ color }}
       title={`Score ${score} of 100, ${band} band`}
     >
@@ -331,24 +370,23 @@ export function ScoreDot({ score }: { score: number | null }) {
 }
 
 /**
- * The primary score readout on the account page. Large, in the readout face,
- * with its scale beneath it and a single sweep on load.
+ * The primary score readout on the account page. Its size is its emphasis: a
+ * 46px number in a plain panel, with the scale beneath it.
  */
 export function ScoreReadout({ score }: { score: number | null }) {
   return (
-    <div className="panel relative w-[186px] overflow-hidden px-4 pb-3.5 pt-3">
-      <div className="sweep-line" />
-      <div className="placard text-[10px] text-[var(--ink-3)]">Composite score</div>
-      <div className="mt-1 flex items-baseline gap-1.5">
+    <div className="panel w-[196px] px-4 pb-4 pt-3.5">
+      <div className="placard text-[9.5px] text-[var(--ink-3)]">Composite score</div>
+      <div className="mt-2 flex items-baseline gap-1.5">
         <span
-          className="readout text-[44px] font-medium leading-none tracking-[-0.04em]"
+          className="readout text-[46px] leading-none"
           style={{ color: score == null ? "var(--ink-3)" : "var(--readout)" }}
         >
           {score ?? "--"}
         </span>
-        <span className="readout text-[14px] text-[var(--ink-3)]">/ 100</span>
+        <span className="readout text-[13px] text-[var(--ink-3)]">/ 100</span>
       </div>
-      <div className="mt-3">
+      <div className="mt-3.5">
         <TickScale value={score ?? 0} max={100} ticks={10} height={8} />
       </div>
       <div className="placard mt-2 flex justify-between text-[9px] text-[var(--ink-3)]">
@@ -366,7 +404,7 @@ export function ScoreReadout({ score }: { score: number | null }) {
 
 /**
  * A table column header in the placard face. `align` exists because numbers
- * are right aligned and their heading must follow them. Contract rule 5.
+ * are right aligned and their heading must follow them. Contract rule 9.
  */
 export function Th({
   children,
@@ -380,7 +418,7 @@ export function Th({
   return (
     <th
       scope="col"
-      className={`placard whitespace-nowrap px-4 py-2.5 text-[10px] text-[var(--ink-3)] ${
+      className={`placard whitespace-nowrap px-4 py-3 text-[9.5px] text-[var(--ink-3)] ${
         align === "right" ? "text-right" : "text-left"
       } ${className}`}
     >
@@ -403,8 +441,10 @@ export function Blank({ label = "no data" }: { label?: string }) {
    ---------------------------------------------------------------------- */
 
 /**
- * Empty states say what would be here, why it is not, and what fills it.
- * They are never decorative: an honest gap stays a gap.
+ * Empty states say what would be here, why it is not, and what fills it. They
+ * are drawn as a stalled terminal rather than a friendly illustration: the
+ * prompt printed a status line and stopped. No blinking cursor, because a
+ * blinking cursor is an animation sitting in a block of text.
  */
 export function EmptyState({
   title,
@@ -416,15 +456,12 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center px-5 py-12 text-center">
-      <span className="text-[var(--ink-3)]">
-        <CircleDashed size={20} strokeWidth={1.5} />
-      </span>
-      <p className="mt-3 text-[14px] font-semibold">{title}</p>
-      <p className="mx-auto mt-1.5 max-w-[52ch] text-[13px] leading-relaxed text-[var(--ink-3)]">
-        {body}
-      </p>
-      {action ? <div className="mt-4">{action}</div> : null}
+    <div className="px-5 py-12">
+      <div className="mx-auto max-w-[54ch]">
+        <p className="placard text-[10.5px] text-[var(--ink-2)]">{title}</p>
+        <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--ink-3)]">{body}</p>
+        {action ? <div className="mt-5">{action}</div> : null}
+      </div>
     </div>
   );
 }
@@ -435,8 +472,8 @@ export function EmptyState({
  */
 export function NoticeLine({ children }: { children: ReactNode }) {
   return (
-    <p className="flex items-start gap-2 text-[12px] leading-relaxed text-[var(--ink-3)]">
-      <span className="mt-[1px] shrink-0">
+    <p className="flex items-start gap-2 text-[11.5px] leading-relaxed text-[var(--ink-3)]">
+      <span className="mt-[1px] shrink-0 text-[var(--warn)]">
         <Info size={16} strokeWidth={1.5} />
       </span>
       <span className="prose-measure">{children}</span>

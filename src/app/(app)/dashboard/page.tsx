@@ -75,17 +75,15 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* 1. Who should we pursue */}
+      {/* 1. Who should we pursue. First on the page because it is the only
+          block here that is a to-do rather than a reading. */}
       <section className="mb-5">
         <Card>
           <CardHeader
             title="Who should we pursue"
             sub="Highest scoring accounts that are open to approach"
             right={
-              <Link
-                href="/portfolio"
-                className="inline-flex items-center gap-1.5 rounded-[6px] text-[12.5px] font-semibold text-[var(--brand)] hover:underline"
-              >
+              <Link href="/portfolio" className="btn btn-ghost">
                 Full portfolio <ArrowUpRight size={16} strokeWidth={1.5} />
               </Link>
             }
@@ -108,10 +106,13 @@ export default async function DashboardPage() {
                   <div className="w-9 shrink-0 text-right">
                     <ScoreDot score={a.latest_score} />
                   </div>
-                  <div className="min-w-0 flex-1">
+                  {/* A floor rather than min-w-0: below it the row is out of
+                      space and the badges wrap to their own line, instead of
+                      squeezing the company name into a two line column. */}
+                  <div className="min-w-[190px] flex-1">
                     <Link
                       href={`/accounts/${a.id}`}
-                      className="rounded-[6px] text-[14px] font-semibold hover:text-[var(--brand)] hover:underline"
+                      className="link text-[14px] font-medium"
                     >
                       {a.company_name}
                     </Link>
@@ -156,10 +157,7 @@ export default async function DashboardPage() {
                       <ScoreDot score={a.latest_score} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/accounts/${a.id}`}
-                        className="rounded-[6px] text-[13.5px] font-semibold hover:text-[var(--brand)] hover:underline"
-                      >
+                      <Link href={`/accounts/${a.id}`} className="link text-[13px] font-medium">
                         {a.company_name}
                       </Link>
                       <div className="mt-0.5 text-[12px] leading-snug text-[var(--ink-3)]">
@@ -219,11 +217,11 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader title="What changed this week" sub="Movement since the last scoring run" />
           <div className="px-5 py-4">
-            <div className="well rounded-[6px] border border-[var(--line)] px-4 py-3.5">
-              <div className="placard mb-2 text-[10px] text-[var(--ink-3)]">
+            <div className="well px-4 py-3.5">
+              <div className="placard mb-2.5 text-[9.5px] text-[var(--ink-3)]">
                 No baseline available
               </div>
-              <p className="prose-measure text-[13.5px] leading-relaxed text-[var(--ink-2)]">
+              <p className="prose-measure text-[12.5px] leading-relaxed text-[var(--ink-2)]">
                 This is the first scoring run, so there is no previous week to compare against. Deltas appear
                 here from the second run onward, and they are computed from stored history rather than
                 estimated. The signals behind every score are dated and sourced, so a change always has a

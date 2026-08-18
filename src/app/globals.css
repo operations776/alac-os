@@ -3,89 +3,54 @@
 /* Design tokens. DESIGN.md section 2 is the contract; this file is the
    implementation.
 
-   The surface language is flight instrumentation: a graphite bezel, recessed
-   panel faces, and a single luminous readout colour for measured quantities.
-   Ground is warm graphite rather than blue-black, so it reads as a machined
-   panel rather than a generic dark theme.
+   The split this file exists to hold: **all atmosphere lives in the
+   background, all content is plain.** The void ground, the circuit grid and
+   the CRT scanlines carry the theme. Everything above them, every panel and
+   every glyph, is flat and quiet: square corners, one hairline border, grey
+   text, and exactly two accent colours doing semantic work.
 
-   A colour defined only inside a media query is a bug, because the explicit
-   theme toggle then has nothing to override. Every token is declared on bare
-   :root first, then redefined for each theme. */
+   That means there is deliberately no glow token, no chamfer token, and no
+   text effect anywhere in this file. If a future change wants to add one,
+   it is arguing with DESIGN.md sections 5 and 9, not with this comment.
+
+   Dark only, by mandate. There is no light theme: the palette is built on a
+   void ground and neither the ground nor the grid survives a white page. */
 
 :root {
   color-scheme: dark;
 
-  /* Ground and panel faces. */
-  --bg: #131316;
-  --surface: #1b1b1f;
-  --surface-2: #232329;
-  --line: #33333c;
-  --line-strong: #45454f;
+  /* Ground and panel faces. The void first, then two steps up. */
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface-2: #1c1c2e;
+  --line: #2a2a3a;
+  --line-strong: #3d3d55;
 
   /* Text. Every value clears WCAG AA (4.5:1) against --bg, --surface, and
-     --surface-2, so a caption stays legible inside a recessed well and not
-     only on the panel face. --ink-3 is set by the --surface-2 case, which is
-     the tightest of the three. */
-  --ink: #f2f1ee;
-  --ink-2: #b6b4ae;
-  --ink-3: #918f87;
+     --surface-2. --surface-2 is the tightest of the three, so it sets the
+     floor: --ink-3 lands at 5.3:1 there rather than the 4.0:1 a literal
+     #6b7280 would give. Legibility outranks fidelity to a swatch. */
+  --ink: #e0e0e0;
+  --ink-2: #b8b8cc;
+  --ink-3: #8f8fa8;
 
-  /* Interaction. The ALAC navy lifted to carry on a dark ground. Navy is a
-     verb: this colour appears only on clickable, selected, or focused things. */
-  --brand: #9a99f2;
-  --brand-soft: #26263f;
-  --brand-line: #4a4a86;
+  /* Accent one of two. Green is a verb: clickable, selected, focused, or
+     healthy. It never appears on something that just sits there. */
+  --brand: #00ff88;
+  --brand-soft: #0a2a1c;
 
-  /* Measured quantity. The readout colour. Sodium amber, the colour of a
-     lit instrument face. Applied to scores, counts, and totals, and to
-     nothing that is not a number the engine computed. */
-  --readout: #f0b757;
-  --readout-dim: #6d5225;
+  /* Accent two of two. Cyan is the readout channel: scores, counts, totals,
+     durations, dates. If the engine computed it, it is cyan. If a human or a
+     model wrote it, it is ink. Those two rules are the entire colour system,
+     and there is no third accent. */
+  --readout: #00d4ff;
 
-  /* Status. Never colour alone: every status also carries an icon and a word. */
-  --good: #6ede9b;
-  --warn: #f0b757;
-  --bad: #ff8f8f;
-
-  --radius-control: 6px;
-  --radius-card: 10px;
-
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px rgb(0 0 0 / 0.45);
-
-  /* The etched bezel edge. A 1px top highlight over the panel border reads as
-     a milled edge catching light, which is what separates an instrument face
-     from a flat rectangle. */
-  --bezel: inset 0 1px 0 rgb(255 255 255 / 0.045);
-}
-
-/* The product is dark by default and by intent. The light theme remains
-   available for anyone who forces it, and carries the same token contract. */
-:root[data-theme="light"] {
-  color-scheme: light;
-
-  --bg: #eceae5;
-  --surface: #ffffff;
-  --surface-2: #f4f2ee;
-  --line: #d9d5cd;
-  --line-strong: #bcb7ac;
-
-  --ink: #1a1a1e;
-  --ink-2: #4e4c47;
-  --ink-3: #736f67;
-
-  --brand: #14137b;
-  --brand-soft: #e8e8f6;
-  --brand-line: #b9b8e2;
-
-  --readout: #7a4c00;
-  --readout-dim: #e8d3ac;
-
-  --good: #16663b;
-  --warn: #7a4c00;
-  --bad: #a3201f;
-
-  --shadow-raised: 0 1px 2px rgb(20 19 123 / 0.06), 0 6px 20px rgb(20 19 123 / 0.06);
-  --bezel: inset 0 1px 0 rgb(255 255 255 / 0.9);
+  /* Status. Never colour alone: every status also carries an icon and a word.
+     --bad is lifted off a literal #ff3366 because that lands at 4.7:1 on
+     --surface-2, too close to the line for 10px badge text. */
+  --good: #00ff88;
+  --warn: #ffb020;
+  --bad: #ff5c85;
 }
 
 @theme inline {
@@ -104,82 +69,288 @@
   --color-warn: var(--warn);
   --color-bad: var(--bad);
 
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-mono-readout), ui-monospace, monospace;
-  --font-placard: var(--font-placard), var(--font-archivo), sans-serif;
+  --font-sans: var(--font-body), ui-monospace, monospace;
+  --font-mono: var(--font-body), ui-monospace, monospace;
+  --font-display: var(--font-display), var(--font-body), monospace;
+  --font-label: var(--font-label), var(--font-body), monospace;
 }
 
+/* Everything is monospace. This is a terminal, and a proportional face in it
+   reads as a document that wandered into the wrong window. */
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-archivo), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
-    sans-serif;
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-family: var(--font-body), ui-monospace, "Consolas", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Digits that sit in columns must line up. DESIGN.md contract rule 5.
-   Numbers also take the mono face, so a column of figures is a column of
-   equal-width glyphs rather than a proportional approximation of one. */
-.tabular {
-  font-variant-numeric: tabular-nums;
+/* The CRT. One fixed overlay across the whole product, so every screen is
+   read through the same glass. Two layers: the scanline rule itself, and a
+   vignette that pulls the corners into the void.
+
+   4px period rather than 2px: at 2px it aliases into a moire on any display
+   that is not exactly 1x, which reads as a rendering bug rather than a CRT. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      rgb(0 0 0 / 0.22) 2px 4px
+    ),
+    radial-gradient(ellipse at 50% 40%, transparent 45%, rgb(0 0 0 / 0.55) 100%);
 }
 
-.readout {
-  font-family: var(--font-mono-readout), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "ss01";
-  letter-spacing: -0.01em;
+/* Everything below is a component recipe, and it lives in @layer components
+   so that a Tailwind utility always wins against it. Unlayered CSS beats any
+   layer, so .field { padding } outside a layer would silently defeat pl-10 at
+   the call site and there would be nothing wrong with the call site to see.
+   Focus, motion, and the CRT overlay stay unlayered on purpose: those must
+   not be overridable by a utility. */
+@layer components {
+  /* -----------------------------------------------------------------------
+     Type
+     -------------------------------------------------------------------- */
+
+  /* Digits that sit in columns must line up. DESIGN.md contract rule 9. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A number the engine computed. Tabular and cyan, and nothing else: no
+     glow, no shadow. The colour is the whole signal. */
+  .readout {
+    font-family: var(--font-body), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Panel silkscreen. Wide, spaced, uppercase: the label language of a HUD.
+     Used for eyebrows, column headers, and badges only, never for prose. */
+  .placard {
+    font-family: var(--font-label), var(--font-body), monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 400;
+  }
+
+  /* Headings. Orbitron, uppercase, tracked out. Every heading in the product
+     goes through this, so the display face is set in exactly one place. */
+  .display {
+    font-family: var(--font-display), var(--font-body), monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    text-wrap: balance;
+  }
+
+  /* Reasoning prose is the content of this product, so it gets a measure.
+     Monospace runs wider per character, so the cap comes down from 68ch to
+     62ch to land on roughly the same physical line length. Contract rule 10. */
+  .prose-measure {
+    max-width: 62ch;
+  }
+
+  /* -----------------------------------------------------------------------
+     Containers
+
+     A panel groups content and does nothing else. It is one step up from the
+     ground with one hairline around it, square. It has no accent ring, no
+     corner treatment, and no emphasis variant: a panel that matters more
+     than its neighbour says so with its heading and its position, not with
+     decoration.
+     -------------------------------------------------------------------- */
+
+  .panel {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  /* Recessed well: where raw arithmetic, traces, and evidence sit, one step
+     below the panel face. */
+  .well {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+  }
+
+  /* -----------------------------------------------------------------------
+     Ground texture
+
+     The circuit grid. A ruled substrate behind the page ground, the way a
+     board is etched before anything is mounted on it. Two grids at different
+     pitches so it reads as traces rather than graph paper, held under 5
+     percent contrast so it never competes with data.
+
+     This is the one place in the product that is allowed to be atmospheric.
+     It sits behind opaque panels, so it only ever shows in the gutters.
+     -------------------------------------------------------------------- */
+
+  .graticule {
+    background-image:
+      linear-gradient(rgb(0 255 136 / 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(0 255 136 / 0.045) 1px, transparent 1px),
+      linear-gradient(rgb(0 212 255 / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(0 212 255 / 0.025) 1px, transparent 1px);
+    background-size:
+      64px 64px,
+      64px 64px,
+      16px 16px,
+      16px 16px;
+    background-position: center top;
+  }
+
+  /* -----------------------------------------------------------------------
+     Controls
+
+     Buttons and fields were five near-identical Tailwind strings copy pasted
+     across accounts, signin, review, and the decision form. They live here
+     now, as one recipe each, so a change to the control language is one edit.
+
+     Controls are the one place green is allowed to sit on a resting element,
+     because a control is interactive by definition.
+     -------------------------------------------------------------------- */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    font-family: var(--font-label), var(--font-body), monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    white-space: nowrap;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    transition:
+      background 100ms steps(3),
+      color 100ms steps(3),
+      border-color 100ms steps(3);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Primary: the one action on a view. Empty until you touch it, then it
+     fills and inverts. The fill is the emphasis, not a glow around it. */
+  .btn-primary {
+    color: var(--brand);
+    border-color: var(--brand);
+  }
+  .btn-primary:hover {
+    background: var(--brand);
+    color: var(--bg);
+  }
+
+  .btn-secondary {
+    color: var(--ink-2);
+    border-color: var(--line-strong);
+  }
+  .btn-secondary:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+  }
+
+  .btn-ghost {
+    color: var(--ink-3);
+  }
+  .btn-ghost:hover {
+    color: var(--brand);
+    border-color: var(--line-strong);
+  }
+
+  .btn-danger {
+    color: var(--bad);
+    border-color: var(--bad);
+  }
+  .btn-danger:hover {
+    background: var(--bad);
+    color: var(--bg);
+  }
+
+  /* The field. Recessed, monospace, and typed in accent green with a matching
+     caret, because what you type is interactive content. */
+  .field {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 12px;
+    background: var(--surface);
+    color: var(--brand);
+    caret-color: var(--brand);
+    font-family: var(--font-body), ui-monospace, monospace;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    border: 1px solid var(--line);
+    outline: none;
+    transition: border-color 120ms steps(3);
+  }
+  .field::placeholder {
+    color: var(--ink-3);
+    text-transform: none;
+  }
+  .field:focus {
+    border-color: var(--brand);
+  }
+
+  /* A select keeps the native popup, which is styled by the OS. That is the
+     correct trade: a hand rolled listbox would cost keyboard and screen
+     reader behaviour that the native control gives for free. */
+  select.field {
+    appearance: none;
+    padding-right: 32px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--brand) 50%),
+      linear-gradient(135deg, var(--brand) 50%, transparent 50%);
+    background-position:
+      calc(100% - 16px) 18px,
+      calc(100% - 11px) 18px;
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+  }
+  select.field option {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  /* Any text that navigates. Replaces the hover:text-brand hover:underline
+     pair that was repeated on every company name in the product. Two channels
+     on hover, colour and underline, and no effect on the glyphs. */
+  .link {
+    color: inherit;
+    transition: color 100ms steps(3);
+  }
+  .link:hover {
+    color: var(--brand);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
-/* Panel silkscreen. Condensed, spaced, uppercase: the label language of a
-   physical instrument placard. Used for eyebrows and column headers only. */
-.placard {
-  font-family: var(--font-placard), var(--font-archivo), sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.11em;
-  font-weight: 600;
-}
+/* -------------------------------------------------------------------------
+   Focus
+   ------------------------------------------------------------------------- */
 
-/* Reasoning prose is the content of this product, so it gets a measure.
-   DESIGN.md contract rule 6. */
-.prose-measure {
-  max-width: 68ch;
-}
-
-/* The instrument face. A panel is a surface plus a milled top edge. */
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  box-shadow: var(--bezel);
-}
-
-/* Recessed well: where raw arithmetic and traces sit, one step below the face. */
-.well {
-  background: var(--surface-2);
-  box-shadow: inset 0 1px 0 rgb(0 0 0 / 0.25);
-}
-
-/* The graticule. A faint measurement grid behind the page ground, the way a
-   plotting board is ruled before anything is drawn on it. It is decoration
-   with a job: it makes the panels read as instruments mounted on a surface.
-   Kept under 4 percent contrast so it never competes with data. */
-.graticule {
-  background-image:
-    linear-gradient(to right, color-mix(in oklab, var(--ink) 3.5%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in oklab, var(--ink) 3.5%, transparent) 1px, transparent 1px);
-  background-size: 64px 64px;
-  background-position: center top;
-}
-
-/* Focus is always visible. Contract rule 11. */
+/* Focus is always visible. Contract rule 15.
+   One rule covers the whole product now. Nothing is clipped by a clip-path
+   any more, so a plain outline is never swallowed and the special inner ring
+   branch that used to exist for chamfered controls is gone with it. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
-  border-radius: var(--radius-control);
 }
 
 /* Skip link: keyboard users land on it before the nav. */
@@ -189,42 +360,48 @@ body {
   top: -48px;
   z-index: 50;
   background: var(--surface);
-  color: var(--ink);
+  color: var(--brand);
   border: 1px solid var(--brand);
-  border-radius: var(--radius-control);
-  padding: 8px 12px;
-  transition: top 120ms ease;
+  padding: 8px 14px;
+  transition: top 120ms steps(4);
 }
 .skip-link:focus {
   top: 8px;
 }
 
-/* The sweep. One signature motion: a single pass of light across the top edge
-   of the primary readout when a page loads, the way a radar sweep refreshes a
-   plot. It runs once, it is not a loop, and reduced motion removes it. */
-@keyframes sweep {
+/* -------------------------------------------------------------------------
+   Motion
+
+   Motion lives in the background and nowhere else. No animation runs over a
+   region that holds text, and no effect is applied to a glyph: no chromatic
+   aberration, no text-shadow glow, no blinking cursor, no sweep across a
+   panel face. Reading is the job, and a moving or fringed letterform is a
+   letterform that has to be read twice.
+   ------------------------------------------------------------------------- */
+
+/* The drift. The circuit grid creeps by one cell over a long cycle, and it is
+   the only movement in the product. It is behind every panel, so it never
+   passes under text: the panels are opaque and the grid only shows in the
+   gutters between them. */
+@keyframes graticule-drift {
   from {
-    transform: translateX(-100%);
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
   }
   to {
-    transform: translateX(100%);
+    background-position:
+      0 64px,
+      64px 0,
+      0 16px,
+      16px 0;
   }
 }
 
-.sweep-line {
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 1px;
-  overflow: hidden;
-  pointer-events: none;
-}
-.sweep-line::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, var(--readout), transparent);
-  animation: sweep 1400ms ease-out 1 both;
+.graticule {
+  animation: graticule-drift 40s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -236,9 +413,9 @@ body {
     transition-duration: 0.01ms !important;
   }
 
-  /* A sweep with no motion is a static bar of colour, which is worse than
-     nothing. Remove it entirely rather than freezing it mid-pass. */
-  .sweep-line {
-    display: none;
+  /* The grid is decoration with no state to communicate, so it simply stops
+     where it is rather than snapping to the end of its cycle. */
+  .graticule {
+    animation: none;
   }
 }

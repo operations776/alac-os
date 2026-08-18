@@ -108,7 +108,7 @@ export default async function PeoplePage() {
                           href={p.linkedin_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-0.5 inline-flex items-center gap-1 rounded-[6px] text-[11.5px] text-[var(--ink-3)] transition-colors hover:text-[var(--brand)]"
+                          className="link mt-1 inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.15em] text-[var(--ink-3)]"
                         >
                           LinkedIn <ExternalLink size={16} strokeWidth={1.5} />
                         </a>
@@ -119,10 +119,7 @@ export default async function PeoplePage() {
                     </td>
                     <td className="px-4 py-2.5 align-top text-[13px]">
                       {p.account_id ? (
-                        <Link
-                          href={`/accounts/${p.account_id}`}
-                          className="rounded-[6px] font-medium hover:text-[var(--brand)] hover:underline"
-                        >
+                        <Link href={`/accounts/${p.account_id}`} className="link font-medium">
                           {p.account_name}
                         </Link>
                       ) : p.company_text ? (

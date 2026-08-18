@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Lock, Search } from "lucide-react";
 import { getOrgId, searchAccounts, type Tier } from "@/lib/server/queries/portfolio";
 import {
-  Badge, Blank, Card, EmptyState, PageHeader, ScoreDot, Th, formatDate,
+  Badge, Blank, Button, Card, EmptyState, PageHeader, ScoreDot, Th, formatDate,
 } from "@/components/ui/primitives";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +14,6 @@ const TIERS: { value: string; label: string }[] = [
   { value: "watch", label: "Watch" },
   { value: "unassigned", label: "Unranked" },
 ];
-
-const CONTROL =
-  "rounded-[6px] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2 text-[13.5px] text-[var(--ink)] outline-none transition-colors placeholder:text-[var(--ink-3)] focus:border-[var(--brand)]";
 
 export default async function AccountsPage({
   searchParams,
@@ -67,10 +64,12 @@ export default async function AccountsPage({
         }
       />
 
-      <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative">
+      {/* The query bar reads as a prompt: the caret is part of the control,
+          not an icon bolted beside it. */}
+      <form method="get" className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-[320px]">
           <span
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-3)]"
+            className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--brand)]"
             aria-hidden="true"
           >
             <Search size={16} strokeWidth={1.5} />
@@ -78,32 +77,26 @@ export default async function AccountsPage({
           <input
             name="q"
             defaultValue={q}
-            placeholder="Search company or domain"
+            placeholder="company or domain"
             aria-label="Search accounts"
-            className={`${CONTROL} w-full pl-9 sm:w-[300px]`}
+            className="field pl-10"
           />
         </div>
         <select
           name="tier"
           defaultValue={tier ?? ""}
           aria-label="Filter by tier"
-          className={CONTROL}
+          className="field w-auto"
         >
           {TIERS.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
           ))}
         </select>
-        <button
-          type="submit"
-          className="rounded-[6px] border border-[var(--brand-line)] bg-[var(--brand-soft)] px-3.5 py-2 text-[13px] font-semibold text-[var(--brand)] transition-colors hover:border-[var(--brand)]"
-        >
-          Apply
-        </button>
+        <Button type="submit" variant="primary">
+          Run
+        </Button>
         {q || tier ? (
-          <Link
-            href="/accounts"
-            className="rounded-[6px] px-2 py-2 text-[13px] text-[var(--ink-3)] hover:text-[var(--ink)]"
-          >
+          <Link href="/accounts" className="btn btn-ghost">
             Clear
           </Link>
         ) : null}
@@ -141,7 +134,7 @@ export default async function AccountsPage({
                     <td className="px-4 py-2.5 align-top">
                       <Link
                         href={`/accounts/${a.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-[6px] text-[13.5px] font-semibold hover:text-[var(--brand)] hover:underline"
+                        className="link inline-flex items-center gap-1.5 text-[13px] font-medium"
                       >
                         {a.company_name}
                         {a.tier_locked ? (
@@ -197,18 +190,12 @@ export default async function AccountsPage({
           {pages > 1 ? (
             <div className="flex gap-2">
               {page > 1 ? (
-                <Link
-                  href={href({ page: page - 1 })}
-                  className="rounded-[6px] border border-[var(--line-strong)] px-3 py-1.5 font-semibold transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                >
+                <Link href={href({ page: page - 1 })} className="btn btn-secondary">
                   Previous
                 </Link>
               ) : null}
               {page < pages ? (
-                <Link
-                  href={href({ page: page + 1 })}
-                  className="rounded-[6px] border border-[var(--line-strong)] px-3 py-1.5 font-semibold transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                >
+                <Link href={href({ page: page + 1 })} className="btn btn-secondary">
                   Next
                 </Link>
               ) : null}

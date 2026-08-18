@@ -16,18 +16,17 @@ export default async function SignInPage() {
 
   return (
     <main className="graticule flex min-h-dvh items-center justify-center bg-[var(--bg)] px-5 py-10">
-      <div className="w-full max-w-[380px]">
-        <div className="mb-6 flex items-center gap-3">
+      <div className="w-full max-w-[400px]">
+        <div className="mb-7 flex items-center gap-3.5">
           <div
-            className="placard grid h-9 w-9 shrink-0 place-items-center rounded-[6px] border text-[12px] leading-none text-[var(--brand)]"
-            style={{ background: "var(--brand-soft)", borderColor: "var(--brand-line)" }}
+            className="placard grid h-11 w-11 shrink-0 place-items-center border border-[var(--brand)] bg-[var(--brand-soft)] text-[13px] leading-none text-[var(--brand)]"
             aria-hidden="true"
           >
             {brand.shortName.slice(0, 2)}
           </div>
           <div className="min-w-0">
-            <div className="text-[17px] font-semibold tracking-[-0.01em]">{brand.name}</div>
-            <div className="placard mt-0.5 text-[9.5px] text-[var(--ink-3)]">
+            <div className="display text-[20px] leading-none">{brand.name}</div>
+            <div className="placard mt-2 text-[9px] text-[var(--ink-3)]">
               BD intelligence layer
             </div>
           </div>
@@ -35,8 +34,9 @@ export default async function SignInPage() {
 
         <SignInForm />
 
-        <p className="mt-5 text-[12px] leading-relaxed text-[var(--ink-3)]">
-          {brand.tagline} Access is per operator and every session is recorded against it.
+        <p className="mt-6 text-[11.5px] leading-relaxed text-[var(--ink-3)]">
+          {brand.tagline} Access is per operator
+          and every session is recorded against it.
         </p>
       </div>
     </main>
