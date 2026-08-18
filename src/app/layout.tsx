@@ -1,39 +1,30 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Orbitron, Share_Tech_Mono } from "next/font/google";
+import { Roboto } from "next/font/google";
 import { brand } from "@/config/brand";
 import "./globals.css";
 
 /**
- * Three faces, three jobs. Loaded through next/font so they are self hosted
- * and inlined at build time: a strict CSP blocks a stylesheet fetched from
- * fonts.googleapis.com, and self hosting also removes the render blocking
- * request this app used to avoid by shipping no webfont at all.
+ * One face, doing every job. Roboto is the canonical Material typeface, and
+ * Material 3 draws its whole type scale from a single family: weight and size
+ * separate a display heading from a caption, never a second family.
  *
- * Orbitron is the display face: geometric, mechanical, headings only.
- * JetBrains Mono carries body, UI, and every number the engine computed.
- * Share Tech Mono is the placard face, for HUD labels and column heads.
+ * That replaces the three face stack this file used to carry (Orbitron for
+ * display, JetBrains Mono for body and numbers, Share Tech Mono for labels).
+ * The theme is no longer a terminal, so a monospace ground is wrong, and
+ * tabular figures are handled by `font-variant-numeric` on the `.readout`
+ * recipe rather than by making the whole product monospace.
  *
- * Nothing here is proportional. The product is a terminal and a proportional
- * face in it reads as a document that wandered into the wrong window.
+ * Loaded through next/font so it is self hosted and inlined at build time: a
+ * strict CSP blocks a stylesheet fetched from fonts.googleapis.com, and self
+ * hosting also removes a render blocking request.
+ *
+ * Roboto is a variable font, so weights are not enumerated here: the `.display`
+ * and `.placard` recipes in globals.css pick the weight they need.
  */
-const display = Orbitron({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-display",
-});
-
-const body = JetBrains_Mono({
+const body = Roboto({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-body",
-});
-
-// Share Tech Mono ships a single weight, so it has to be named explicitly.
-const label = Share_Tech_Mono({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-label",
-  weight: ["400"],
 });
 
 export const metadata: Metadata = {
@@ -47,10 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`h-full ${display.variable} ${body.variable} ${label.variable}`}
-    >
+    <html lang="en" className={`h-full ${body.variable}`}>
       {/* suppressHydrationWarning is scoped to this element and covers exactly
           one case: browser extensions such as Grammarly and password managers
           inject attributes into body before React hydrates, which React then

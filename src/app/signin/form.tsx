@@ -18,10 +18,13 @@ export function SignInForm() {
   const [state, action] = useActionState(signInAction, { error: null });
 
   return (
-    <form action={action} className="panel p-6">
-      <div className="flex flex-col gap-4">
+    <form action={action} className="panel p-7 shadow-[var(--md-elev-2)]">
+      <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <label htmlFor="email" className="placard text-[9.5px] text-[var(--ink-3)]">
+          <label
+            htmlFor="email"
+            className="placard text-[12px] text-[var(--md-on-surface-variant)]"
+          >
             Operator
           </label>
           <input
@@ -36,7 +39,10 @@ export function SignInForm() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label htmlFor="password" className="placard text-[9.5px] text-[var(--ink-3)]">
+          <label
+            htmlFor="password"
+            className="placard text-[12px] text-[var(--md-on-surface-variant)]"
+          >
             Passphrase
           </label>
           <input
@@ -50,7 +56,10 @@ export function SignInForm() {
         </div>
 
         {state.error ? (
-          <p role="alert" className="placard text-[10px] leading-relaxed text-[var(--bad)]">
+          <p
+            role="alert"
+            className="rounded-[var(--md-radius-md)] bg-[var(--md-error-container)] px-4 py-2.5 text-[13px] leading-relaxed text-[var(--md-error)]"
+          >
             {state.error}
           </p>
         ) : null}

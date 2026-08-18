@@ -82,7 +82,7 @@ export default async function PeoplePage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] border-collapse">
               <thead>
-                <tr className="border-b border-[var(--line)] bg-[var(--surface-2)]">
+                <tr className="bg-[var(--md-surface-container-low)]">
                   <Th>Name</Th>
                   <Th>Title</Th>
                   <Th>Company</Th>
@@ -94,11 +94,11 @@ export default async function PeoplePage() {
                 {rows.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-[var(--line)] last:border-0 transition-colors hover:bg-[var(--surface-2)]"
+                    className="row-hover border-b border-[var(--md-outline-variant)] last:border-0"
                   >
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13.5px] font-semibold">{p.full_name}</span>
+                        <span className="text-[14px] font-medium">{p.full_name}</span>
                         {p.is_decision_maker ? (
                           <Badge tone="good">Decision maker</Badge>
                         ) : null}
@@ -108,32 +108,35 @@ export default async function PeoplePage() {
                           href={p.linkedin_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="link mt-1 inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.15em] text-[var(--ink-3)]"
+                          className="link mt-1 inline-flex items-center gap-1.5 text-[12.5px] text-[var(--md-on-surface-muted)]"
                         >
                           LinkedIn <ExternalLink size={16} strokeWidth={1.5} />
                         </a>
                       ) : null}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-[13px] text-[var(--ink-2)]">
+                    <td className="px-4 py-2.5 align-top text-[13.5px] text-[var(--md-on-surface-variant)]">
                       {p.title ?? <Blank label="title unknown" />}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-[13px]">
+                    <td className="px-4 py-2.5 align-top text-[13.5px]">
                       {p.account_id ? (
                         <Link href={`/accounts/${p.account_id}`} className="link font-medium">
                           {p.account_name}
                         </Link>
                       ) : p.company_text ? (
-                        <span className="text-[var(--ink-3)]" title="Not matched to a portfolio account">
+                        <span
+                          className="text-[var(--md-on-surface-muted)]"
+                          title="Not matched to a portfolio account"
+                        >
                           {p.company_text}
                         </span>
                       ) : (
                         <Blank label="no company recorded" />
                       )}
                     </td>
-                    <td className="readout px-4 py-2.5 text-right align-top text-[13px]">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
                       {p.open_roles_count ? p.open_roles_count : <Blank />}
                     </td>
-                    <td className="readout px-4 py-2.5 align-top text-[12px] text-[var(--ink-2)]">
+                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
                       {formatDate(p.connected_on) ?? <Blank />}
                     </td>
                   </tr>
@@ -145,7 +148,7 @@ export default async function PeoplePage() {
       </Card>
 
       {rows.length > 0 ? (
-        <p className="readout mt-3 text-[12px] text-[var(--ink-3)]">
+        <p className="readout mt-3 text-[13px] text-[var(--md-on-surface-muted)]">
           Showing the {rows.length} most actionable of {s.total.toLocaleString()}.
         </p>
       ) : null}

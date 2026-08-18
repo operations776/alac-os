@@ -19,9 +19,10 @@ import { brand } from "@/config/brand";
 // it the prefix match lights up both rows at once and the sidebar stops
 // telling you where you are.
 //
-// The numbers are the channel index. A HUD rail labels its channels, and it
-// also gives the eye a fixed left column to track down, which a bare icon
-// list does not.
+// The channel index numbers that used to sit in the left column are gone with
+// the terminal theme: a Material navigation drawer marks its selected item
+// with a tonal pill, which is a stronger signal than a lit digit and does not
+// need a second column to track down.
 const NAV = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutGrid, exact: false },
   { href: "/portfolio", label: "Portfolio", Icon: Columns3, exact: true },
@@ -32,12 +33,12 @@ const NAV = [
 ];
 
 /**
- * The rail. Fixed on desktop, a horizontal scroller above the content on
- * small screens, so the whole product stays usable on a phone without a
- * hamburger and the hidden state that comes with it.
+ * The navigation drawer. Fixed on desktop, a horizontal scroller above the
+ * content on small screens, so the whole product stays usable on a phone
+ * without a hamburger and the hidden state that comes with it.
  *
- * The active row is marked four ways: accent colour, a solid index bar, a lit
- * channel number, and aria-current. Colour is never the only signal.
+ * The selected row is marked three ways: the tonal pill, the label and icon
+ * colour, and aria-current. Colour is never the only signal.
  */
 export function Nav({
   userName,
@@ -51,18 +52,21 @@ export function Nav({
   const pathname = usePathname();
 
   return (
-    <aside className="relative flex shrink-0 flex-col border-b border-[var(--line)] bg-[var(--surface)] lg:h-dvh lg:w-[228px] lg:border-b-0 lg:border-r">
-      {/* Identity plate. */}
-      <div className="flex items-center gap-3 px-4 py-3.5 lg:py-4">
+    <aside className="relative z-10 flex shrink-0 flex-col bg-[var(--md-surface-container)] lg:h-dvh lg:w-[240px] lg:rounded-r-[var(--md-radius-xl)]">
+      {/* Identity plate. The monogram sits in a primary container, which is
+          the one place the seed colour appears at full strength in the rail. */}
+      <div className="flex items-center gap-3 px-5 py-4">
         <div
-          className="placard grid h-8 w-8 shrink-0 place-items-center border border-[var(--brand)] bg-[var(--brand-soft)] text-[10px] leading-none text-[var(--brand)]"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--md-primary)] text-[13px] font-medium leading-none text-[var(--md-on-primary)]"
           aria-hidden="true"
         >
           {brand.shortName.slice(0, 2)}
         </div>
         <div className="min-w-0">
-          <div className="display truncate text-[13px] leading-tight">{brand.name}</div>
-          <div className="placard mt-1 text-[8.5px] leading-none text-[var(--ink-3)]">
+          <div className="display truncate text-[16px] leading-tight text-[var(--md-on-surface)]">
+            {brand.name}
+          </div>
+          <div className="mt-0.5 text-[12px] leading-none text-[var(--md-on-surface-muted)]">
             BD intelligence
           </div>
         </div>
@@ -70,9 +74,9 @@ export function Nav({
 
       <nav
         aria-label="Primary"
-        className="flex gap-0.5 overflow-x-auto px-2 pb-2 lg:flex-col lg:overflow-visible lg:px-3 lg:pb-0"
+        className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0"
       >
-        {NAV.map(({ href, label, Icon, exact }, i) => {
+        {NAV.map(({ href, label, Icon, exact }) => {
           const active = exact
             ? pathname === href
             : pathname === href || pathname.startsWith(`${href}/`);
@@ -81,28 +85,12 @@ export function Nav({
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`placard relative flex min-h-[40px] shrink-0 items-center gap-2.5 whitespace-nowrap px-3 py-2 text-[10px] transition-colors duration-100 ${
+              className={`placard flex min-h-[48px] shrink-0 items-center gap-3 whitespace-nowrap rounded-full px-4 text-[14px] transition-colors duration-300 ${
                 active
-                  ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-                  : "text-[var(--ink-3)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
+                  ? "bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)]"
+                  : "text-[var(--md-on-surface-variant)] hover:bg-[color-mix(in_oklab,var(--md-primary)_10%,transparent)] hover:text-[var(--md-on-surface)]"
               }`}
             >
-              {/* Index bar. The second channel on the active state, visible
-                  before the label is read. */}
-              {active ? (
-                <span
-                  aria-hidden="true"
-                  className="absolute bottom-0 left-2 right-2 h-[2px] bg-[var(--brand)] lg:bottom-2 lg:left-0 lg:right-auto lg:top-2 lg:h-auto lg:w-[2px]"
-                />
-              ) : null}
-              <span
-                aria-hidden="true"
-                className={`readout text-[9px] tabular-nums ${
-                  active ? "text-[var(--brand)]" : "text-[var(--line-strong)]"
-                }`}
-              >
-                {String(i + 1).padStart(2, "0")}
-              </span>
               <Icon size={16} strokeWidth={1.5} className="shrink-0" />
               {label}
             </Link>
@@ -110,19 +98,19 @@ export function Nav({
         })}
       </nav>
 
-      <div className="mt-auto hidden flex-col gap-4 px-3 pb-4 pt-5 lg:flex">
-        <p className="px-2 text-[10.5px] leading-relaxed text-[var(--ink-3)]">
-          Scores are computed, not guessed.
-          Every number opens its own arithmetic.
+      <div className="mt-auto hidden flex-col gap-4 px-3 pb-5 pt-6 lg:flex">
+        <p className="rounded-[var(--md-radius-md)] bg-[var(--md-surface-container-low)] px-4 py-3 text-[12.5px] leading-relaxed text-[var(--md-on-surface-variant)]">
+          Scores are computed, not guessed. Every number opens its own
+          arithmetic.
         </p>
 
-        <div className="border-t border-[var(--line)] px-2 pt-3.5">
-          <div className="truncate text-[12px] text-[var(--ink-2)]">{userName}</div>
-          <div className="placard mt-1 text-[9px] text-[var(--ink-3)]">{userRole}</div>
+        <div className="px-2">
+          <div className="truncate text-[13.5px] text-[var(--md-on-surface)]">{userName}</div>
+          <div className="mt-0.5 text-[12px] text-[var(--md-on-surface-muted)]">{userRole}</div>
           <form action={signOut}>
             <button
               type="submit"
-              className="placard mt-3 inline-flex items-center gap-2 text-[9.5px] text-[var(--ink-3)] transition-colors hover:text-[var(--bad)]"
+              className="mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-full px-3 text-[13px] font-medium text-[var(--md-on-surface-variant)] transition-colors duration-300 hover:bg-[var(--md-error-container)] hover:text-[var(--md-error)]"
             >
               <LogOut size={16} strokeWidth={1.5} />
               Sign out
@@ -132,12 +120,14 @@ export function Nav({
       </div>
 
       {/* Small screens: the identity block collapses, so sign out moves here. */}
-      <div className="flex items-center gap-3 border-t border-[var(--line)] px-4 py-2.5 lg:hidden">
-        <span className="truncate text-[11.5px] text-[var(--ink-3)]">{userName}</span>
+      <div className="flex items-center gap-3 px-5 pb-3 lg:hidden">
+        <span className="truncate text-[12.5px] text-[var(--md-on-surface-muted)]">
+          {userName}
+        </span>
         <form action={signOut} className="ml-auto">
           <button
             type="submit"
-            className="placard inline-flex min-h-[40px] items-center gap-2 text-[9.5px] text-[var(--ink-3)]"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-full px-3 text-[13px] font-medium text-[var(--md-on-surface-variant)]"
           >
             <LogOut size={16} strokeWidth={1.5} />
             Sign out

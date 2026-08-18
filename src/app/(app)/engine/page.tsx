@@ -32,10 +32,10 @@ function RunBar({ ok, failed }: { ok: number; failed: number }) {
   return (
     <span
       aria-hidden="true"
-      className="relative mt-2 flex h-[4px] w-full min-w-[70px] overflow-hidden border border-[var(--line)] bg-[var(--bg)]"
+      className="relative mt-2 flex h-1.5 w-full min-w-[70px] overflow-hidden rounded-full bg-[var(--md-surface-container-high)]"
     >
-      <span style={{ width: `${okPct}%`, background: "var(--good)" }} />
-      <span style={{ width: `${100 - okPct}%`, background: "var(--bad)" }} />
+      <span style={{ width: `${okPct}%`, background: "var(--md-success)" }} />
+      <span style={{ width: `${100 - okPct}%`, background: "var(--md-error)" }} />
     </span>
   );
 }
@@ -96,7 +96,7 @@ export default async function EnginePage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] border-collapse">
               <thead>
-                <tr className="border-b border-[var(--line)] bg-[var(--surface-2)]">
+                <tr className="bg-[var(--md-surface-container-low)]">
                   <Th>Kind</Th>
                   <Th>Status</Th>
                   <Th>Trigger</Th>
@@ -110,12 +110,12 @@ export default async function EnginePage() {
                 {runs.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-[var(--line)] last:border-0 transition-colors hover:bg-[var(--surface-2)]"
+                    className="row-hover border-b border-[var(--md-outline-variant)] last:border-0"
                   >
                     <td className="px-4 py-2.5 align-top">
-                      <div className="text-[13px] font-semibold">{r.kind.replace(/_/g, " ")}</div>
+                      <div className="text-[14px] font-medium">{r.kind.replace(/_/g, " ")}</div>
                       {r.prompt_version ? (
-                        <div className="readout mt-0.5 text-[11px] text-[var(--ink-3)]">
+                        <div className="readout mt-0.5 text-[12px] text-[var(--md-on-surface-muted)]">
                           {r.prompt_version}
                         </div>
                       ) : null}
@@ -132,25 +132,25 @@ export default async function EnginePage() {
                         <Badge tone="bad" withIcon>Failed</Badge>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--ink-2)]">
+                    <td className="px-4 py-2.5 align-top text-[13px] text-[var(--md-on-surface-variant)]">
                       {r.trigger}
                     </td>
-                    <td className="readout px-4 py-2.5 text-right align-top text-[13px]">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
                       {r.items_ok.toLocaleString()}
                     </td>
-                    <td className="readout px-4 py-2.5 text-right align-top text-[13px]">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
                       {r.items_failed > 0 ? (
-                        <span className="font-semibold text-[var(--bad)]">
+                        <span className="text-[var(--md-error)]">
                           {r.items_failed.toLocaleString()}
                         </span>
                       ) : (
-                        <span className="text-[var(--ink-3)]">0</span>
+                        <span className="text-[var(--md-on-surface-muted)]">0</span>
                       )}
                     </td>
-                    <td className="readout px-4 py-2.5 text-right align-top text-[12.5px] text-[var(--ink-2)]">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13px] text-[var(--md-on-surface-variant)]">
                       {r.duration_ms ? `${(r.duration_ms / 1000).toFixed(1)}s` : <Blank />}
                     </td>
-                    <td className="readout px-4 py-2.5 align-top text-[12px] text-[var(--ink-2)]">
+                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
                       {formatDate(r.started_at) ?? <Blank />}
                     </td>
                   </tr>

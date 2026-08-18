@@ -64,12 +64,12 @@ export default async function AccountsPage({
         }
       />
 
-      {/* The query bar reads as a prompt: the caret is part of the control,
-          not an icon bolted beside it. */}
+      {/* The query bar. Filled text fields, so the leading icon sits inside
+          the field rather than beside it. */}
       <form method="get" className="mb-5 flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-[320px]">
           <span
-            className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--brand)]"
+            className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--md-on-surface-variant)]"
             aria-hidden="true"
           >
             <Search size={16} strokeWidth={1.5} />
@@ -79,7 +79,7 @@ export default async function AccountsPage({
             defaultValue={q}
             placeholder="company or domain"
             aria-label="Search accounts"
-            className="field pl-10"
+            className="field pl-11"
           />
         </div>
         <select
@@ -112,7 +112,7 @@ export default async function AccountsPage({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] border-collapse">
               <thead>
-                <tr className="border-b border-[var(--line)] bg-[var(--surface-2)]">
+                <tr className="bg-[var(--md-surface-container-low)]">
                   <Th align="right">Score</Th>
                   <Th>Company</Th>
                   <Th>Tier</Th>
@@ -126,7 +126,7 @@ export default async function AccountsPage({
                 {rows.map((a) => (
                   <tr
                     key={a.id}
-                    className="border-b border-[var(--line)] last:border-0 transition-colors hover:bg-[var(--surface-2)]"
+                    className="row-hover border-b border-[var(--md-outline-variant)] last:border-0"
                   >
                     <td className="px-4 py-2.5 text-right align-top">
                       <ScoreDot score={a.latest_score} />
@@ -134,18 +134,20 @@ export default async function AccountsPage({
                     <td className="px-4 py-2.5 align-top">
                       <Link
                         href={`/accounts/${a.id}`}
-                        className="link inline-flex items-center gap-1.5 text-[13px] font-medium"
+                        className="link inline-flex items-center gap-1.5 text-[14px] font-medium"
                       >
                         {a.company_name}
                         {a.tier_locked ? (
                           <>
-                            <Lock size={16} strokeWidth={1.5} className="text-[var(--brand)]" />
+                            <Lock size={16} strokeWidth={1.5} className="text-[var(--md-primary)]" />
                             <span className="sr-only">Pinned</span>
                           </>
                         ) : null}
                       </Link>
                       {a.domain ? (
-                        <div className="readout mt-0.5 text-[11px] text-[var(--ink-3)]">{a.domain}</div>
+                        <div className="readout mt-0.5 text-[12px] text-[var(--md-on-surface-muted)]">
+                          {a.domain}
+                        </div>
                       ) : null}
                     </td>
                     <td className="px-4 py-2.5 align-top">
@@ -158,19 +160,21 @@ export default async function AccountsPage({
                       ) : a.tier === "watch" ? (
                         <Badge>Watch</Badge>
                       ) : (
-                        <span className="text-[12px] text-[var(--ink-3)]">Unranked</span>
+                        <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">
+                          Unranked
+                        </span>
                       )}
                     </td>
-                    <td className="readout px-4 py-2.5 text-right align-top text-[13px]">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
                       {a.open_roles_count || <Blank />}
                     </td>
-                    <td className="readout px-4 py-2.5 text-right align-top text-[13px]">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
                       {a.warm_contact_count || <Blank />}
                     </td>
-                    <td className="readout px-4 py-2.5 align-top text-[12px] text-[var(--ink-2)]">
+                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
                       {formatDate(a.last_funding_date) ?? <Blank />}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--ink-2)]">
+                    <td className="px-4 py-2.5 align-top text-[13px] text-[var(--md-on-surface-variant)]">
                       {a.hq_location ?? <Blank />}
                     </td>
                   </tr>
@@ -183,7 +187,7 @@ export default async function AccountsPage({
 
       {rows.length > 0 ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px]">
-          <span className="readout text-[12px] text-[var(--ink-3)]">
+          <span className="readout text-[13px] text-[var(--md-on-surface-muted)]">
             {first.toLocaleString()}&ndash;{last.toLocaleString()} of {total.toLocaleString()}
             {pages > 1 ? `, page ${page} of ${pages.toLocaleString()}` : ""}
           </span>

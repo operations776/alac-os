@@ -92,6 +92,7 @@ Reconciled against the tree on 18 Aug. Where a ticket was written before a decis
 | ID | Ticket | Status |
 | --- | --- | --- |
 | ALAC-46 | Dark instrument-panel redesign built around the score ladder: DESIGN.md rewritten, globals.css token layer, primitives and every screen restyled | done |
+| ALAC-47 | Material Design 3 retheme, seeded #6750A4. Light tonal surfaces, Roboto, pill controls, filled text fields, MD3 state layers and motion. Replaces the dark terminal theme end to end: DESIGN.md rewritten, single `--md-*` token set, TickScale retired for Meter, every screen restyled | done |
 
 ## Phase 2, after 13 Aug
 

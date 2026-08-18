@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Lock } from "lucide-react";
 import { getOrgId, accountsByTier, tierCounts, type Tier } from "@/lib/server/queries/portfolio";
 import {
-  Badge, Card, EmptyState, PageHeader, ScoreDot, TickScale,
+  Badge, Card, EmptyState, Meter, PageHeader, ScoreDot,
 } from "@/components/ui/primitives";
 
 export const dynamic = "force-dynamic";
@@ -43,28 +43,36 @@ export default async function PortfolioPage() {
           const rows = columns[i];
           const count = counts.find((c) => c.tier === col.tier);
           return (
-            <Card key={col.tier} className="flex flex-col">
-              {/* Column header reads as a channel strip: name, count, mean. */}
-              <div className="border-b border-[var(--line)] px-4 py-3.5">
+            <Card key={col.tier} className="flex flex-col overflow-hidden">
+              {/* Column header: name, count, mean. The count sits in a primary
+                  container pill so the three columns compare at a glance. */}
+              <div className="px-4 pb-3.5 pt-4">
                 <div className="flex items-baseline gap-2.5">
-                  <h2 className="display text-[13px]">{col.label}</h2>
-                  <span className="readout text-[12.5px] text-[var(--readout)]">
+                  <h2 className="display text-[16px] text-[var(--md-on-surface)]">
+                    {col.label}
+                  </h2>
+                  <span className="readout rounded-full bg-[var(--md-primary-container)] px-2.5 py-0.5 text-[12.5px] text-[var(--md-on-primary-container)]">
                     {(count?.n ?? 0).toLocaleString()}
                   </span>
-                  <span className="placard ml-auto shrink-0 text-[9px] text-[var(--ink-3)]">
+                  <span className="placard ml-auto shrink-0 text-[11.5px] text-[var(--md-on-surface-muted)]">
                     {count?.avg_score != null ? (
                       <>
-                        avg <span className="readout text-[var(--readout)]">{count.avg_score}</span>
+                        avg{" "}
+                        <span className="readout text-[var(--md-primary)]">
+                          {count.avg_score}
+                        </span>
                       </>
                     ) : (
                       "no mean yet"
                     )}
                   </span>
                 </div>
-                <p className="mt-1.5 text-[11.5px] text-[var(--ink-3)]">{col.blurb}</p>
+                <p className="mt-1.5 text-[12.5px] text-[var(--md-on-surface-muted)]">
+                  {col.blurb}
+                </p>
                 {count?.avg_score != null ? (
-                  <div className="mt-2.5">
-                    <TickScale value={count.avg_score} max={100} ticks={10} height={6} />
+                  <div className="mt-3">
+                    <Meter value={count.avg_score} max={100} height={6} />
                   </div>
                 ) : null}
               </div>
@@ -75,29 +83,29 @@ export default async function PortfolioPage() {
                   body="No accounts have landed in this tier yet. The engine assigns a tier only after a scoring run."
                 />
               ) : (
-                <ol className="divide-y divide-[var(--line)]">
+                <ol className="px-2 pb-2">
                   {rows.map((a, rank) => (
                     <li
                       key={a.id}
-                      className="px-4 py-2.5 transition-colors hover:bg-[var(--surface-2)]"
+                      className="row-hover rounded-[var(--md-radius-sm)] px-3 py-2.5"
                     >
                       <div className="flex items-baseline gap-2.5">
-                        <span className="readout w-[20px] shrink-0 text-right text-[10.5px] text-[var(--ink-3)]">
-                          {String(rank + 1).padStart(2, "0")}
+                        <span className="readout w-[20px] shrink-0 text-right text-[11.5px] text-[var(--md-on-surface-muted)]">
+                          {rank + 1}
                         </span>
                         <span className="w-8 shrink-0 text-right">
                           <ScoreDot score={a.latest_score} />
                         </span>
                         <Link
                           href={`/accounts/${a.id}`}
-                          className="link min-w-0 flex-1 truncate text-[13px] font-medium"
+                          className="link min-w-0 flex-1 truncate text-[14px] font-medium"
                         >
                           {a.company_name}
                         </Link>
                         {a.tier_locked ? (
                           <span
                             title="Pinned by a human, the engine may not demote it"
-                            className="shrink-0 text-[var(--brand)]"
+                            className="shrink-0 text-[var(--md-primary)]"
                           >
                             <Lock size={16} strokeWidth={1.5} />
                             <span className="sr-only">Pinned</span>
@@ -112,7 +120,7 @@ export default async function PortfolioPage() {
                           <Badge tone="brand">{a.warm_contact_count} warm</Badge>
                         ) : null}
                         {a.open_roles_count === 0 && a.warm_contact_count === 0 ? (
-                          <span className="text-[11.5px] text-[var(--ink-3)]">
+                          <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">
                             {a.vertical ?? "No live signal"}
                           </span>
                         ) : null}

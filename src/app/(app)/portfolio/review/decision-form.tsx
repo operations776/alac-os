@@ -45,12 +45,12 @@ export function DecisionForm({ id, company }: { id: string; company: string }) {
   }
 
   return (
-    <div className="border-t border-[var(--line)] pt-4">
+    <div className="border-t border-[var(--md-outline-variant)] pt-4">
       {rejecting ? (
         <div className="flex flex-col gap-3">
           <label
             htmlFor={`note-${id}`}
-            className="text-[11.5px] leading-relaxed text-[var(--ink-2)]"
+            className="text-[13px] leading-relaxed text-[var(--md-on-surface-variant)]"
           >
             Why is this wrong for {company}?
             Optional, but this is what stops the engine proposing it again.
@@ -97,7 +97,10 @@ export function DecisionForm({ id, company }: { id: string; company: string }) {
       )}
 
       {error ? (
-        <p role="alert" className="placard mt-3 text-[10px] leading-relaxed text-[var(--bad)]">
+        <p
+          role="alert"
+          className="mt-3 rounded-[var(--md-radius-md)] bg-[var(--md-error-container)] px-4 py-2.5 text-[13px] leading-relaxed text-[var(--md-error)]"
+        >
           {error}
         </p>
       ) : null}

@@ -53,12 +53,12 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
       <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="min-w-0 flex-1">
           <Eyebrow>{account.vertical ?? "Account"}</Eyebrow>
-          <h1 className="display mt-2.5 flex flex-wrap items-center gap-3 text-[24px] leading-[1.15] sm:text-[30px]">
+          <h1 className="display mt-1.5 flex flex-wrap items-center gap-3 text-[26px] leading-[1.2] sm:text-[32px]">
             {account.company_name}
             {account.tier_locked ? (
               <span
                 title="Pinned by a human, the engine may not demote it"
-                className="placard inline-flex items-center gap-1.5 border border-[var(--brand)] bg-[var(--brand-soft)] px-2.5 py-[5px] text-[9.5px] text-[var(--brand)]"
+                className="placard inline-flex items-center gap-1.5 rounded-full bg-[var(--md-secondary-container)] px-3 py-1 text-[11.5px] text-[var(--md-on-secondary-container)]"
               >
                 <Lock size={16} strokeWidth={1.5} />
                 Pinned
@@ -66,7 +66,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             ) : null}
           </h1>
 
-          <div className="readout mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] text-[var(--ink-3)]">
+          <div className="readout mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-[var(--md-on-surface-muted)]">
             {account.domain ? (
               <a
                 href={`https://${account.domain}`}
@@ -109,7 +109,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               {score?.why_now ? (
                 <p className="prose-measure text-[14px] leading-[1.75]">{score.why_now}</p>
               ) : (
-                <p className="prose-measure text-[13.5px] leading-relaxed text-[var(--ink-2)]">
+                <p className="prose-measure text-[14px] leading-relaxed text-[var(--md-on-surface-variant)]">
                   No written reasoning yet. The deterministic score below is complete and auditable on its
                   own. The narrative layer is added by a separate pass that must cite the dated signals
                   listed here, and it is never generated without them.
@@ -117,29 +117,27 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               )}
 
               {signals.length > 0 ? (
-                <div className="well mt-5 px-4 py-3.5">
-                  <div className="placard mb-2.5 text-[9.5px] text-[var(--ink-3)]">
+                <div className="well mt-5 px-5 py-4">
+                  <div className="placard mb-2.5 text-[12px] text-[var(--md-on-surface-variant)]">
                     Evidence on file
                   </div>
-                  <ul className="flex flex-col">
+                  <ul className="flex flex-col gap-1">
                     {signals.slice(0, 5).map((s, i) => (
                       <li
                         key={s.id}
-                        className={`flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2 text-[13px] ${
-                          i > 0 ? "border-t border-[var(--line)]" : "pt-0"
-                        }`}
+                        className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-1.5 text-[13.5px]"
                       >
-                        <span className="readout w-[22px] shrink-0 text-[10.5px] text-[var(--ink-3)]">
-                          {String(i + 1).padStart(2, "0")}
+                        <span className="readout w-[18px] shrink-0 text-[12px] text-[var(--md-on-surface-muted)]">
+                          {i + 1}
                         </span>
                         <span className="min-w-0 flex-1 leading-snug">{s.headline}</span>
-                        <span className="readout shrink-0 text-[11.5px] text-[var(--ink-3)]">
+                        <span className="readout shrink-0 text-[12.5px] text-[var(--md-on-surface-muted)]">
                           {formatDate(s.occurred_at)}
                         </span>
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-3 border-t border-[var(--line)] pt-2.5 text-[11.5px] leading-relaxed text-[var(--ink-3)]">
+                  <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--md-on-surface-muted)]">
                     Source: {signals[0]?.source}. Every claim above is a stored row with a date, not a
                     generated sentence.
                   </p>
@@ -159,17 +157,21 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               />
               <div className="flex flex-col gap-4 px-5 py-4">
                 {score.next_best_action ? (
-                  <div>
-                    <div className="placard mb-1.5 text-[10px] text-[var(--ink-3)]">
+                  <div className="rounded-[var(--md-radius-md)] bg-[var(--md-primary-container)] px-4 py-3.5">
+                    <div className="placard mb-1.5 text-[12px] text-[var(--md-on-primary-container)]">
                       Next best action
                     </div>
-                    <p className="prose-measure text-[14px] leading-[1.6]">{score.next_best_action}</p>
+                    <p className="prose-measure text-[14px] leading-[1.6] text-[var(--md-on-primary-container)]">
+                      {score.next_best_action}
+                    </p>
                   </div>
                 ) : null}
                 {score.risks ? (
-                  <div className={score.next_best_action ? "border-t border-[var(--line)] pt-4" : ""}>
-                    <div className="placard mb-1.5 text-[10px] text-[var(--ink-3)]">Risks</div>
-                    <p className="prose-measure text-[14px] leading-[1.6] text-[var(--ink-2)]">
+                  <div>
+                    <div className="placard mb-1.5 text-[12px] text-[var(--md-on-surface-variant)]">
+                      Risks
+                    </div>
+                    <p className="prose-measure text-[14px] leading-[1.6] text-[var(--md-on-surface-variant)]">
                       {score.risks}
                     </p>
                   </div>
@@ -200,13 +202,12 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                       label={componentLabel(c.key)}
                       value={c.value}
                       max={c.max}
-                      ticks={c.max === 25 ? 5 : c.max === 20 ? 4 : 3}
                     />
                   ))}
                   {score.penalty > 0 ? (
-                    <div className="flex items-baseline justify-between border-t border-[var(--line)] pt-3 text-[13px]">
-                      <span className="text-[var(--bad)]">Penalties applied</span>
-                      <span className="readout font-medium text-[var(--bad)]">
+                    <div className="mt-1 flex items-baseline justify-between rounded-[var(--md-radius-md)] bg-[var(--md-error-container)] px-4 py-2.5 text-[13.5px]">
+                      <span className="text-[var(--md-error)]">Penalties applied</span>
+                      <span className="readout text-[var(--md-error)]">
                         &minus;{score.penalty}
                       </span>
                     </div>
@@ -220,13 +221,13 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                     the table shows the reading. Both, never one instead of the
                     other. */}
                 {terms.length > 0 ? (
-                  <div className="overflow-x-auto border-t border-[var(--line)]">
-                    <table className="w-full min-w-[620px] border-collapse text-[12.5px]">
-                      <caption className="placard px-4 pb-1 pt-3.5 text-left text-[10px] text-[var(--ink-3)]">
+                  <div className="mx-5 mb-5 overflow-x-auto rounded-[var(--md-radius-md)] bg-[var(--md-surface-container-low)]">
+                    <table className="w-full min-w-[620px] border-collapse text-[13px]">
+                      <caption className="placard px-4 pb-1 pt-3.5 text-left text-[12px] text-[var(--md-on-surface-variant)]">
                         Term detail, {terms.length} terms
                       </caption>
                       <thead>
-                        <tr className="border-b border-[var(--line)]">
+                        <tr>
                           <Th>Component</Th>
                           <Th>Term</Th>
                           <Th>Read</Th>
@@ -239,25 +240,27 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                           list.map((t, i) => (
                             <tr
                               key={`${component}-${t.term}`}
-                              className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--surface-2)]"
+                              className="row-hover"
                             >
-                              <td className="px-4 py-2.5 align-top text-[var(--ink-3)]">
+                              <td className="px-4 py-2.5 align-top text-[var(--md-on-surface-muted)]">
                                 {i === 0 ? componentLabel(component) : ""}
                               </td>
                               <td className="px-4 py-2.5 align-top font-medium">{t.term}</td>
-                              <td className="readout px-4 py-2.5 align-top text-[12px] text-[var(--ink-2)]">
+                              <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
                                 {String(t.input)}
                               </td>
                               <td
-                                className="readout px-4 py-2.5 text-right align-top font-medium"
+                                className="readout px-4 py-2.5 text-right align-top"
                                 style={{
                                   color:
-                                    component === "penalty" ? "var(--bad)" : "var(--ink)",
+                                    component === "penalty"
+                                      ? "var(--md-error)"
+                                      : "var(--md-on-surface)",
                                 }}
                               >
                                 {component === "penalty" ? `−${t.points}` : t.points}
                               </td>
-                              <td className="px-4 py-2.5 align-top leading-snug text-[var(--ink-3)]">
+                              <td className="px-4 py-2.5 align-top leading-snug text-[var(--md-on-surface-muted)]">
                                 {t.note}
                               </td>
                             </tr>
@@ -267,7 +270,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                     </table>
                   </div>
                 ) : (
-                  <div className="border-t border-[var(--line)] px-5 py-4">
+                  <div className="px-5 pb-5">
                     <NoticeLine>
                       This score has no stored term breakdown, so the arithmetic cannot be shown. The
                       composite and its five components above are what was recorded.
@@ -275,7 +278,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                   </div>
                 )}
 
-                <div className="border-t border-[var(--line)] px-5 py-3 text-[11.5px] text-[var(--ink-3)]">
+                <div className="px-5 pb-5 text-[12.5px] text-[var(--md-on-surface-muted)]">
                   Scored {formatDate(score.scored_at)} by the deterministic engine, version score-v1. The
                   same inputs always produce the same number.
                 </div>
@@ -293,14 +296,20 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                 body="Nothing dated has been recorded for this account. Without a dated signal the timing component scores zero, which is why this account may rank lower than it deserves."
               />
             ) : (
-              <ul className="divide-y divide-[var(--line)]">
+              <ul className="flex flex-col gap-1 px-3 pb-3">
                 {signals.map((s) => (
-                  <li key={s.id} className="px-5 py-3">
-                    <div className="text-[13px] leading-snug">{s.headline}</div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-[var(--ink-3)]">
-                      <span className="readout">{formatDate(s.occurred_at)}</span>
-                      <span aria-hidden="true">/</span>
-                      <span className="placard text-[9.5px]">{s.kind.replace(/_/g, " ")}</span>
+                  <li
+                    key={s.id}
+                    className="row-hover rounded-[var(--md-radius-md)] px-3 py-2.5"
+                  >
+                    <div className="text-[13.5px] leading-snug">{s.headline}</div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <span className="readout text-[12.5px] text-[var(--md-on-surface-muted)]">
+                        {formatDate(s.occurred_at)}
+                      </span>
+                      <span className="chip min-h-[24px] px-2.5 text-[11px]">
+                        {s.kind.replace(/_/g, " ")}
+                      </span>
                     </div>
                   </li>
                 ))}
@@ -316,22 +325,25 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                 body="Nobody from the connections list matched this account, so any approach here starts cold."
               />
             ) : (
-              <ul className="divide-y divide-[var(--line)]">
+              <ul className="flex flex-col gap-1 px-3 pb-3">
                 {people.map((p) => {
                   const age = daysAgo(p.connected_on);
                   return (
-                    <li key={p.id} className="px-5 py-3">
+                    <li
+                      key={p.id}
+                      className="row-hover rounded-[var(--md-radius-md)] px-3 py-2.5"
+                    >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] font-semibold">{p.full_name}</span>
+                        <span className="text-[13.5px] font-medium">{p.full_name}</span>
                         {p.is_decision_maker ? (
                           <Badge tone="good" withIcon>Decision maker</Badge>
                         ) : null}
                       </div>
-                      <div className="mt-1 text-[12px] leading-snug text-[var(--ink-3)]">
+                      <div className="mt-1 text-[12.5px] leading-snug text-[var(--md-on-surface-muted)]">
                         {p.title ?? "Title unknown"}
                       </div>
                       {age != null ? (
-                        <div className="readout mt-1 text-[11px] text-[var(--ink-3)]">
+                        <div className="readout mt-1 text-[12px] text-[var(--md-on-surface-muted)]">
                           Connected {formatDate(p.connected_on)}
                         </div>
                       ) : null}
@@ -356,10 +368,10 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                 ] as const
               ).map(([label, value]) => (
                 <div key={String(label)} className="flex items-baseline justify-between gap-3">
-                  <dt className="shrink-0 text-[var(--ink-3)]">{label}</dt>
-                  <dd className="min-w-0 text-right font-medium">
+                  <dt className="shrink-0 text-[var(--md-on-surface-muted)]">{label}</dt>
+                  <dd className="min-w-0 text-right">
                     {value != null && value !== "" ? (
-                      <span className="readout text-[12.5px]">{String(value)}</span>
+                      <span className="readout text-[13px]">{String(value)}</span>
                     ) : (
                       <Blank />
                     )}

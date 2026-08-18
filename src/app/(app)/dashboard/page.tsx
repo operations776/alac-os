@@ -94,14 +94,14 @@ export default async function DashboardPage() {
               body="No account has landed in Top 25 or Next 25, so there is nothing to pursue from here. Run the scoring pass to populate the portfolio."
             />
           ) : (
-            <ul className="divide-y divide-[var(--line)]">
+            <ul className="px-3 pb-3">
               {opportunities.map((a, i) => (
                 <li
                   key={a.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 transition-colors hover:bg-[var(--surface-2)]"
+                  className="row-hover flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--md-radius-md)] px-3 py-3"
                 >
-                  <span className="readout w-[22px] shrink-0 text-[11px] text-[var(--ink-3)]">
-                    {String(i + 1).padStart(2, "0")}
+                  <span className="readout w-[22px] shrink-0 text-[12.5px] text-[var(--md-on-surface-muted)]">
+                    {i + 1}
                   </span>
                   <div className="w-9 shrink-0 text-right">
                     <ScoreDot score={a.latest_score} />
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
                     >
                       {a.company_name}
                     </Link>
-                    <div className="mt-0.5 truncate text-[12px] text-[var(--ink-3)]">
+                    <div className="mt-0.5 truncate text-[12.5px] text-[var(--md-on-surface-muted)]">
                       {a.top_signal ?? a.vertical ?? "No signal recorded"}
                     </div>
                   </div>
@@ -145,22 +145,22 @@ export default async function DashboardPage() {
               body="No account currently has both a warm contact and an open role. Import the connections list to match contacts to accounts."
             />
           ) : (
-            <ul className="divide-y divide-[var(--line)]">
+            <ul className="px-3 pb-3">
               {warm.map((a) => {
                 const age = daysAgo(a.last_funding_date);
                 return (
                   <li
                     key={a.id}
-                    className="flex items-center gap-3.5 px-5 py-3 transition-colors hover:bg-[var(--surface-2)]"
+                    className="row-hover flex items-center gap-3.5 rounded-[var(--md-radius-md)] px-3 py-3"
                   >
                     <div className="w-9 shrink-0 text-right">
                       <ScoreDot score={a.latest_score} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <Link href={`/accounts/${a.id}`} className="link text-[13px] font-medium">
+                      <Link href={`/accounts/${a.id}`} className="link text-[14px] font-medium">
                         {a.company_name}
                       </Link>
-                      <div className="mt-0.5 text-[12px] leading-snug text-[var(--ink-3)]">
+                      <div className="mt-0.5 text-[12.5px] leading-snug text-[var(--md-on-surface-muted)]">
                         {a.warm_contact_count} contact{a.warm_contact_count === 1 ? "" : "s"} you already know
                         {a.open_roles_count > 0 ? `, ${a.open_roles_count} open roles` : ""}
                         {age != null && age < 400 ? `, funded ${age}d ago` : ""}
@@ -186,13 +186,15 @@ export default async function DashboardPage() {
                       label={TIER_LABELS[tier]}
                       value={n}
                       max={stats.total_accounts || 1}
-                      ticks={10}
-                      tone={tier === "unassigned" ? "ink" : "readout"}
+                      tone={tier === "unassigned" ? "ink" : "primary"}
                       display={
                         <>
                           {n.toLocaleString()}
                           {row?.avg_score != null ? (
-                            <span className="text-[var(--ink-3)]"> avg {row.avg_score}</span>
+                            <span className="text-[var(--md-on-surface-muted)]">
+                              {" "}
+                              avg {row.avg_score}
+                            </span>
                           ) : null}
                         </>
                       }
@@ -201,7 +203,7 @@ export default async function DashboardPage() {
                 );
               })}
             </ul>
-            <div className="mt-auto border-t border-[var(--line)] pt-3.5">
+            <div className="mt-auto pt-4">
               <NoticeLine>
                 {stats.suppressed} current client{stats.suppressed === 1 ? "" : "s"} are excluded from
                 ranking: they are relationships to farm, not prospects to pursue.
@@ -217,18 +219,18 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader title="What changed this week" sub="Movement since the last scoring run" />
           <div className="px-5 py-4">
-            <div className="well px-4 py-3.5">
-              <div className="placard mb-2.5 text-[9.5px] text-[var(--ink-3)]">
+            <div className="well px-5 py-4">
+              <div className="placard mb-2 text-[12px] text-[var(--md-on-surface-variant)]">
                 No baseline available
               </div>
-              <p className="prose-measure text-[12.5px] leading-relaxed text-[var(--ink-2)]">
+              <p className="prose-measure text-[13px] leading-relaxed text-[var(--md-on-surface-variant)]">
                 This is the first scoring run, so there is no previous week to compare against. Deltas appear
                 here from the second run onward, and they are computed from stored history rather than
                 estimated. The signals behind every score are dated and sourced, so a change always has a
                 reason attached.
               </p>
             </div>
-            <p className="readout mt-3 text-[11.5px] leading-relaxed text-[var(--ink-3)]">
+            <p className="readout mt-3 text-[12.5px] leading-relaxed text-[var(--md-on-surface-muted)]">
               Signals loaded: {stats.signals.toLocaleString()} across{" "}
               {stats.total_accounts.toLocaleString()} accounts, as of the current import.
             </p>

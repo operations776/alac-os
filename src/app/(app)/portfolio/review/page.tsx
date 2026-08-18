@@ -50,7 +50,7 @@ export default async function ReviewPage() {
       />
 
       {counts.approved_30d + counts.rejected_30d > 0 ? (
-        <p className="readout -mt-3 mb-5 text-[12px] text-[var(--ink-3)]">
+        <p className="readout -mt-3 mb-5 text-[13px] text-[var(--md-on-surface-muted)]">
           Last 30 days: {counts.approved_30d} approved, {counts.rejected_30d} rejected.
           {counts.expired > 0 ? ` ${counts.expired} expired unreviewed.` : ""}
         </p>
@@ -78,7 +78,7 @@ export default async function ReviewPage() {
                     <ArrowRight
                       size={16}
                       strokeWidth={1.5}
-                      className="shrink-0 text-[var(--ink-3)]"
+                      className="shrink-0 text-[var(--md-on-surface-muted)]"
                       aria-label="changes to"
                     />
                     <Badge tone={r.kind === "promote_tier" ? "good" : "neutral"}>
@@ -88,25 +88,27 @@ export default async function ReviewPage() {
                 }
               />
 
-              <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_292px]">
-                <div className="flex flex-col gap-3.5 px-5 py-4">
-                  <p className="prose-measure text-[13.5px] leading-[1.6] text-[var(--ink-2)]">
+              <div className="grid gap-4 px-5 pb-5 md:grid-cols-[minmax(0,1fr)_292px]">
+                <div className="flex flex-col gap-4">
+                  <p className="prose-measure text-[14px] leading-[1.6] text-[var(--md-on-surface-variant)]">
                     {r.rationale}
                   </p>
 
                   {r.why_now ? (
-                    <div className="border-t border-[var(--line)] pt-3.5">
-                      <div className="placard mb-1.5 text-[10px] text-[var(--ink-3)]">
+                    <div>
+                      <div className="placard mb-1.5 text-[12px] text-[var(--md-on-surface-variant)]">
                         Why this account matters
                       </div>
-                      <p className="prose-measure text-[13.5px] leading-[1.6]">{r.why_now}</p>
+                      <p className="prose-measure text-[14px] leading-[1.6]">{r.why_now}</p>
                     </div>
                   ) : null}
 
                   {r.risks ? (
-                    <div className="border-t border-[var(--line)] pt-3.5">
-                      <div className="placard mb-1.5 text-[10px] text-[var(--ink-3)]">Risks</div>
-                      <p className="prose-measure text-[13.5px] leading-[1.6] text-[var(--ink-2)]">
+                    <div>
+                      <div className="placard mb-1.5 text-[12px] text-[var(--md-on-surface-variant)]">
+                        Risks
+                      </div>
+                      <p className="prose-measure text-[14px] leading-[1.6] text-[var(--md-on-surface-variant)]">
                         {r.risks}
                       </p>
                     </div>
@@ -117,11 +119,11 @@ export default async function ReviewPage() {
 
                 {/* The facts that justify the move, so the decision does not
                     require opening another page. */}
-                <aside className="well border-t border-[var(--line)] px-5 py-4 md:border-l md:border-t-0">
-                  <Link href={`/accounts/${r.account_id}`} className="link text-[13px] font-medium">
+                <aside className="well px-5 py-4">
+                  <Link href={`/accounts/${r.account_id}`} className="link text-[14px] font-medium">
                     {r.company_name}
                   </Link>
-                  <dl className="mt-3 flex flex-col gap-2 text-[12.5px]">
+                  <dl className="mt-3 flex flex-col gap-2 text-[13px]">
                     <Row label="Score" value={r.score === null ? "not scored" : `${r.score} / 100`} />
                     <Row label="Open roles" value={r.open_roles_count ?? "unknown"} />
                     <Row label="Warm contacts" value={r.warm_contact_count ?? 0} />
@@ -129,12 +131,12 @@ export default async function ReviewPage() {
                     <Row label="Location" value={r.hq_location ?? "unknown"} />
                   </dl>
                   {r.next_best_action ? (
-                    <div className="mt-3.5 border-t border-[var(--line)] pt-3">
-                      <div className="placard mb-1.5 flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
+                    <div className="mt-4 border-t border-[var(--md-outline-variant)] pt-3.5">
+                      <div className="placard mb-1.5 flex items-center gap-1.5 text-[12px] text-[var(--md-on-surface-variant)]">
                         <Lock size={16} strokeWidth={1.5} />
                         If you approve
                       </div>
-                      <p className="text-[12.5px] leading-relaxed text-[var(--ink-2)]">
+                      <p className="text-[13px] leading-relaxed text-[var(--md-on-surface-variant)]">
                         {r.next_best_action}
                       </p>
                     </div>
@@ -152,8 +154,8 @@ export default async function ReviewPage() {
 function Row({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="shrink-0 text-[var(--ink-3)]">{label}</dt>
-      <dd className="readout min-w-0 text-right text-[12px] font-medium">{value}</dd>
+      <dt className="shrink-0 text-[var(--md-on-surface-muted)]">{label}</dt>
+      <dd className="readout min-w-0 text-right text-[13px]">{value}</dd>
     </div>
   );
 }

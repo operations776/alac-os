@@ -3,118 +3,171 @@
 /* Design tokens. DESIGN.md section 2 is the contract; this file is the
    implementation.
 
-   The split this file exists to hold: **all atmosphere lives in the
-   background, all content is plain.** The void ground, the circuit grid and
-   the CRT scanlines carry the theme. Everything above them, every panel and
-   every glyph, is flat and quiet: square corners, one hairline border, grey
-   text, and exactly two accent colours doing semantic work.
+   Material Design 3 ("Material You"), seeded from #6750A4.
 
-   That means there is deliberately no glow token, no chamfer token, and no
-   text effect anywhere in this file. If a future change wants to add one,
-   it is arguing with DESIGN.md sections 5 and 9, not with this comment.
+   The split this file exists to hold: **colour is carried by tonal surfaces,
+   not by borders or glow.** Three surface tones stack to create depth, so a
+   panel separates from the ground by being a different tone rather than by
+   having a line drawn around it. Shape does the rest: every button is a pill,
+   every container is generously rounded, and elevation is a soft shadow that
+   grows on hover.
 
-   Dark only, by mandate. There is no light theme: the palette is built on a
-   void ground and neither the ground nor the grid survives a white page. */
+   There is exactly one set of colour tokens, `--md-*`, and they are named for
+   Material 3 roles rather than for appearance: `--md-on-surface-variant`, not
+   `--grey-2`. A role name survives a palette change, which is the whole point
+   of naming them this way.
+
+   The previous theme carried a second, shorter set (`--ink`, `--line`,
+   `--brand`) that this file aliased onto the roles. That alias layer is gone:
+   the restyle touched the call sites anyway, so the aliases ended up dead, and
+   a dead parallel palette is the kind of thing that quietly comes back to life
+   with a wrong value in it. */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Ground and panel faces. The void first, then two steps up. */
-  --bg: #0a0a0f;
-  --surface: #12121a;
-  --surface-2: #1c1c2e;
-  --line: #2a2a3a;
-  --line-strong: #3d3d55;
+  /* ---- Material 3 roles ------------------------------------------------ */
 
-  /* Text. Every value clears WCAG AA (4.5:1) against --bg, --surface, and
-     --surface-2. --surface-2 is the tightest of the three, so it sets the
-     floor: --ink-3 lands at 5.3:1 there rather than the 4.0:1 a literal
-     #6b7280 would give. Legibility outranks fidelity to a swatch. */
-  --ink: #e0e0e0;
-  --ink-2: #b8b8cc;
-  --ink-3: #8f8fa8;
+  /* Surfaces. Never pure white: the ground is a warm off-white and each step
+     up is a tint of the seed, which is what makes the tonal system read. */
+  --md-surface: #fffbfe;
+  --md-surface-container: #f3edf7;
+  --md-surface-container-low: #e7e0ec;
+  --md-surface-container-high: #ece6f0;
 
-  /* Accent one of two. Green is a verb: clickable, selected, focused, or
-     healthy. It never appears on something that just sits there. */
-  --brand: #00ff88;
-  --brand-soft: #0a2a1c;
+  /* Content on those surfaces. Every one of these clears WCAG AA (4.5:1)
+     against all four surface tones above. The well is the tightest of them, so
+     it sets the floor, and --md-on-surface-muted is #625B71 rather than the
+     outline grey a Material palette reaches for first: outline grey lands near
+     4.0 on the well, and the well is where the smallest text sits. */
+  --md-on-surface: #1c1b1f;
+  --md-on-surface-variant: #49454f;
+  --md-on-surface-muted: #625b71;
 
-  /* Accent two of two. Cyan is the readout channel: scores, counts, totals,
-     durations, dates. If the engine computed it, it is cyan. If a human or a
-     model wrote it, it is ink. Those two rules are the entire colour system,
-     and there is no third accent. */
-  --readout: #00d4ff;
+  /* Primary. CTAs, focus, selected state, and every number the engine
+     computed. */
+  --md-primary: #6750a4;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #eaddff;
+  --md-on-primary-container: #21005d;
 
-  /* Status. Never colour alone: every status also carries an icon and a word.
-     --bad is lifted off a literal #ff3366 because that lands at 4.7:1 on
-     --surface-2, too close to the line for 10px badge text. */
-  --good: #00ff88;
-  --warn: #ffb020;
-  --bad: #ff5c85;
+  /* Secondary container carries chips, pills, and the quieter containers. */
+  --md-secondary-container: #e8def8;
+  --md-on-secondary-container: #1d192b;
+
+  /* Tertiary is the accent: FABs and the occasional emphasis surface. */
+  --md-tertiary: #7d5260;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #ffd8e4;
+  --md-on-tertiary-container: #31111d;
+
+  /* Outline is used sparingly. Tonal surfaces separate containers; a line is
+     for a table rule or an input underline, not for boxing content in.
+
+     --md-outline carries the input underline and clears the 3:1 non-text
+     threshold, which it has to: it is the visible boundary of a control.
+     --md-outline-variant carries table rules and sits well below 3:1 on
+     purpose. A row divider is not a UI component and not a meaningful graphic,
+     so WCAG 1.4.11 does not reach it, and the rows are already separated by
+     layout. Do not darken it to chase a number that does not apply. */
+  --md-outline: #79747e;
+  --md-outline-variant: #cac4d0;
+
+  /* Status. MD3 ships error only, so success and warning are matched to it:
+     the same tonal construction, a 40 tone text colour over a 90 tone
+     container. Every value clears WCAG AA against --md-surface and both
+     container tones, which is the tightest of the three. */
+  --md-error: #b3261e;
+  --md-on-error: #ffffff;
+  --md-error-container: #f9dedc;
+  --md-success: #146c2e;
+  --md-success-container: #c4eed0;
+  --md-warning: #7a5900;
+  --md-warning-container: #ffdf9a;
+
+  /* Elevation. Soft, diffuse, near black at low opacity. Depth is mostly the
+     tonal step; the shadow only confirms it. */
+  --md-elev-1: 0 1px 2px 0 rgb(28 27 31 / 0.06), 0 1px 3px 1px rgb(28 27 31 / 0.04);
+  --md-elev-2: 0 1px 2px 0 rgb(28 27 31 / 0.06), 0 2px 6px 2px rgb(28 27 31 / 0.07);
+  --md-elev-3: 0 1px 3px 0 rgb(28 27 31 / 0.1), 0 4px 8px 3px rgb(28 27 31 / 0.07);
+
+  /* Shape. */
+  --md-radius-xs: 8px;
+  --md-radius-sm: 12px;
+  --md-radius-md: 16px;
+  --md-radius-lg: 24px;
+  --md-radius-xl: 28px;
+
+  /* Motion. "Emphasized decelerate": confident, never bouncy. One easing for
+     the whole product. */
+  --md-ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-brand: var(--brand);
-  --color-brand-soft: var(--brand-soft);
-  --color-readout: var(--readout);
-  --color-good: var(--good);
-  --color-warn: var(--warn);
-  --color-bad: var(--bad);
+  --color-md-surface: var(--md-surface);
+  --color-md-surface-container: var(--md-surface-container);
+  --color-md-surface-container-low: var(--md-surface-container-low);
+  --color-md-surface-container-high: var(--md-surface-container-high);
+  --color-md-on-surface: var(--md-on-surface);
+  --color-md-on-surface-variant: var(--md-on-surface-variant);
+  --color-md-on-surface-muted: var(--md-on-surface-muted);
+  --color-md-primary: var(--md-primary);
+  --color-md-on-primary: var(--md-on-primary);
+  --color-md-primary-container: var(--md-primary-container);
+  --color-md-on-primary-container: var(--md-on-primary-container);
+  --color-md-secondary-container: var(--md-secondary-container);
+  --color-md-on-secondary-container: var(--md-on-secondary-container);
+  --color-md-tertiary: var(--md-tertiary);
+  --color-md-on-tertiary: var(--md-on-tertiary);
+  --color-md-tertiary-container: var(--md-tertiary-container);
+  --color-md-outline: var(--md-outline);
+  --color-md-outline-variant: var(--md-outline-variant);
+  --color-md-error: var(--md-error);
+  --color-md-error-container: var(--md-error-container);
+  --color-md-success: var(--md-success);
+  --color-md-success-container: var(--md-success-container);
+  --color-md-warning: var(--md-warning);
+  --color-md-warning-container: var(--md-warning-container);
 
-  --font-sans: var(--font-body), ui-monospace, monospace;
-  --font-mono: var(--font-body), ui-monospace, monospace;
-  --font-display: var(--font-display), var(--font-body), monospace;
-  --font-label: var(--font-label), var(--font-body), monospace;
+  --radius-md-sm: var(--md-radius-sm);
+  --radius-md-md: var(--md-radius-md);
+  --radius-md-lg: var(--md-radius-lg);
+  --radius-md-xl: var(--md-radius-xl);
+
+  --ease-md: var(--md-ease);
+
+  /* Tailwind's own default for every `transition-*` utility. Overriding it here
+     means a bare `transition-colors` already moves on the Material curve, so no
+     call site has to remember `ease-[...]` and none can drift back onto
+     Tailwind's `cubic-bezier(0.4, 0, 0.2, 1)`. */
+  --default-transition-timing-function: var(--md-ease);
+
+  /* One face for the whole product. The previous theme had three, one per job
+     (display, body, label); Material 3 separates those with weight and size
+     instead, so there is one family here and no second slot to fall out of
+     sync with it. */
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Everything is monospace. This is a terminal, and a proportional face in it
-   reads as a document that wandered into the wrong window. */
+/* Roboto is the canonical Material face. 14px base rather than the spec's
+   16px: this is a dense operator tool, and the type scale is applied through
+   the recipes below, which keep MD3 proportions at a working size. */
 body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-body), ui-monospace, "Consolas", monospace;
-  font-size: 13px;
-  line-height: 1.55;
-  letter-spacing: 0.01em;
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* The CRT. One fixed overlay across the whole product, so every screen is
-   read through the same glass. Two layers: the scanline rule itself, and a
-   vignette that pulls the corners into the void.
-
-   4px period rather than 2px: at 2px it aliases into a moire on any display
-   that is not exactly 1x, which reads as a rendering bug rather than a CRT. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 2px,
-      rgb(0 0 0 / 0.22) 2px 4px
-    ),
-    radial-gradient(ellipse at 50% 40%, transparent 45%, rgb(0 0 0 / 0.55) 100%);
-}
-
-/* Everything below is a component recipe, and it lives in @layer components
-   so that a Tailwind utility always wins against it. Unlayered CSS beats any
-   layer, so .field { padding } outside a layer would silently defeat pl-10 at
-   the call site and there would be nothing wrong with the call site to see.
-   Focus, motion, and the CRT overlay stay unlayered on purpose: those must
-   not be overridable by a utility. */
+/* Component recipes live in @layer components so a Tailwind utility always
+   wins against them. Unlayered CSS beats any layer, so .field { padding }
+   outside a layer would silently defeat pl-10 at the call site and there
+   would be nothing wrong with the call site to see. Focus and motion stay
+   unlayered on purpose: those must not be overridable by a utility. */
 @layer components {
   /* -----------------------------------------------------------------------
      Type
@@ -125,98 +178,120 @@ body::after {
     font-variant-numeric: tabular-nums;
   }
 
-  /* A number the engine computed. Tabular and cyan, and nothing else: no
-     glow, no shadow. The colour is the whole signal. */
+  /* A number the engine computed. Tabular and medium weight, so it holds its
+     own against body text at the same size without needing a second colour. */
   .readout {
-    font-family: var(--font-body), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
+    font-weight: 500;
+    letter-spacing: 0;
   }
 
-  /* Panel silkscreen. Wide, spaced, uppercase: the label language of a HUD.
-     Used for eyebrows, column headers, and badges only, never for prose. */
+  /* Material label style. Medium weight, sentence case, very slightly tracked
+     at small sizes. Used for eyebrows, column headers, chips, and buttons.
+
+     Explicitly not uppercase: MD3 labels are sentence case, and the wide
+     uppercase tracking this class used to carry was the single strongest
+     signal of the old terminal theme. */
   .placard {
-    font-family: var(--font-label), var(--font-body), monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-weight: 400;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-transform: none;
   }
 
-  /* Headings. Orbitron, uppercase, tracked out. Every heading in the product
-     goes through this, so the display face is set in exactly one place. */
+  /* Headings. Roboto Medium, sentence case, tracking tightened as size goes
+     up. Every heading in the product goes through this. */
   .display {
-    font-family: var(--font-display), var(--font-body), monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 700;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-transform: none;
     text-wrap: balance;
   }
 
   /* Reasoning prose is the content of this product, so it gets a measure.
-     Monospace runs wider per character, so the cap comes down from 68ch to
-     62ch to land on roughly the same physical line length. Contract rule 10. */
+     Back to 68ch from the 62ch the monospace theme needed. Contract rule 10. */
   .prose-measure {
-    max-width: 62ch;
+    max-width: 68ch;
   }
 
   /* -----------------------------------------------------------------------
      Containers
 
-     A panel groups content and does nothing else. It is one step up from the
-     ground with one hairline around it, square. It has no accent ring, no
-     corner treatment, and no emphasis variant: a panel that matters more
-     than its neighbour says so with its heading and its position, not with
-     decoration.
+     A panel is a tonal surface with a generous radius and a resting shadow.
+     It has no border: separation comes from the tone step against the ground.
      -------------------------------------------------------------------- */
 
   .panel {
     position: relative;
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--md-surface-container);
+    border: none;
+    border-radius: var(--md-radius-lg);
+    box-shadow: var(--md-elev-1);
+    transition:
+      box-shadow 300ms var(--md-ease),
+      background-color 300ms var(--md-ease);
   }
 
-  /* Recessed well: where raw arithmetic, traces, and evidence sit, one step
+  /* Opt in on panels that are actually interactive. A panel that only holds
+     content should not lift under the cursor and promise a click. */
+  .panel-interactive {
+    transition:
+      box-shadow 300ms var(--md-ease),
+      background-color 300ms var(--md-ease),
+      transform 300ms var(--md-ease);
+  }
+  .panel-interactive:hover {
+    box-shadow: var(--md-elev-2);
+  }
+
+  /* Recessed well: where raw arithmetic, traces, and evidence sit, one tone
      below the panel face. */
   .well {
-    background: var(--surface-2);
-    border: 1px solid var(--line);
+    background: var(--md-surface-container-low);
+    border: none;
+    border-radius: var(--md-radius-md);
   }
 
   /* -----------------------------------------------------------------------
-     Ground texture
+     Ground
 
-     The circuit grid. A ruled substrate behind the page ground, the way a
-     board is etched before anything is mounted on it. Two grids at different
-     pitches so it reads as traces rather than graph paper, held under 5
-     percent contrast so it never competes with data.
-
-     This is the one place in the product that is allowed to be atmospheric.
-     It sits behind opaque panels, so it only ever shows in the gutters.
+     The page ground carries two soft radial washes seeded from primary and
+     tertiary. This is the tonal equivalent of the organic blur shapes the
+     style calls for: colour bleeding into the surface rather than a texture
+     ruled on top of it. It sits behind opaque panels, so it only ever shows
+     in the gutters.
      -------------------------------------------------------------------- */
 
-  .graticule {
+  .surface-wash {
+    background-color: var(--md-surface);
     background-image:
-      linear-gradient(rgb(0 255 136 / 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(0 255 136 / 0.045) 1px, transparent 1px),
-      linear-gradient(rgb(0 212 255 / 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(0 212 255 / 0.025) 1px, transparent 1px);
-    background-size:
-      64px 64px,
-      64px 64px,
-      16px 16px,
-      16px 16px;
-    background-position: center top;
+      radial-gradient(
+        ellipse 60% 50% at 100% 0%,
+        color-mix(in oklab, var(--md-primary) 10%, transparent) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 50% 40% at 0% 100%,
+        color-mix(in oklab, var(--md-tertiary) 8%, transparent) 0%,
+        transparent 55%
+      );
+    background-attachment: fixed;
+  }
+
+  /* A decorative organic shape. Heavy blur, low opacity, positioned partly
+     off canvas by the call site. Always aria-hidden. */
+  .blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(64px);
+    pointer-events: none;
   }
 
   /* -----------------------------------------------------------------------
      Controls
 
-     Buttons and fields were five near-identical Tailwind strings copy pasted
-     across accounts, signin, review, and the decision form. They live here
-     now, as one recipe each, so a change to the control language is one edit.
-
-     Controls are the one place green is allowed to sit on a resting element,
-     because a control is interactive by definition.
+     One recipe per control, so the control language is one edit. Every button
+     is a pill: this is the most recognisable Material You characteristic and
+     there is no rectangular variant.
      -------------------------------------------------------------------- */
 
   .btn {
@@ -225,84 +300,103 @@ body::after {
     justify-content: center;
     gap: 8px;
     min-height: 40px;
-    padding: 0 16px;
-    font-family: var(--font-label), var(--font-body), monospace;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
+    padding: 0 24px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-transform: none;
     white-space: nowrap;
     cursor: pointer;
     background: transparent;
     border: 1px solid transparent;
     transition:
-      background 100ms steps(3),
-      color 100ms steps(3),
-      border-color 100ms steps(3);
+      background-color 300ms var(--md-ease),
+      box-shadow 300ms var(--md-ease),
+      color 300ms var(--md-ease),
+      border-color 300ms var(--md-ease),
+      transform 200ms var(--md-ease);
+  }
+  /* Tactile press feedback, on every button in the product. */
+  .btn:active:not(:disabled) {
+    transform: scale(0.95);
   }
   .btn:disabled {
-    opacity: 0.4;
+    opacity: 0.38;
     pointer-events: none;
   }
 
-  /* Primary: the one action on a view. Empty until you touch it, then it
-     fills and inverts. The fill is the emphasis, not a glow around it. */
+  /* Filled. The one primary action on a view. State layers are opacity over
+     the base colour, never a different hue. */
   .btn-primary {
-    color: var(--brand);
-    border-color: var(--brand);
+    background: var(--md-primary);
+    color: var(--md-on-primary);
   }
   .btn-primary:hover {
-    background: var(--brand);
-    color: var(--bg);
+    background: color-mix(in oklab, var(--md-primary) 90%, transparent);
+    box-shadow: var(--md-elev-2);
+  }
+  .btn-primary:active {
+    background: color-mix(in oklab, var(--md-primary) 80%, transparent);
   }
 
+  /* Tonal. The secondary action: present, but not competing with filled. */
   .btn-secondary {
-    color: var(--ink-2);
-    border-color: var(--line-strong);
+    background: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
   }
   .btn-secondary:hover {
-    color: var(--brand);
-    border-color: var(--brand);
+    background: color-mix(in oklab, var(--md-secondary-container) 90%, var(--md-primary));
+    box-shadow: var(--md-elev-1);
   }
 
+  /* Text. Lowest emphasis, transparent until touched. */
   .btn-ghost {
-    color: var(--ink-3);
+    color: var(--md-primary);
+    padding: 0 16px;
   }
   .btn-ghost:hover {
-    color: var(--brand);
-    border-color: var(--line-strong);
+    background: color-mix(in oklab, var(--md-primary) 10%, transparent);
   }
 
   .btn-danger {
-    color: var(--bad);
-    border-color: var(--bad);
+    background: var(--md-error);
+    color: var(--md-on-error);
   }
   .btn-danger:hover {
-    background: var(--bad);
-    color: var(--bg);
+    background: color-mix(in oklab, var(--md-error) 90%, transparent);
+    box-shadow: var(--md-elev-2);
   }
 
-  /* The field. Recessed, monospace, and typed in accent green with a matching
-     caret, because what you type is interactive content. */
+  /* The Material 3 filled text field: rounded top corners, square bottom, and
+     a 2px underline that turns primary on focus. The shape is the signature,
+     so it is worth the asymmetry. */
   .field {
     width: 100%;
-    min-height: 40px;
-    padding: 8px 12px;
-    background: var(--surface);
-    color: var(--brand);
-    caret-color: var(--brand);
-    font-family: var(--font-body), ui-monospace, monospace;
-    font-size: 13px;
-    letter-spacing: 0.02em;
-    border: 1px solid var(--line);
+    min-height: 48px;
+    padding: 8px 16px;
+    background: var(--md-surface-container-low);
+    color: var(--md-on-surface);
+    caret-color: var(--md-primary);
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 0;
+    border: none;
+    border-bottom: 2px solid var(--md-outline);
+    border-radius: var(--md-radius-sm) var(--md-radius-sm) 0 0;
     outline: none;
-    transition: border-color 120ms steps(3);
+    transition:
+      border-color 200ms var(--md-ease),
+      background-color 200ms var(--md-ease);
   }
   .field::placeholder {
-    color: var(--ink-3);
-    text-transform: none;
+    color: var(--md-on-surface-muted);
+  }
+  .field:hover {
+    background: color-mix(in oklab, var(--md-surface-container-low) 92%, var(--md-primary));
   }
   .field:focus {
-    border-color: var(--brand);
+    border-bottom-color: var(--md-primary);
   }
 
   /* A select keeps the native popup, which is styled by the OS. That is the
@@ -310,33 +404,60 @@ body::after {
      reader behaviour that the native control gives for free. */
   select.field {
     appearance: none;
-    padding-right: 32px;
-    background-image: linear-gradient(45deg, transparent 50%, var(--brand) 50%),
-      linear-gradient(135deg, var(--brand) 50%, transparent 50%);
+    padding-right: 40px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--md-on-surface-variant) 50%),
+      linear-gradient(135deg, var(--md-on-surface-variant) 50%, transparent 50%);
     background-position:
-      calc(100% - 16px) 18px,
-      calc(100% - 11px) 18px;
+      calc(100% - 20px) 22px,
+      calc(100% - 15px) 22px;
     background-size:
       5px 5px,
       5px 5px;
     background-repeat: no-repeat;
   }
   select.field option {
-    background: var(--surface);
-    color: var(--ink);
+    background: var(--md-surface-container);
+    color: var(--md-on-surface);
   }
 
-  /* Any text that navigates. Replaces the hover:text-brand hover:underline
-     pair that was repeated on every company name in the product. Two channels
-     on hover, colour and underline, and no effect on the glyphs. */
+  /* Any text that navigates. Two channels on hover, colour and underline. */
   .link {
     color: inherit;
-    transition: color 100ms steps(3);
+    transition: color 200ms var(--md-ease);
   }
   .link:hover {
-    color: var(--brand);
+    color: var(--md-primary);
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+
+  /* A list or table row that responds to the cursor. The state layer is
+     primary at 8 percent, which is the Material hover value for a transparent
+     surface.
+
+     This is a recipe rather than a utility string because it was repeated on
+     nine rows across six files, and six of those had drifted onto Tailwind's
+     default easing instead of the Material curve. One definition means one
+     easing. */
+  .row-hover {
+    transition: background-color 200ms var(--md-ease);
+  }
+  .row-hover:hover {
+    background: color-mix(in oklab, var(--md-primary) 8%, transparent);
+  }
+
+  /* A chip: the pill that carries a filter, a tier, or a count. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 9999px;
+    background: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
+    font-size: 12px;
+    font-weight: 500;
   }
 }
 
@@ -344,65 +465,41 @@ body::after {
    Focus
    ------------------------------------------------------------------------- */
 
-/* Focus is always visible. Contract rule 15.
-   One rule covers the whole product now. Nothing is clipped by a clip-path
-   any more, so a plain outline is never swallowed and the special inner ring
-   branch that used to exist for chamfered controls is gone with it. */
+/* Focus is always visible. Contract rule 15. One rule covers the product. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--md-primary);
   outline-offset: 2px;
+  border-radius: var(--md-radius-xs);
+}
+
+/* The filled field keeps its own shape under focus rather than being boxed by
+   the generic rounded outline. */
+.field:focus-visible {
+  outline-offset: 2px;
+  border-radius: var(--md-radius-sm) var(--md-radius-sm) 0 0;
 }
 
 /* Skip link: keyboard users land on it before the nav. */
 .skip-link {
   position: absolute;
-  left: 8px;
-  top: -48px;
+  left: 12px;
+  top: -56px;
   z-index: 50;
-  background: var(--surface);
-  color: var(--brand);
-  border: 1px solid var(--brand);
-  padding: 8px 14px;
-  transition: top 120ms steps(4);
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  border-radius: 9999px;
+  padding: 10px 20px;
+  font-weight: 500;
+  box-shadow: var(--md-elev-2);
+  transition: top 300ms var(--md-ease);
 }
 .skip-link:focus {
-  top: 8px;
+  top: 12px;
 }
 
 /* -------------------------------------------------------------------------
    Motion
-
-   Motion lives in the background and nowhere else. No animation runs over a
-   region that holds text, and no effect is applied to a glyph: no chromatic
-   aberration, no text-shadow glow, no blinking cursor, no sweep across a
-   panel face. Reading is the job, and a moving or fringed letterform is a
-   letterform that has to be read twice.
    ------------------------------------------------------------------------- */
-
-/* The drift. The circuit grid creeps by one cell over a long cycle, and it is
-   the only movement in the product. It is behind every panel, so it never
-   passes under text: the panels are opaque and the grid only shows in the
-   gutters between them. */
-@keyframes graticule-drift {
-  from {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0;
-  }
-  to {
-    background-position:
-      0 64px,
-      64px 0,
-      0 16px,
-      16px 0;
-  }
-}
-
-.graticule {
-  animation: graticule-drift 40s linear infinite;
-}
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -413,9 +510,11 @@ body::after {
     transition-duration: 0.01ms !important;
   }
 
-  /* The grid is decoration with no state to communicate, so it simply stops
-     where it is rather than snapping to the end of its cycle. */
-  .graticule {
-    animation: none;
+  /* Vestibular safety: colour and shadow may still change, movement may not.
+     Every scale and translate in the product is decorative feedback, so
+     removing it costs no information. */
+  .btn:active:not(:disabled),
+  .panel-interactive:hover {
+    transform: none !important;
   }
 }
