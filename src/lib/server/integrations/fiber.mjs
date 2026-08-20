@@ -174,13 +174,18 @@ export const listTrackerSignals = (key, listId, { since, cursor, pageSize, filte
  * this is never run across the whole queue, only across the accounts a signal
  * has already surfaced.
  */
-export const searchJobPostings = (key, slugs, extra = {}) =>
+export const searchJobPostings = (key, slugs, { pageSize, cursor, ...filters } = {}) =>
   call("jobPostingSearch", "/v1/job-search", {
     key,
     body: {
+      // pageSize and cursor are TOP LEVEL, not inside searchParams. Putting
+      // them in searchParams fails the whole request with "Unrecognized key(s)",
+      // which is the good failure: it is loud rather than silently unpaginated.
+      ...(pageSize ? { pageSize } : {}),
+      ...(cursor ? { cursor } : {}),
       searchParams: {
         companies: { identifier: "linkedinSlug", value: slugs },
-        ...extra,
+        ...filters,
       },
     },
   });

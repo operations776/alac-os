@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import {
   getOrgId, accountById, signalsForAccount, peopleForAccount, PRIORITY_LABEL,
+  targetsForAccount, rolesForAccount, accountPackage, briefForAccount,
 } from "@/lib/server/queries/desk";
 import {
   Badge, Card, CardHeader, EmptyState, Eyebrow, GaugeRow, NoticeLine,
@@ -12,6 +13,7 @@ import {
   ExecutionStages, HEAT_COMPONENTS, HeatDelta, MotionChip, PrepChip,
   PriorityChip,
 } from "@/components/ui/desk";
+import { TargetList, RoleList, Brief } from "@/components/ui/targets";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +50,13 @@ export default async function QueueAccountPage({
   const account = await accountById(orgId, id);
   if (!account) notFound();
 
-  const [signals, people] = await Promise.all([
+  const [signals, people, targets, roles, pkg, brief] = await Promise.all([
     signalsForAccount(orgId, account.id),
     peopleForAccount(orgId, account.id),
+    targetsForAccount(orgId, account.id),
+    rolesForAccount(orgId, account.id),
+    accountPackage(orgId, account.id),
+    briefForAccount(orgId, account.id),
   ]);
 
   const checks = qcChecklist(account);
@@ -183,6 +189,42 @@ export default async function QueueAccountPage({
                 ) : null}
               </div>
             </div>
+          </Card>
+
+          {/* The brief. Only rendered when the reasoning pass produced
+              something that passed the grounding check. */}
+          <Card>
+            <CardHeader
+              title="The brief"
+              sub={brief ? "Grounded in the signals and contacts below" : "Not written yet"}
+            />
+            <Brief brief={brief} />
+          </Card>
+
+          {/* Who to contact. The question the desk is actually asking. */}
+          <Card>
+            <CardHeader
+              title="Who to target"
+              sub={
+                pkg.targets > 0
+                  ? `${pkg.targets} sourced, ${pkg.warm_targets} already first degree, ${pkg.verified_emails} with a verified address`
+                  : undefined
+              }
+            />
+            <TargetList targets={targets} />
+          </Card>
+
+          {/* What they are hiring for. */}
+          <Card>
+            <CardHeader
+              title="Open roles"
+              sub={
+                pkg.total_roles > 0
+                  ? `${pkg.qualified_roles} ALAC qualified of ${pkg.total_roles} fetched`
+                  : undefined
+              }
+            />
+            <RoleList roles={roles} />
           </Card>
 
           {/* Signals. The reason to act now. */}

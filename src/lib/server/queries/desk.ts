@@ -395,3 +395,108 @@ export async function performanceWeeks(orgId: string, limit = 12) {
      limit ${limit}
   `) as PerformanceWeek[];
 }
+
+/* -------------------------------------------------------------------------
+   Targets and roles
+
+   The account package the desk acts on: who to contact, what they are hiring
+   for, and the narrative that ties the two together.
+   ---------------------------------------------------------------------- */
+
+export type TargetRow = {
+  id: string;
+  full_name: string;
+  title: string | null;
+  linkedin_url: string | null;
+  location: string | null;
+  email: string | null;
+  email_status: string | null;
+  email_revealed: boolean;
+  rank_score: number | null;
+  rank_terms: string[];
+  is_warm: boolean;
+  source: string;
+};
+
+/**
+ * Who to contact at this account, best first.
+ *
+ * Sourced targets and the warm network are one list, not two. A first degree
+ * contact carries a rank bonus, so "someone you already know" naturally rises
+ * above a cold name with the same title, which is the whole point: the shortest
+ * path to a conversation is a person who will recognise the sender.
+ */
+export async function targetsForAccount(orgId: string, accountId: string) {
+  return (await sql`
+    select t.id, t.full_name, t.title, t.linkedin_url, t.location, t.email,
+           t.email_status, t.email_revealed, t.rank_score, t.rank_terms,
+           t.is_warm, t.source::text as source
+      from account_targets t
+     where t.org_id = ${orgId} and t.account_id = ${accountId}
+     order by t.rank_score desc nulls last, t.full_name
+     limit 25
+  `) as TargetRow[];
+}
+
+export type RoleRow = {
+  id: string;
+  title: string;
+  url: string | null;
+  location: string | null;
+  seniority: string | null;
+  posted_at: string | null;
+  qualified: boolean;
+};
+
+/**
+ * The open requisitions behind the hiring signal.
+ *
+ * Qualified roles first: an unqualified posting is kept because the count of
+ * what was excluded is informative, but it is never the reason to call.
+ */
+export async function rolesForAccount(orgId: string, accountId: string) {
+  return (await sql`
+    select r.id, r.title, r.url, r.location, r.seniority, r.posted_at, r.qualified
+      from account_roles r
+     where r.org_id = ${orgId} and r.account_id = ${accountId}
+     order by r.qualified desc, r.posted_at desc nulls last
+     limit 40
+  `) as RoleRow[];
+}
+
+/** Coverage counters for the account header. */
+export async function accountPackage(orgId: string, accountId: string) {
+  const rows = (await sql`
+    select
+      (select count(*)::int from account_roles
+        where org_id = ${orgId} and account_id = ${accountId} and qualified) as qualified_roles,
+      (select count(*)::int from account_roles
+        where org_id = ${orgId} and account_id = ${accountId}) as total_roles,
+      (select count(*)::int from account_targets
+        where org_id = ${orgId} and account_id = ${accountId}) as targets,
+      (select count(*)::int from account_targets
+        where org_id = ${orgId} and account_id = ${accountId} and is_warm) as warm_targets,
+      (select count(*)::int from account_targets
+        where org_id = ${orgId} and account_id = ${accountId} and email_status = 'VERIFIED') as verified_emails
+  `) as Record<string, number>[];
+  return rows[0];
+}
+
+/** The generated brief, if the reasoning pass has run and was accepted. */
+export async function briefForAccount(orgId: string, accountId: string) {
+  const rows = (await sql`
+    select why_now, contact_first, next_step, risks, reasoning_model, reasoning_at
+      from heat_signals
+     where org_id = ${orgId} and account_id = ${accountId} and why_now is not null
+     order by reasoning_at desc nulls last
+     limit 1
+  `) as {
+    why_now: string | null;
+    contact_first: string | null;
+    next_step: string | null;
+    risks: string | null;
+    reasoning_model: string | null;
+    reasoning_at: string | null;
+  }[];
+  return rows[0] ?? null;
+}
