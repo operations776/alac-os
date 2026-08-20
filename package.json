@@ -21,7 +21,8 @@
     "map": "node scripts/map-market.mjs",
     "export": "node scripts/export-accounts.mjs",
     "import:domains": "node scripts/import-domains.mjs",
-    "verify:apify": "node scripts/verify-apify.mjs"
+    "verify:apify": "node scripts/verify-apify.mjs",
+    "roles": "node scripts/pull-roles.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

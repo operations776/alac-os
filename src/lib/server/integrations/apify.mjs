@@ -106,27 +106,62 @@ export async function runActorSync(actorId, input, { timeoutMs = 300_000 } = {})
 }
 
 /**
- * Open roles at a set of companies, by LinkedIn slug.
+ * The two actors, both overridable. Actors get renamed, deprecated, or start
+ * demanding a paid rental, and swapping one should not need a code change.
  *
- * The actor is configurable because Apify actors come and go, and pinning one
- * inside the code would mean a code change to switch. APIFY_JOBS_ACTOR
- * overrides it.
+ * `bebity/linkedin-jobs-scraper` was the first choice and is out: its free
+ * trial has expired, so it returns actor-is-not-rented. Both of these run on
+ * the current plan, verified live.
  */
-export const JOBS_ACTOR = process.env.APIFY_JOBS_ACTOR ?? "valig/linkedin-jobs-scraper";
+export const JOBS_ACTOR = process.env.APIFY_JOBS_ACTOR ?? "curious_coder/linkedin-jobs-scraper";
+export const COMPANY_ACTOR = process.env.APIFY_COMPANY_ACTOR ?? "harvestapi/linkedin-company";
 
-export async function fetchJobsForCompanies(slugs, { maxPerCompany = 25 } = {}) {
+/**
+ * The LinkedIn numeric org id, plus website and headcount, from a company page.
+ *
+ * This is the link that makes precise job search possible. LinkedIn's job
+ * search filters by `f_C=<org id>`, and we hold slugs, not ids. Searching by
+ * company NAME instead returns competitors mixed in with the target: a keyword
+ * search for "Astranis" came back with SpaceX, Antares and Array Labs, which
+ * would have quietly attributed other companies' roles to this account.
+ */
+export async function resolveCompanies(slugs) {
   if (!Array.isArray(slugs) || slugs.length === 0) return [];
-  const urls = slugs.map((s) => `https://www.linkedin.com/company/${s}/jobs/`);
-  return runActorSync(JOBS_ACTOR, {
-    // Actors differ in what they call their inputs, so the common aliases are
-    // all supplied. An actor ignores the keys it does not recognise, and this
-    // is cheaper than a lookup table that goes stale.
-    startUrls: urls.map((url) => ({ url })),
+  const urls = slugs.map((s) => `https://www.linkedin.com/company/${s}`);
+  const items = await runActorSync(COMPANY_ACTOR, {
+    companies: urls,
     urls,
-    companyUrls: urls,
-    maxItems: slugs.length * maxPerCompany,
-    maxResults: slugs.length * maxPerCompany,
-    rows: slugs.length * maxPerCompany,
+    maxItems: slugs.length,
+  });
+  return items
+    .map((c) => ({
+      org_id: c.id ? String(c.id) : null,
+      slug: c.universalName ?? null,
+      name: c.name ?? null,
+      website: c.website ?? null,
+      employee_count: Number.isFinite(c.employeeCount) ? c.employeeCount : null,
+      linkedin_url: c.linkedinUrl ?? null,
+    }))
+    .filter((c) => c.org_id);
+}
+
+/**
+ * Open roles at companies, by LinkedIn numeric org id.
+ *
+ * One search URL per company rather than one combined search, because
+ * LinkedIn's `f_C` filter takes a single id and combining them would make it
+ * impossible to attribute a posting back to the right account.
+ */
+export async function fetchJobsForOrgIds(orgIds, { maxPerCompany = 25 } = {}) {
+  if (!Array.isArray(orgIds) || orgIds.length === 0) return [];
+  return runActorSync(JOBS_ACTOR, {
+    urls: orgIds.map((id) => `https://www.linkedin.com/jobs/search/?f_C=${id}`),
+    rows: orgIds.length * maxPerCompany,
+    count: orgIds.length * maxPerCompany,
+    maxItems: orgIds.length * maxPerCompany,
+    // Company detail is already known from resolveCompanies, and asking for it
+    // again on every posting multiplies the cost for nothing.
+    scrapeCompany: false,
   });
 }
 
@@ -152,15 +187,30 @@ export function normalizeJob(item) {
   const location = pick("location", "jobLocation", "formattedLocation", "place");
   const posted = pick("postedAt", "postedDate", "publishedAt", "listedAt", "date");
 
+  // "Not Applicable" is what LinkedIn returns when a posting has no seniority
+  // set, which is most of them. Passing that through would let the scorer treat
+  // an unstated level as a stated one, so it becomes null.
+  const rawSeniority = pick("seniorityLevel", "seniority", "experienceLevel");
+  const seniority =
+    rawSeniority && !/^not applicable$/i.test(String(rawSeniority)) ? String(rawSeniority) : null;
+
+  // The company each posting belongs to. The jobs actor is called with one
+  // search URL per company, and `inputUrl` echoes which one produced this row,
+  // so the f_C id in it is how a posting is attributed back to an account.
+  const inputUrl = pick("inputUrl");
+  const orgId = inputUrl ? (String(inputUrl).match(/f_C=(\d+)/)?.[1] ?? null) : null;
+
   return {
-    external_id: String(pick("id", "jobId", "jobPostingId", "url", "link") ?? title),
+    external_id: String(pick("id", "jobId", "jobPostingId", "link", "url") ?? title),
     title: String(title),
-    url: pick("url", "link", "jobUrl", "applyUrl"),
+    url: pick("link", "url", "jobUrl", "applyUrl"),
     location: typeof location === "string" ? location : (location?.name ?? null),
-    seniority: pick("seniorityLevel", "seniority", "experienceLevel"),
-    job_function: pick("function", "jobFunction", "category"),
+    seniority,
+    job_function: pick("jobFunction", "function", "category"),
     posted_at: posted ? String(posted).slice(0, 10) : null,
-    description: pick("description", "descriptionText", "jobDescription"),
-    company_slug: pick("companySlug", "companyUsername", "company"),
+    description: pick("descriptionText", "description", "jobDescription"),
+    company_name: pick("companyName", "company"),
+    org_id: orgId,
+    applicants: pick("applicantsCount"),
   };
 }
