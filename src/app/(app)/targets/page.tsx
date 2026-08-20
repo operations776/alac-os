@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getOrgId, marketMap, marketCounts, type BandRow } from "@/lib/server/queries/desk";
 import { Card, EmptyState, NoticeLine, PageHeader, Stat } from "@/components/ui/primitives";
+import { QuickLook } from "@/components/ui/quick-look";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,7 @@ export default async function TargetsPage({
           />
         </Card>
       ) : (
-        <ol className="flex flex-col gap-3">
+        <ol className="rise-list flex flex-col gap-3">
           {rows.map((r, i) => (
             <li key={r.id}>
               <AccountCard row={r} rank={(page - 1) * perPage + i + 1} />
@@ -174,6 +175,18 @@ function AccountCard({ row, rank }: { row: BandRow; rank: number }) {
         </Link>
 
         <span className="flex shrink-0 items-center gap-2">
+          <QuickLook
+            company={row.company_name}
+            reason={row.work_reason}
+            fit={row.final_score != null ? Number(row.final_score) : null}
+            urgency={row.heat_score}
+            roles={row.qualified_roles}
+            warm={row.warm_contacts}
+            decisionMakers={row.decision_makers}
+            topContact={row.top_contact}
+            topContactTitle={row.top_contact_title}
+            href={`/queue/${row.id}`}
+          />
           {row.heat_score != null ? (
             <span
               className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent)]"

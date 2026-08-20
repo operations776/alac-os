@@ -440,6 +440,144 @@ body {
 
 /* -------------------------------------------------------------------------
    Motion
+
+   Three effects, and no more. Each one answers a question the operator would
+   otherwise have to ask.
+
+     skeleton   "is it loading or broken?"
+     rise       "is this new, or was it always there?"
+     overlay    "did my click do anything?"
+
+   Everything is short. 160 to 260ms reads as responsive; past about 400ms it
+   reads as slow, and this product is used all day.
+   ------------------------------------------------------------------------- */
+
+/* The loading shimmer. A gradient swept across a surface tint rather than a
+   pulsing opacity: a pulse in a dark theme reads as a broken element flashing,
+   where a sweep reads as work in progress. */
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background-color: var(--alac-surface-2);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--alac-accent) 12%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+/* Content arriving. A short rise with a fade, which is enough to say "this is
+   new" without making the page feel like it is assembling itself. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 240ms var(--alac-ease) both;
+}
+
+/* A list that arrives in order rather than all at once. The stagger is capped
+   at eight, because past that the last row waits long enough to feel like a
+   bug rather than a flourish. */
+.rise-list > * {
+  animation: rise 240ms var(--alac-ease) both;
+}
+.rise-list > *:nth-child(1) { animation-delay: 0ms; }
+.rise-list > *:nth-child(2) { animation-delay: 30ms; }
+.rise-list > *:nth-child(3) { animation-delay: 60ms; }
+.rise-list > *:nth-child(4) { animation-delay: 90ms; }
+.rise-list > *:nth-child(5) { animation-delay: 120ms; }
+.rise-list > *:nth-child(6) { animation-delay: 150ms; }
+.rise-list > *:nth-child(7) { animation-delay: 180ms; }
+.rise-list > *:nth-child(n + 8) { animation-delay: 200ms; }
+
+/* Dialogs. The backdrop fades, the panel rises with it, so the two read as one
+   object arriving rather than two things happening. */
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in oklab, var(--alac-ground) 78%, transparent);
+  backdrop-filter: blur(3px);
+  animation: overlay-in 160ms var(--alac-ease) both;
+}
+
+.overlay-panel {
+  width: 100%;
+  max-width: 560px;
+  max-height: min(84dvh, 720px);
+  overflow-y: auto;
+  background: var(--alac-surface);
+  border: 1px solid var(--alac-line-strong);
+  border-radius: var(--alac-radius);
+  box-shadow: var(--alac-elev-2);
+  animation: panel-in 200ms var(--alac-ease) both;
+}
+
+/* A control that is working. Used on a button whose action is in flight, so a
+   second click is obviously unnecessary. */
+@keyframes pending-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.is-pending {
+  animation: pending-pulse 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------------------
+   Reduced motion
+
+   Everything above is decoration: it tells the operator something they could
+   also read, so removing it costs no information. The skeleton keeps its
+   surface tint so a loading block still looks different from a filled one,
+   it simply stops moving.
    ------------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -449,5 +587,19 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .skeleton {
+    background-image: none;
+    animation: none;
+  }
+
+  .rise,
+  .rise-list > *,
+  .overlay,
+  .overlay-panel {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
