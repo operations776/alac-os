@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!session) redirect("/signin");
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[var(--md-surface)] lg:flex-row">
+    <div className="flex min-h-dvh flex-col bg-[var(--alac-ground)] lg:flex-row">
       <a href="#main" className="skip-link placard text-[13px]">
         Skip to content
       </a>
@@ -26,29 +26,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         userRole={session.role}
         signOut={signOutAction}
       />
+      {/* The navy wash carries the whole atmosphere now. The blurred shapes
+          that used to sit here are gone with the light theme: on a near black
+          ground they read as smudges rather than as depth, and the gradient
+          alone gives the page the same lift the marketing site gets from its
+          photograph. */}
       <main
         id="main"
         tabIndex={-1}
-        className="surface-wash relative min-w-0 flex-1 lg:h-dvh lg:overflow-y-auto"
+        className="surface-wash min-w-0 flex-1 lg:h-dvh lg:overflow-y-auto"
       >
-        {/* Organic blur shapes. Decorative only, positioned partly off canvas,
-            and behind every panel: they read as colour bleeding into the
-            surface rather than as a texture ruled on top of the content. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 overflow-hidden"
-        >
-          <div
-            className="blob h-[420px] w-[420px] -translate-y-1/3 translate-x-1/4 bg-[var(--md-primary)] opacity-[0.09]"
-            style={{ top: 0, right: 0 }}
-          />
-          <div
-            className="blob h-[320px] w-[320px] -translate-x-1/3 translate-y-1/4 bg-[var(--md-tertiary)] opacity-[0.08]"
-            style={{ bottom: 0, left: 0 }}
-          />
-        </div>
-
-        <div className="relative">{children}</div>
+        {children}
       </main>
     </div>
   );

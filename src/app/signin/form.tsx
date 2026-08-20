@@ -18,12 +18,12 @@ export function SignInForm() {
   const [state, action] = useActionState(signInAction, { error: null });
 
   return (
-    <form action={action} className="panel p-7 shadow-[var(--md-elev-2)]">
+    <form action={action} className="panel p-7 shadow-[var(--alac-elev-2)]">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <label
             htmlFor="email"
-            className="placard text-[12px] text-[var(--md-on-surface-variant)]"
+            className="placard text-[12px] text-[var(--alac-text-2)]"
           >
             Operator
           </label>
@@ -41,7 +41,7 @@ export function SignInForm() {
         <div className="flex flex-col gap-2">
           <label
             htmlFor="password"
-            className="placard text-[12px] text-[var(--md-on-surface-variant)]"
+            className="placard text-[12px] text-[var(--alac-text-2)]"
           >
             Passphrase
           </label>
@@ -58,7 +58,7 @@ export function SignInForm() {
         {state.error ? (
           <p
             role="alert"
-            className="rounded-[var(--md-radius-md)] bg-[var(--md-error-container)] px-4 py-2.5 text-[13px] leading-relaxed text-[var(--md-error)]"
+            className="rounded-[var(--alac-radius)] bg-[var(--alac-red-soft)] px-4 py-2.5 text-[13px] leading-relaxed text-[var(--alac-red-text)]"
           >
             {state.error}
           </p>

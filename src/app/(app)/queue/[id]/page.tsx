@@ -73,7 +73,7 @@ export default async function QueueAccountPage({
             <MotionChip motion={account.recommended_motion} />
             <PrepChip status={account.prep_status} />
             {account.next_week ? (
-              <span className="chip bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]">
+              <span className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]">
                 Next week
               </span>
             ) : null}
@@ -96,17 +96,17 @@ export default async function QueueAccountPage({
 
         {/* The TAM score. Source data, so it is presented as a fact rather than
             as something this app produced. */}
-        <div className="w-[196px] rounded-[var(--md-radius-lg)] bg-[var(--md-surface-container)] px-5 pb-5 pt-4 shadow-[var(--md-elev-1)]">
-          <div className="placard text-[12px] text-[var(--md-on-surface-variant)]">
+        <div className="w-[196px] rounded-[var(--alac-radius-lg)] bg-[var(--alac-surface)] px-5 pb-5 pt-4 shadow-[var(--alac-elev-1)]">
+          <div className="placard text-[12px] text-[var(--alac-text-2)]">
             TAM final score
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="readout text-[46px] leading-none text-[var(--md-on-surface)]">
+            <span className="readout text-[46px] leading-none text-[var(--alac-text)]">
               {account.final_score != null ? Math.round(Number(account.final_score)) : "--"}
             </span>
-            <span className="readout text-[14px] text-[var(--md-on-surface-muted)]">/ 100</span>
+            <span className="readout text-[14px] text-[var(--alac-text-3)]">/ 100</span>
           </div>
-          <p className="mt-3 text-[12px] leading-snug text-[var(--md-on-surface-muted)]">
+          <p className="mt-3 text-[12px] leading-snug text-[var(--alac-text-3)]">
             {account.priority ? PRIORITY_LABEL[account.priority] : "No priority"}. Finalized in the
             Master TAM, not set here.
           </p>
@@ -136,11 +136,11 @@ export default async function QueueAccountPage({
               </div>
 
               {account.next_action ? (
-                <div className="rounded-[var(--md-radius-md)] bg-[var(--md-primary-container)] px-4 py-3.5">
-                  <div className="placard mb-1.5 text-[12px] text-[var(--md-on-primary-container)]">
+                <div className="rounded-[var(--alac-radius)] bg-[var(--alac-accent-soft)] px-4 py-3.5">
+                  <div className="placard mb-1.5 text-[12px] text-[var(--alac-accent-light)]">
                     Next action
                   </div>
-                  <p className="text-[14px] leading-[1.6] text-[var(--md-on-primary-container)]">
+                  <p className="text-[14px] leading-[1.6] text-[var(--alac-accent-light)]">
                     {account.next_action}
                   </p>
                 </div>
@@ -149,7 +149,7 @@ export default async function QueueAccountPage({
               {/* The checklist, evaluated. This is the whole handover contract,
                   so it is shown as a state rather than as instructions. */}
               <div className="well px-4 py-3.5">
-                <div className="placard mb-2.5 text-[12px] text-[var(--md-on-surface-variant)]">
+                <div className="placard mb-2.5 text-[12px] text-[var(--alac-text-2)]">
                   Ready for QC checklist
                 </div>
                 <ul className="flex flex-col gap-2">
@@ -163,8 +163,8 @@ export default async function QueueAccountPage({
                       <span
                         className={
                           c.ok
-                            ? "text-[var(--md-on-surface-variant)]"
-                            : "text-[var(--md-on-surface)]"
+                            ? "text-[var(--alac-text-2)]"
+                            : "text-[var(--alac-text)]"
                         }
                       >
                         {c.label}
@@ -174,7 +174,7 @@ export default async function QueueAccountPage({
                 </ul>
 
                 {account.prep_status === "READY FOR QC" && outstanding.length > 0 ? (
-                  <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--md-warning)]">
+                  <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--alac-warn)]">
                     This account is marked READY FOR QC with {outstanding.length} item
                     {outstanding.length === 1 ? "" : "s"} still open. The instructions require all of
                     them to be true before handover, so either the missing work is done or the status
@@ -206,12 +206,12 @@ export default async function QueueAccountPage({
                   return (
                     <div key={s.id} className="well px-4 py-3.5">
                       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                        <span className="readout text-[20px] text-[var(--md-primary)]">
+                        <span className="readout text-[20px] text-[var(--alac-accent)]">
                           {s.heat_score ?? "--"}
-                          <span className="text-[13px] text-[var(--md-on-surface-muted)]"> / 100</span>
+                          <span className="text-[13px] text-[var(--alac-text-3)]"> / 100</span>
                         </span>
                         <HeatDelta delta={s.heat_vs_tam} />
-                        <span className="readout ml-auto text-[12.5px] text-[var(--md-on-surface-muted)]">
+                        <span className="readout ml-auto text-[12.5px] text-[var(--alac-text-3)]">
                           {formatDate(s.signal_date)}
                         </span>
                       </div>
@@ -268,14 +268,14 @@ export default async function QueueAccountPage({
             ) : (
               <ul className="flex flex-col gap-1 px-3 pb-3">
                 {people.map((p) => (
-                  <li key={p.id} className="row-hover rounded-[var(--md-radius-md)] px-3 py-2.5">
+                  <li key={p.id} className="row-hover rounded-[var(--alac-radius)] px-3 py-2.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[13.5px] font-medium">{p.full_name}</span>
                       {p.is_decision_maker ? (
                         <Badge tone="good" withIcon>Decision maker</Badge>
                       ) : null}
                     </div>
-                    <div className="mt-1 text-[12.5px] leading-snug text-[var(--md-on-surface-muted)]">
+                    <div className="mt-1 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
                       {p.title ?? "Title unknown"}
                     </div>
                   </li>
@@ -301,13 +301,13 @@ function ArtefactCard({
   const isUrl = href != null && /^https?:\/\//i.test(href);
   return (
     <div
-      className={`rounded-[var(--md-radius-md)] px-4 py-3.5 ${
-        href ? "bg-[var(--md-secondary-container)]" : "bg-[var(--md-surface-container-low)]"
+      className={`rounded-[var(--alac-radius)] px-4 py-3.5 ${
+        href ? "bg-[var(--alac-surface-2)]" : "bg-[var(--alac-ground)]"
       }`}
     >
       <div
         className={`placard text-[12px] ${
-          href ? "text-[var(--md-on-secondary-container)]" : "text-[var(--md-on-surface-variant)]"
+          href ? "text-[var(--alac-text-2)]" : "text-[var(--alac-text-2)]"
         }`}
       >
         {label}
@@ -317,18 +317,18 @@ function ArtefactCard({
           href={href}
           target="_blank"
           rel="noreferrer"
-          className="link mt-1.5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-[var(--md-on-secondary-container)]"
+          className="link mt-1.5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-[var(--alac-text-2)]"
         >
           Open <ExternalLink size={16} strokeWidth={1.5} />
         </a>
       ) : href ? (
         // The workbook marks some of these present with a literal placeholder
         // rather than a URL. Saying so is more useful than a dead link.
-        <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--md-on-secondary-container)]">
+        <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--alac-text-2)]">
           Marked present in the workbook as &ldquo;{href}&rdquo;, with no URL recorded.
         </p>
       ) : (
-        <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--md-on-surface-muted)]">
+        <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
           {missing}
         </p>
       )}
@@ -339,7 +339,7 @@ function ArtefactCard({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="shrink-0 text-[var(--md-on-surface-muted)]">{label}</dt>
+      <dt className="shrink-0 text-[var(--alac-text-3)]">{label}</dt>
       <dd className="readout min-w-0 text-right text-[13px]">{value}</dd>
     </div>
   );

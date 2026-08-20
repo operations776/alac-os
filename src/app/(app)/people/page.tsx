@@ -85,7 +85,7 @@ export default async function PeoplePage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] border-collapse">
               <thead>
-                <tr className="bg-[var(--md-surface-container-low)]">
+                <tr className="bg-[var(--alac-ground)]">
                   <Th>Name</Th>
                   <Th>Title</Th>
                   <Th>Company</Th>
@@ -97,7 +97,7 @@ export default async function PeoplePage() {
                 {rows.map((p) => (
                   <tr
                     key={p.id}
-                    className="row-hover border-b border-[var(--md-outline-variant)] last:border-0"
+                    className="row-hover border-b border-[var(--alac-line)] last:border-0"
                   >
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex flex-wrap items-center gap-2">
@@ -111,13 +111,13 @@ export default async function PeoplePage() {
                           href={p.linkedin_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="link mt-1 inline-flex items-center gap-1.5 text-[12.5px] text-[var(--md-on-surface-muted)]"
+                          className="link mt-1 inline-flex items-center gap-1.5 text-[12.5px] text-[var(--alac-text-3)]"
                         >
                           LinkedIn <ExternalLink size={16} strokeWidth={1.5} />
                         </a>
                       ) : null}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-[13.5px] text-[var(--md-on-surface-variant)]">
+                    <td className="px-4 py-2.5 align-top text-[13.5px] text-[var(--alac-text-2)]">
                       {p.title ?? <Blank label="title unknown" />}
                     </td>
                     <td className="px-4 py-2.5 align-top text-[13.5px]">
@@ -127,7 +127,7 @@ export default async function PeoplePage() {
                         </Link>
                       ) : p.company_text ? (
                         <span
-                          className="text-[var(--md-on-surface-muted)]"
+                          className="text-[var(--alac-text-3)]"
                           title="Not matched to a company in the account queue"
                         >
                           {p.company_text}
@@ -139,7 +139,7 @@ export default async function PeoplePage() {
                     <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
                       {p.final_score != null ? Math.round(Number(p.final_score)) : <Blank />}
                     </td>
-                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
+                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                       {formatDate(p.connected_on) ?? <Blank />}
                     </td>
                   </tr>
@@ -151,7 +151,7 @@ export default async function PeoplePage() {
       </Card>
 
       {rows.length > 0 ? (
-        <p className="readout mt-3 text-[13px] text-[var(--md-on-surface-muted)]">
+        <p className="readout mt-3 text-[13px] text-[var(--alac-text-3)]">
           Showing the {rows.length} most actionable of {s.total.toLocaleString()}.
         </p>
       ) : null}

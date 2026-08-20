@@ -69,7 +69,7 @@ export default async function PerformancePage({
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-[13px] text-[var(--md-on-surface-variant)]">Period</span>
+        <span className="text-[13px] text-[var(--alac-text-2)]">Period</span>
         {PERIODS.map((p) => (
           <Link
             key={p}
@@ -77,14 +77,14 @@ export default async function PerformancePage({
             aria-current={p === period ? "true" : undefined}
             className={`chip transition-colors duration-200 ${
               p === period
-                ? "bg-[var(--md-primary)] text-[var(--md-on-primary)]"
-                : "hover:bg-[color-mix(in_oklab,var(--md-primary)_16%,var(--md-secondary-container))]"
+                ? "bg-[var(--alac-accent)] text-[var(--alac-ground)]"
+                : "hover:bg-[color-mix(in_oklab,var(--alac-accent)_16%,var(--alac-surface-2))]"
             }`}
           >
             {p}
           </Link>
         ))}
-        <span className="ml-auto text-[12.5px] text-[var(--md-on-surface-muted)]">
+        <span className="ml-auto text-[12.5px] text-[var(--alac-text-3)]">
           {roll.weeks ?? 0} week{(roll.weeks ?? 0) === 1 ? "" : "s"} reported in this period
         </span>
       </div>
@@ -109,12 +109,12 @@ export default async function PerformancePage({
           <div className="grid gap-4 px-5 pb-5 sm:grid-cols-2 lg:grid-cols-4">
             {rates.map((r) => (
               <div key={r.label} className="well px-4 py-3.5">
-                <div className="placard text-[12px] text-[var(--md-on-surface-variant)]">
+                <div className="placard text-[12px] text-[var(--alac-text-2)]">
                   {r.label}
                 </div>
-                <div className="readout mt-1.5 text-[24px] leading-none text-[var(--md-primary)]">
+                <div className="readout mt-1.5 text-[24px] leading-none text-[var(--alac-accent)]">
                   {r.v == null ? (
-                    <span className="text-[15px] text-[var(--md-on-surface-muted)]">
+                    <span className="text-[15px] text-[var(--alac-text-3)]">
                       not reported
                     </span>
                   ) : (
@@ -170,7 +170,7 @@ export default async function PerformancePage({
 
                   {(w.priority_1 || w.priority_2 || w.priority_3 || w.research_tasking) && (
                     <div className="well px-4 py-3.5">
-                      <div className="placard mb-2 text-[12px] text-[var(--md-on-surface-variant)]">
+                      <div className="placard mb-2 text-[12px] text-[var(--alac-text-2)]">
                         Direction out of the review
                       </div>
                       <ol className="flex flex-col gap-1.5 text-[13px]">
@@ -178,7 +178,7 @@ export default async function PerformancePage({
                           .filter(Boolean)
                           .map((p, i) => (
                             <li key={i} className="flex gap-2.5">
-                              <span className="readout shrink-0 text-[var(--md-on-surface-muted)]">
+                              <span className="readout shrink-0 text-[var(--alac-text-3)]">
                                 {i + 1}
                               </span>
                               <span>{p}</span>
@@ -186,8 +186,8 @@ export default async function PerformancePage({
                           ))}
                       </ol>
                       {w.research_tasking ? (
-                        <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--md-on-surface-variant)]">
-                          <span className="text-[var(--md-on-surface-muted)]">Friday tasking: </span>
+                        <p className="mt-2.5 text-[13px] leading-relaxed text-[var(--alac-text-2)]">
+                          <span className="text-[var(--alac-text-3)]">Friday tasking: </span>
                           {w.research_tasking}
                         </p>
                       ) : null}
@@ -218,20 +218,20 @@ function Field({
     <div
       className={
         accent
-          ? "rounded-[var(--md-radius-md)] bg-[var(--md-primary-container)] px-4 py-3.5"
+          ? "rounded-[var(--alac-radius)] bg-[var(--alac-accent-soft)] px-4 py-3.5"
           : undefined
       }
     >
       <div
         className={`placard mb-1.5 text-[12px] ${
-          accent ? "text-[var(--md-on-primary-container)]" : "text-[var(--md-on-surface-variant)]"
+          accent ? "text-[var(--alac-accent-light)]" : "text-[var(--alac-text-2)]"
         }`}
       >
         {label}
       </div>
       <p
         className={`prose-measure leading-[1.6] ${emphasis ? "text-[15px]" : "text-[13.5px]"} ${
-          accent ? "text-[var(--md-on-primary-container)]" : "text-[var(--md-on-surface-variant)]"
+          accent ? "text-[var(--alac-accent-light)]" : "text-[var(--alac-text-2)]"
         }`}
       >
         {value}

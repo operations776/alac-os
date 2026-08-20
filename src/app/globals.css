@@ -3,162 +3,135 @@
 /* Design tokens. DESIGN.md section 2 is the contract; this file is the
    implementation.
 
-   Material Design 3 ("Material You"), seeded from #6750A4.
+   The ALAC HR Solutions brand, taken from alachrsolutions.com rather than
+   invented: the navy scale, the periwinkle accent, the red, Barlow and DM
+   Sans, and the tracked uppercase label style are all the marketing site's
+   own values. This is an internal tool wearing the company's identity, so
+   when the site and this file disagree, the site is right.
 
-   The split this file exists to hold: **colour is carried by tonal surfaces,
-   not by borders or glow.** Three surface tones stack to create depth, so a
-   panel separates from the ground by being a different tone rather than by
-   having a line drawn around it. Shape does the rest: every button is a pill,
-   every container is generously rounded, and elevation is a soft shadow that
-   grows on hover.
+   The split this file exists to hold: **the ground is deep navy and the
+   accent is periwinkle.** Depth comes from a navy scale rather than from grey,
+   so a panel is a lighter navy than the ground, never a grey box on a blue
+   page. Type carries the rest: Barlow for anything that announces something,
+   DM Sans for anything that is read, and a tracked uppercase mono for the
+   small labels the brand uses as its signature.
 
-   There is exactly one set of colour tokens, `--md-*`, and they are named for
-   Material 3 roles rather than for appearance: `--md-on-surface-variant`, not
-   `--grey-2`. A role name survives a palette change, which is the whole point
-   of naming them this way.
-
-   The previous theme carried a second, shorter set (`--ink`, `--line`,
-   `--brand`) that this file aliased onto the roles. That alias layer is gone:
-   the restyle touched the call sites anyway, so the aliases ended up dead, and
-   a dead parallel palette is the kind of thing that quietly comes back to life
-   with a wrong value in it. */
+   One token set, `--alac-*`, named for brand roles. */
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  /* ---- Material 3 roles ------------------------------------------------ */
+  /* ---- Ground and surfaces --------------------------------------------
+     The site's own scale. #05070a is the page ground behind the hero, and
+     each step up is a navy that stays blue rather than drifting to grey. */
+  --alac-ground: #05070a;
+  --alac-surface: #0b1020;
+  --alac-surface-2: #111a3a;
+  --alac-surface-3: #1a2563;
+  --alac-line: #1e2a55;
+  --alac-line-strong: #2a3a98;
 
-  /* Surfaces. Never pure white: the ground is a warm off-white and each step
-     up is a tint of the seed, which is what makes the tonal system read. */
-  --md-surface: #fffbfe;
-  --md-surface-container: #f3edf7;
-  --md-surface-container-low: #e7e0ec;
-  --md-surface-container-high: #ece6f0;
+  /* ---- Brand navy ------------------------------------------------------ */
+  --alac-navy: #1a2563;
+  --alac-navy-deep: #111a4a;
+  --alac-navy-mid: #234d8c;
+  --alac-navy-hover: #2a3a98;
 
-  /* Content on those surfaces. Every one of these clears WCAG AA (4.5:1)
-     against all four surface tones above. The well is the tightest of them, so
-     it sets the floor, and --md-on-surface-muted is #625B71 rather than the
-     outline grey a Material palette reaches for first: outline grey lands near
-     4.0 on the well, and the well is where the smallest text sits. */
-  --md-on-surface: #1c1b1f;
-  --md-on-surface-variant: #49454f;
-  --md-on-surface-muted: #625b71;
+  /* ---- Periwinkle. The accent, and the colour of every heading on the
+     marketing site. #8ba8f5 is the hero heading, #c4d3ff the lighter step. */
+  --alac-accent: #8ba8f5;
+  --alac-accent-bright: #6b8aff;
+  --alac-accent-light: #c4d3ff;
+  --alac-accent-pale: #e8efff;
+  /* A periwinkle wash for selected rows and tonal fills. */
+  --alac-accent-soft: #16203f;
 
-  /* Primary. CTAs, focus, selected state, and every number the engine
-     computed. */
-  --md-primary: #6750a4;
-  --md-on-primary: #ffffff;
-  --md-primary-container: #eaddff;
-  --md-on-primary-container: #21005d;
+  /* ---- Text ------------------------------------------------------------
+     Every value clears WCAG AA against --alac-ground, --alac-surface and
+     --alac-surface-2. --alac-surface-2 is the tightest of the three, so it
+     sets the floor. */
+  --alac-text: #ffffff;
+  --alac-text-2: #c7d0e4;
+  --alac-text-3: #93a1c0;
 
-  /* Secondary container carries chips, pills, and the quieter containers. */
-  --md-secondary-container: #e8def8;
-  --md-on-secondary-container: #1d192b;
+  /* ---- Status.
+     Red is split in two, and the split is not cosmetic. The brand red
+     #b8292f is built for white text on a light page: as text on this ground
+     it measures 2.9:1 against its own soft fill, well under AA. So the brand
+     value stays for anything it is placed ON (a filled danger button, where
+     white sits on it at 5.6:1) and --alac-red-text is a lighter tint of the
+     same hue, 5.5:1 on the fill, for anything red is written IN.
 
-  /* Tertiary is the accent: FABs and the occasional emphasis surface. */
-  --md-tertiary: #7d5260;
-  --md-on-tertiary: #ffffff;
-  --md-tertiary-container: #ffd8e4;
-  --md-on-tertiary-container: #31111d;
+     Green and amber are chosen at the matching weight so a row of statuses
+     reads as one family rather than three borrowed palettes. */
+  --alac-red: #b8292f;
+  --alac-red-deep: #991f24;
+  --alac-red-text: #e5686d;
+  --alac-red-soft: #2a1114;
+  --alac-good: #3ecf8e;
+  --alac-good-soft: #0d2620;
+  --alac-warn: #e5a94a;
+  --alac-warn-soft: #2a2010;
 
-  /* Outline is used sparingly. Tonal surfaces separate containers; a line is
-     for a table rule or an input underline, not for boxing content in.
+  /* ---- Shape. The site is square: its buttons are rectangles and its cards
+     have a 6px radius at most. There is no pill anywhere on it, so there is
+     none here either. */
+  --alac-radius: 6px;
+  --alac-radius-sm: 3px;
+  --alac-radius-lg: 10px;
 
-     --md-outline carries the input underline and clears the 3:1 non-text
-     threshold, which it has to: it is the visible boundary of a control.
-     --md-outline-variant carries table rules and sits well below 3:1 on
-     purpose. A row divider is not a UI component and not a meaningful graphic,
-     so WCAG 1.4.11 does not reach it, and the rows are already separated by
-     layout. Do not darken it to chase a number that does not apply. */
-  --md-outline: #79747e;
-  --md-outline-variant: #cac4d0;
+  /* ---- Elevation. On a near black ground a shadow does almost nothing, so
+     depth is a lighter surface plus a hairline. The shadows below only lift
+     something that is genuinely floating. */
+  --alac-elev-1: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --alac-elev-2: 0 4px 16px -2px rgb(0 0 0 / 0.5);
 
-  /* Status. MD3 ships error only, so success and warning are matched to it:
-     the same tonal construction, a 40 tone text colour over a 90 tone
-     container. Every value clears WCAG AA against --md-surface and both
-     container tones, which is the tightest of the three. */
-  --md-error: #b3261e;
-  --md-on-error: #ffffff;
-  --md-error-container: #f9dedc;
-  --md-success: #146c2e;
-  --md-success-container: #c4eed0;
-  --md-warning: #7a5900;
-  --md-warning-container: #ffdf9a;
-
-  /* Elevation. Soft, diffuse, near black at low opacity. Depth is mostly the
-     tonal step; the shadow only confirms it. */
-  --md-elev-1: 0 1px 2px 0 rgb(28 27 31 / 0.06), 0 1px 3px 1px rgb(28 27 31 / 0.04);
-  --md-elev-2: 0 1px 2px 0 rgb(28 27 31 / 0.06), 0 2px 6px 2px rgb(28 27 31 / 0.07);
-  --md-elev-3: 0 1px 3px 0 rgb(28 27 31 / 0.1), 0 4px 8px 3px rgb(28 27 31 / 0.07);
-
-  /* Shape. */
-  --md-radius-xs: 8px;
-  --md-radius-sm: 12px;
-  --md-radius-md: 16px;
-  --md-radius-lg: 24px;
-  --md-radius-xl: 28px;
-
-  /* Motion. "Emphasized decelerate": confident, never bouncy. One easing for
-     the whole product. */
-  --md-ease: cubic-bezier(0.2, 0, 0, 1);
+  --alac-ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
 @theme inline {
-  --color-md-surface: var(--md-surface);
-  --color-md-surface-container: var(--md-surface-container);
-  --color-md-surface-container-low: var(--md-surface-container-low);
-  --color-md-surface-container-high: var(--md-surface-container-high);
-  --color-md-on-surface: var(--md-on-surface);
-  --color-md-on-surface-variant: var(--md-on-surface-variant);
-  --color-md-on-surface-muted: var(--md-on-surface-muted);
-  --color-md-primary: var(--md-primary);
-  --color-md-on-primary: var(--md-on-primary);
-  --color-md-primary-container: var(--md-primary-container);
-  --color-md-on-primary-container: var(--md-on-primary-container);
-  --color-md-secondary-container: var(--md-secondary-container);
-  --color-md-on-secondary-container: var(--md-on-secondary-container);
-  --color-md-tertiary: var(--md-tertiary);
-  --color-md-on-tertiary: var(--md-on-tertiary);
-  --color-md-tertiary-container: var(--md-tertiary-container);
-  --color-md-outline: var(--md-outline);
-  --color-md-outline-variant: var(--md-outline-variant);
-  --color-md-error: var(--md-error);
-  --color-md-error-container: var(--md-error-container);
-  --color-md-success: var(--md-success);
-  --color-md-success-container: var(--md-success-container);
-  --color-md-warning: var(--md-warning);
-  --color-md-warning-container: var(--md-warning-container);
+  --color-alac-ground: var(--alac-ground);
+  --color-alac-surface: var(--alac-surface);
+  --color-alac-surface-2: var(--alac-surface-2);
+  --color-alac-surface-3: var(--alac-surface-3);
+  --color-alac-line: var(--alac-line);
+  --color-alac-line-strong: var(--alac-line-strong);
+  --color-alac-navy: var(--alac-navy);
+  --color-alac-navy-mid: var(--alac-navy-mid);
+  --color-alac-navy-hover: var(--alac-navy-hover);
+  --color-alac-accent: var(--alac-accent);
+  --color-alac-accent-bright: var(--alac-accent-bright);
+  --color-alac-accent-light: var(--alac-accent-light);
+  --color-alac-accent-soft: var(--alac-accent-soft);
+  --color-alac-text: var(--alac-text);
+  --color-alac-text-2: var(--alac-text-2);
+  --color-alac-text-3: var(--alac-text-3);
+  --color-alac-red: var(--alac-red);
+  --color-alac-red-text: var(--alac-red-text);
+  --color-alac-good: var(--alac-good);
+  --color-alac-warn: var(--alac-warn);
 
-  --radius-md-sm: var(--md-radius-sm);
-  --radius-md-md: var(--md-radius-md);
-  --radius-md-lg: var(--md-radius-lg);
-  --radius-md-xl: var(--md-radius-xl);
+  --radius-alac: var(--alac-radius);
+  --radius-alac-lg: var(--alac-radius-lg);
+  --ease-alac: var(--alac-ease);
 
-  --ease-md: var(--md-ease);
-
-  /* Tailwind's own default for every `transition-*` utility. Overriding it here
-     means a bare `transition-colors` already moves on the Material curve, so no
-     call site has to remember `ease-[...]` and none can drift back onto
-     Tailwind's `cubic-bezier(0.4, 0, 0.2, 1)`. */
-  --default-transition-timing-function: var(--md-ease);
-
-  /* One face for the whole product. The previous theme had three, one per job
-     (display, body, label); Material 3 separates those with weight and size
-     instead, so there is one family here and no second slot to fall out of
-     sync with it. */
+  /* Barlow announces, DM Sans is read. The site uses exactly this split. */
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-body), sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "Courier New", monospace;
+
+  /* Tailwind's default for every transition-* utility, so a bare
+     transition-colors already moves on the brand curve and no call site has
+     to remember ease-[...]. */
+  --default-transition-timing-function: var(--alac-ease);
 }
 
-/* Roboto is the canonical Material face. 14px base rather than the spec's
-   16px: this is a dense operator tool, and the type scale is applied through
-   the recipes below, which keep MD3 proportions at a working size. */
 body {
-  background: var(--md-surface);
-  color: var(--md-on-surface);
+  background: var(--alac-ground);
+  color: var(--alac-text);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
-  line-height: 1.5;
-  letter-spacing: 0;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -173,125 +146,115 @@ body {
      Type
      -------------------------------------------------------------------- */
 
-  /* Digits that sit in columns must line up. DESIGN.md contract rule 9. */
   .tabular {
     font-variant-numeric: tabular-nums;
   }
 
-  /* A number the engine computed. Tabular and medium weight, so it holds its
-     own against body text at the same size without needing a second colour. */
+  /* A number the engine computed. Tabular so columns line up. */
   .readout {
     font-variant-numeric: tabular-nums;
     font-weight: 500;
-    letter-spacing: 0;
   }
 
-  /* Material label style. Medium weight, sentence case, very slightly tracked
-     at small sizes. Used for eyebrows, column headers, chips, and buttons.
+  /* The brand's signature label: mono, uppercase, widely tracked. It is what
+     the site puts under its hero ("VETERAN-OWNED | 45-DAY REFUNDABLE
+     ENGAGEMENTS") and across its nav, so it carries eyebrows, column heads
+     and chips here.
 
-     Explicitly not uppercase: MD3 labels are sentence case, and the wide
-     uppercase tracking this class used to carry was the single strongest
-     signal of the old terminal theme. */
+     It is genuinely small, so it never drops below 11px and never carries
+     prose. Tracking this wide makes a sentence hard to read; it makes a
+     three word label look deliberate. */
   .placard {
+    font-family: var(--font-mono), ui-monospace, "Courier New", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
     font-weight: 500;
-    letter-spacing: 0.01em;
-    text-transform: none;
   }
 
-  /* Headings. Roboto Medium, sentence case, tracking tightened as size goes
-     up. Every heading in the product goes through this. */
+  /* Headings. Barlow, tight tracking, and the site's own trick of loosening
+     word spacing on the largest sizes so a headline reads as a statement. */
   .display {
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    text-transform: none;
+    font-family: var(--font-display), var(--font-body), sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
-  /* Reasoning prose is the content of this product, so it gets a measure.
-     Back to 68ch from the 62ch the monospace theme needed. Contract rule 10. */
+  /* The hero treatment: periwinkle, and the wide word spacing the site uses
+     on its biggest headline. Only for a page title, never for a panel head. */
+  .display-hero {
+    font-family: var(--font-display), var(--font-body), sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    word-spacing: 0.12em;
+    color: var(--alac-accent);
+    text-wrap: balance;
+  }
+
   .prose-measure {
     max-width: 68ch;
   }
 
   /* -----------------------------------------------------------------------
      Containers
-
-     A panel is a tonal surface with a generous radius and a resting shadow.
-     It has no border: separation comes from the tone step against the ground.
      -------------------------------------------------------------------- */
 
+  /* A panel is a lighter navy than the ground with one hairline. On a near
+     black page that hairline is what separates it, not a shadow. */
   .panel {
     position: relative;
-    background: var(--md-surface-container);
-    border: none;
-    border-radius: var(--md-radius-lg);
-    box-shadow: var(--md-elev-1);
+    background: var(--alac-surface);
+    border: 1px solid var(--alac-line);
+    border-radius: var(--alac-radius);
     transition:
-      box-shadow 300ms var(--md-ease),
-      background-color 300ms var(--md-ease);
+      border-color 240ms var(--alac-ease),
+      background-color 240ms var(--alac-ease);
   }
 
-  /* Opt in on panels that are actually interactive. A panel that only holds
-     content should not lift under the cursor and promise a click. */
-  .panel-interactive {
-    transition:
-      box-shadow 300ms var(--md-ease),
-      background-color 300ms var(--md-ease),
-      transform 300ms var(--md-ease);
-  }
+  /* Opt in on panels that are genuinely clickable. A panel that lights up
+     under the cursor is promising a click, so a static one must not. */
   .panel-interactive:hover {
-    box-shadow: var(--md-elev-2);
+    border-color: var(--alac-line-strong);
   }
 
-  /* Recessed well: where raw arithmetic, traces, and evidence sit, one tone
-     below the panel face. */
+  /* Recessed well: where arithmetic, evidence and traces sit. Darker than the
+     panel, because on a dark theme recessed means deeper, not lighter. */
   .well {
-    background: var(--md-surface-container-low);
-    border: none;
-    border-radius: var(--md-radius-md);
+    background: var(--alac-ground);
+    border: 1px solid var(--alac-line);
+    border-radius: var(--alac-radius-sm);
   }
 
   /* -----------------------------------------------------------------------
      Ground
 
-     The page ground carries two soft radial washes seeded from primary and
-     tertiary. This is the tonal equivalent of the organic blur shapes the
-     style calls for: colour bleeding into the surface rather than a texture
-     ruled on top of it. It sits behind opaque panels, so it only ever shows
-     in the gutters.
+     The site sets its hero over a photograph of Earth from orbit. There is no
+     photograph here, so the same idea is carried by two soft navy washes: the
+     page keeps a sense of depth without putting an image behind data.
      -------------------------------------------------------------------- */
 
   .surface-wash {
-    background-color: var(--md-surface);
+    background-color: var(--alac-ground);
     background-image:
       radial-gradient(
-        ellipse 60% 50% at 100% 0%,
-        color-mix(in oklab, var(--md-primary) 10%, transparent) 0%,
-        transparent 60%
+        ellipse 70% 55% at 85% -10%,
+        color-mix(in oklab, var(--alac-navy) 55%, transparent) 0%,
+        transparent 62%
       ),
       radial-gradient(
-        ellipse 50% 40% at 0% 100%,
-        color-mix(in oklab, var(--md-tertiary) 8%, transparent) 0%,
-        transparent 55%
+        ellipse 55% 45% at 5% 105%,
+        color-mix(in oklab, var(--alac-navy-mid) 30%, transparent) 0%,
+        transparent 58%
       );
     background-attachment: fixed;
-  }
-
-  /* A decorative organic shape. Heavy blur, low opacity, positioned partly
-     off canvas by the call site. Always aria-hidden. */
-  .blob {
-    position: absolute;
-    border-radius: 9999px;
-    filter: blur(64px);
-    pointer-events: none;
   }
 
   /* -----------------------------------------------------------------------
      Controls
 
-     One recipe per control, so the control language is one edit. Every button
-     is a pill: this is the most recognisable Material You characteristic and
-     there is no rectangular variant.
+     The site's buttons are rectangles: a white fill with dark text for the
+     primary action, an outlined dark fill for the secondary. Copied, not
+     reinterpreted, because it is the most recognisable thing on the page.
      -------------------------------------------------------------------- */
 
   .btn {
@@ -300,164 +263,152 @@ body {
     justify-content: center;
     gap: 8px;
     min-height: 40px;
-    padding: 0 24px;
-    border-radius: 9999px;
-    font-size: 14px;
+    padding: 0 20px;
+    border-radius: var(--alac-radius-sm);
+    font-family: var(--font-mono), ui-monospace, "Courier New", monospace;
+    font-size: 12px;
     font-weight: 500;
-    letter-spacing: 0.01em;
-    text-transform: none;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
     white-space: nowrap;
     cursor: pointer;
     background: transparent;
     border: 1px solid transparent;
     transition:
-      background-color 300ms var(--md-ease),
-      box-shadow 300ms var(--md-ease),
-      color 300ms var(--md-ease),
-      border-color 300ms var(--md-ease),
-      transform 200ms var(--md-ease);
-  }
-  /* Tactile press feedback, on every button in the product. */
-  .btn:active:not(:disabled) {
-    transform: scale(0.95);
+      background-color 240ms var(--alac-ease),
+      color 240ms var(--alac-ease),
+      border-color 240ms var(--alac-ease);
   }
   .btn:disabled {
-    opacity: 0.38;
+    opacity: 0.4;
     pointer-events: none;
   }
 
-  /* Filled. The one primary action on a view. State layers are opacity over
-     the base colour, never a different hue. */
+  /* Primary: white fill, dark text. The site's "BOOK A CALL". */
   .btn-primary {
-    background: var(--md-primary);
-    color: var(--md-on-primary);
+    background: var(--alac-text);
+    color: var(--alac-ground);
+    border-color: var(--alac-text);
   }
   .btn-primary:hover {
-    background: color-mix(in oklab, var(--md-primary) 90%, transparent);
-    box-shadow: var(--md-elev-2);
-  }
-  .btn-primary:active {
-    background: color-mix(in oklab, var(--md-primary) 80%, transparent);
+    background: var(--alac-accent-light);
+    border-color: var(--alac-accent-light);
   }
 
-  /* Tonal. The secondary action: present, but not competing with filled. */
+  /* Secondary: outlined on the ground. The site's "SEE HOW ALAC WORKS". */
   .btn-secondary {
-    background: var(--md-secondary-container);
-    color: var(--md-on-secondary-container);
+    background: transparent;
+    color: var(--alac-text);
+    border-color: var(--alac-line-strong);
   }
   .btn-secondary:hover {
-    background: color-mix(in oklab, var(--md-secondary-container) 90%, var(--md-primary));
-    box-shadow: var(--md-elev-1);
+    background: var(--alac-surface-2);
+    border-color: var(--alac-accent);
   }
 
-  /* Text. Lowest emphasis, transparent until touched. */
   .btn-ghost {
-    color: var(--md-primary);
-    padding: 0 16px;
+    color: var(--alac-accent);
+    padding: 0 12px;
   }
   .btn-ghost:hover {
-    background: color-mix(in oklab, var(--md-primary) 10%, transparent);
+    background: var(--alac-accent-soft);
+    color: var(--alac-accent-light);
   }
 
   .btn-danger {
-    background: var(--md-error);
-    color: var(--md-on-error);
+    background: var(--alac-red);
+    color: var(--alac-text);
+    border-color: var(--alac-red);
   }
   .btn-danger:hover {
-    background: color-mix(in oklab, var(--md-error) 90%, transparent);
-    box-shadow: var(--md-elev-2);
+    background: var(--alac-red-deep);
+    border-color: var(--alac-red-deep);
   }
 
-  /* The Material 3 filled text field: rounded top corners, square bottom, and
-     a 2px underline that turns primary on focus. The shape is the signature,
-     so it is worth the asymmetry. */
+  /* A field is recessed and square, with the accent arriving only on focus. */
   .field {
     width: 100%;
-    min-height: 48px;
-    padding: 8px 16px;
-    background: var(--md-surface-container-low);
-    color: var(--md-on-surface);
-    caret-color: var(--md-primary);
+    min-height: 40px;
+    padding: 8px 12px;
+    background: var(--alac-ground);
+    color: var(--alac-text);
+    caret-color: var(--alac-accent);
     font-family: inherit;
     font-size: 14px;
-    letter-spacing: 0;
-    border: none;
-    border-bottom: 2px solid var(--md-outline);
-    border-radius: var(--md-radius-sm) var(--md-radius-sm) 0 0;
+    border: 1px solid var(--alac-line);
+    border-radius: var(--alac-radius-sm);
     outline: none;
     transition:
-      border-color 200ms var(--md-ease),
-      background-color 200ms var(--md-ease);
+      border-color 200ms var(--alac-ease),
+      background-color 200ms var(--alac-ease);
   }
   .field::placeholder {
-    color: var(--md-on-surface-muted);
+    color: var(--alac-text-3);
   }
   .field:hover {
-    background: color-mix(in oklab, var(--md-surface-container-low) 92%, var(--md-primary));
+    border-color: var(--alac-line-strong);
   }
   .field:focus {
-    border-bottom-color: var(--md-primary);
+    border-color: var(--alac-accent);
   }
 
   /* A select keeps the native popup, which is styled by the OS. That is the
      correct trade: a hand rolled listbox would cost keyboard and screen
-     reader behaviour that the native control gives for free. */
+     reader behaviour the native control gives for free. */
   select.field {
     appearance: none;
-    padding-right: 40px;
-    background-image: linear-gradient(45deg, transparent 50%, var(--md-on-surface-variant) 50%),
-      linear-gradient(135deg, var(--md-on-surface-variant) 50%, transparent 50%);
+    padding-right: 32px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--alac-text-3) 50%),
+      linear-gradient(135deg, var(--alac-text-3) 50%, transparent 50%);
     background-position:
-      calc(100% - 20px) 22px,
-      calc(100% - 15px) 22px;
+      calc(100% - 16px) 18px,
+      calc(100% - 11px) 18px;
     background-size:
       5px 5px,
       5px 5px;
     background-repeat: no-repeat;
   }
   select.field option {
-    background: var(--md-surface-container);
-    color: var(--md-on-surface);
+    background: var(--alac-surface);
+    color: var(--alac-text);
   }
 
-  /* Any text that navigates. Two channels on hover, colour and underline. */
   .link {
     color: inherit;
-    transition: color 200ms var(--md-ease);
+    transition: color 200ms var(--alac-ease);
   }
   .link:hover {
-    color: var(--md-primary);
+    color: var(--alac-accent);
     text-decoration: underline;
     text-underline-offset: 3px;
   }
 
-  /* A list or table row that responds to the cursor. The state layer is
-     primary at 8 percent, which is the Material hover value for a transparent
-     surface.
-
-     This is a recipe rather than a utility string because it was repeated on
-     nine rows across six files, and six of those had drifted onto Tailwind's
-     default easing instead of the Material curve. One definition means one
-     easing. */
-  .row-hover {
-    transition: background-color 200ms var(--md-ease);
-  }
-  .row-hover:hover {
-    background: color-mix(in oklab, var(--md-primary) 8%, transparent);
-  }
-
-  /* A chip: the pill that carries a filter, a tier, or a count. */
+  /* A chip: the square tag that carries a filter, a status or a count. */
   .chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 32px;
-    padding: 0 12px;
-    border-radius: 9999px;
-    background: var(--md-secondary-container);
-    color: var(--md-on-secondary-container);
-    font-size: 12px;
+    min-height: 26px;
+    padding: 0 9px;
+    border-radius: var(--alac-radius-sm);
+    background: var(--alac-surface-2);
+    color: var(--alac-text-2);
+    border: 1px solid var(--alac-line);
+    font-family: var(--font-mono), ui-monospace, "Courier New", monospace;
+    font-size: 11px;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  /* A list or table row that responds to the cursor. One definition, so the
+     hover state cannot drift between the six screens that use it. */
+  .row-hover {
+    transition: background-color 200ms var(--alac-ease);
+  }
+  .row-hover:hover {
+    background: var(--alac-surface-2);
   }
 }
 
@@ -465,33 +416,23 @@ body {
    Focus
    ------------------------------------------------------------------------- */
 
-/* Focus is always visible. Contract rule 15. One rule covers the product. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--md-primary);
+  outline: 2px solid var(--alac-accent);
   outline-offset: 2px;
-  border-radius: var(--md-radius-xs);
+  border-radius: var(--alac-radius-sm);
 }
 
-/* The filled field keeps its own shape under focus rather than being boxed by
-   the generic rounded outline. */
-.field:focus-visible {
-  outline-offset: 2px;
-  border-radius: var(--md-radius-sm) var(--md-radius-sm) 0 0;
-}
-
-/* Skip link: keyboard users land on it before the nav. */
 .skip-link {
   position: absolute;
   left: 12px;
   top: -56px;
   z-index: 50;
-  background: var(--md-primary);
-  color: var(--md-on-primary);
-  border-radius: 9999px;
-  padding: 10px 20px;
-  font-weight: 500;
-  box-shadow: var(--md-elev-2);
-  transition: top 300ms var(--md-ease);
+  background: var(--alac-text);
+  color: var(--alac-ground);
+  border-radius: var(--alac-radius-sm);
+  padding: 10px 18px;
+  font-weight: 600;
+  transition: top 240ms var(--alac-ease);
 }
 .skip-link:focus {
   top: 12px;
@@ -508,13 +449,5 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-
-  /* Vestibular safety: colour and shadow may still change, movement may not.
-     Every scale and translate in the product is decorative feedback, so
-     removing it costs no information. */
-  .btn:active:not(:disabled),
-  .panel-interactive:hover {
-    transform: none !important;
   }
 }

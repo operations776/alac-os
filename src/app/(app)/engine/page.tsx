@@ -32,10 +32,10 @@ function RunBar({ ok, failed }: { ok: number; failed: number }) {
   return (
     <span
       aria-hidden="true"
-      className="relative mt-2 flex h-1.5 w-full min-w-[70px] overflow-hidden rounded-full bg-[var(--md-surface-container-high)]"
+      className="relative mt-2 flex h-1.5 w-full min-w-[70px] overflow-hidden rounded-[var(--alac-radius-sm)] bg-[var(--alac-surface-2)]"
     >
-      <span style={{ width: `${okPct}%`, background: "var(--md-success)" }} />
-      <span style={{ width: `${100 - okPct}%`, background: "var(--md-error)" }} />
+      <span style={{ width: `${okPct}%`, background: "var(--alac-good)" }} />
+      <span style={{ width: `${100 - okPct}%`, background: "var(--alac-red)" }} />
     </span>
   );
 }
@@ -96,7 +96,7 @@ export default async function EnginePage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] border-collapse">
               <thead>
-                <tr className="bg-[var(--md-surface-container-low)]">
+                <tr className="bg-[var(--alac-ground)]">
                   <Th>Kind</Th>
                   <Th>Status</Th>
                   <Th>Trigger</Th>
@@ -110,12 +110,12 @@ export default async function EnginePage() {
                 {runs.map((r) => (
                   <tr
                     key={r.id}
-                    className="row-hover border-b border-[var(--md-outline-variant)] last:border-0"
+                    className="row-hover border-b border-[var(--alac-line)] last:border-0"
                   >
                     <td className="px-4 py-2.5 align-top">
                       <div className="text-[14px] font-medium">{r.kind.replace(/_/g, " ")}</div>
                       {r.prompt_version ? (
-                        <div className="readout mt-0.5 text-[12px] text-[var(--md-on-surface-muted)]">
+                        <div className="readout mt-0.5 text-[12px] text-[var(--alac-text-3)]">
                           {r.prompt_version}
                         </div>
                       ) : null}
@@ -132,7 +132,7 @@ export default async function EnginePage() {
                         <Badge tone="bad" withIcon>Failed</Badge>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-[13px] text-[var(--md-on-surface-variant)]">
+                    <td className="px-4 py-2.5 align-top text-[13px] text-[var(--alac-text-2)]">
                       {r.trigger}
                     </td>
                     <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
@@ -140,17 +140,17 @@ export default async function EnginePage() {
                     </td>
                     <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
                       {r.items_failed > 0 ? (
-                        <span className="text-[var(--md-error)]">
+                        <span className="text-[var(--alac-red-text)]">
                           {r.items_failed.toLocaleString()}
                         </span>
                       ) : (
-                        <span className="text-[var(--md-on-surface-muted)]">0</span>
+                        <span className="text-[var(--alac-text-3)]">0</span>
                       )}
                     </td>
-                    <td className="readout px-4 py-2.5 text-right align-top text-[13px] text-[var(--md-on-surface-variant)]">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[13px] text-[var(--alac-text-2)]">
                       {r.duration_ms ? `${(r.duration_ms / 1000).toFixed(1)}s` : <Blank />}
                     </td>
-                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
+                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                       {formatDate(r.started_at) ?? <Blank />}
                     </td>
                   </tr>

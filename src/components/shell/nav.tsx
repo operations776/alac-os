@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { brand } from "@/config/brand";
+import { Logo } from "./logo";
 
 // Lucide only, 16px, stroke 1.5. No emoji. DESIGN.md section 7.
 //
@@ -55,29 +56,19 @@ export function Nav({
   const pathname = usePathname();
 
   return (
-    <aside className="relative z-10 flex shrink-0 flex-col bg-[var(--md-surface-container)] lg:h-dvh lg:w-[240px] lg:rounded-r-[var(--md-radius-xl)]">
-      {/* Identity plate. The monogram sits in a primary container, which is
-          the one place the seed colour appears at full strength in the rail. */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <div
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--md-primary)] text-[13px] font-medium leading-none text-[var(--md-on-primary)]"
-          aria-hidden="true"
-        >
-          {brand.shortName.slice(0, 2)}
-        </div>
-        <div className="min-w-0">
-          <div className="display truncate text-[16px] leading-tight text-[var(--md-on-surface)]">
-            {brand.name}
-          </div>
-          <div className="mt-0.5 text-[12px] leading-none text-[var(--md-on-surface-muted)]">
-            BD intelligence
-          </div>
-        </div>
+    <aside className="relative z-10 flex shrink-0 flex-col border-b border-[var(--alac-line)] bg-[var(--alac-surface)] lg:h-dvh lg:w-[248px] lg:border-b-0 lg:border-r">
+      {/* The real mark, inverted to white for this ground. It is the whole
+          identity plate: the company name is in the logo, so repeating it as
+          text beside itself would just be the name twice. */}
+      <div className="flex items-center gap-3 border-b border-[var(--alac-line)] px-5 py-[18px]">
+        <Link href="/command" aria-label={`${brand.name} home`} className="flex items-center">
+          <Logo height={26} />
+        </Link>
       </div>
 
       <nav
         aria-label="Primary"
-        className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0"
+        className="flex gap-0.5 overflow-x-auto px-3 py-3 lg:flex-col lg:overflow-visible"
       >
         {NAV.map(({ href, label, Icon, exact }) => {
           const active = exact
@@ -88,12 +79,20 @@ export function Nav({
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`placard flex min-h-[48px] shrink-0 items-center gap-3 whitespace-nowrap rounded-full px-4 text-[14px] transition-colors duration-300 ${
+              className={`placard relative flex min-h-[42px] shrink-0 items-center gap-3 whitespace-nowrap rounded-[var(--alac-radius-sm)] px-3 text-[11px] transition-colors ${
                 active
-                  ? "bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)]"
-                  : "text-[var(--md-on-surface-variant)] hover:bg-[color-mix(in_oklab,var(--md-primary)_10%,transparent)] hover:text-[var(--md-on-surface)]"
+                  ? "bg-[var(--alac-accent-soft)] text-[var(--alac-accent)]"
+                  : "text-[var(--alac-text-3)] hover:bg-[var(--alac-surface-2)] hover:text-[var(--alac-text)]"
               }`}
             >
+              {/* The selected row is marked twice: the tonal fill and this
+                  rule. Colour is never the only signal. */}
+              {active ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute bottom-0 left-3 right-3 h-[2px] bg-[var(--alac-accent)] lg:bottom-2 lg:left-0 lg:right-auto lg:top-2 lg:h-auto lg:w-[2px]"
+                />
+              ) : null}
               <Icon size={16} strokeWidth={1.5} className="shrink-0" />
               {label}
             </Link>
@@ -101,19 +100,19 @@ export function Nav({
         })}
       </nav>
 
-      <div className="mt-auto hidden flex-col gap-4 px-3 pb-5 pt-6 lg:flex">
-        <p className="rounded-[var(--md-radius-md)] bg-[var(--md-surface-container-low)] px-4 py-3 text-[12.5px] leading-relaxed text-[var(--md-on-surface-variant)]">
-          Scores are computed, not guessed. Every number opens its own
-          arithmetic.
+      <div className="mt-auto hidden flex-col gap-4 px-5 pb-5 pt-6 lg:flex">
+        <p className="text-[12px] leading-relaxed text-[var(--alac-text-3)]">
+          Priority and final score come from the Master TAM. Heat is computed
+          here, and every number opens its own arithmetic.
         </p>
 
-        <div className="px-2">
-          <div className="truncate text-[13.5px] text-[var(--md-on-surface)]">{userName}</div>
-          <div className="mt-0.5 text-[12px] text-[var(--md-on-surface-muted)]">{userRole}</div>
+        <div className="border-t border-[var(--alac-line)] pt-4">
+          <div className="truncate text-[13px] text-[var(--alac-text-2)]">{userName}</div>
+          <div className="placard mt-1 text-[10px] text-[var(--alac-text-3)]">{userRole}</div>
           <form action={signOut}>
             <button
               type="submit"
-              className="mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-full px-3 text-[13px] font-medium text-[var(--md-on-surface-variant)] transition-colors duration-300 hover:bg-[var(--md-error-container)] hover:text-[var(--md-error)]"
+              className="placard mt-3 inline-flex min-h-[36px] items-center gap-2 rounded-[var(--alac-radius-sm)] px-2 text-[10px] text-[var(--alac-text-3)] transition-colors hover:text-[var(--alac-red-text)]"
             >
               <LogOut size={16} strokeWidth={1.5} />
               Sign out
@@ -123,14 +122,12 @@ export function Nav({
       </div>
 
       {/* Small screens: the identity block collapses, so sign out moves here. */}
-      <div className="flex items-center gap-3 px-5 pb-3 lg:hidden">
-        <span className="truncate text-[12.5px] text-[var(--md-on-surface-muted)]">
-          {userName}
-        </span>
+      <div className="flex items-center gap-3 border-t border-[var(--alac-line)] px-5 py-2 lg:hidden">
+        <span className="truncate text-[12px] text-[var(--alac-text-3)]">{userName}</span>
         <form action={signOut} className="ml-auto">
           <button
             type="submit"
-            className="inline-flex min-h-[40px] items-center gap-2 rounded-full px-3 text-[13px] font-medium text-[var(--md-on-surface-variant)]"
+            className="placard inline-flex min-h-[40px] items-center gap-2 px-2 text-[10px] text-[var(--alac-text-3)]"
           >
             <LogOut size={16} strokeWidth={1.5} />
             Sign out

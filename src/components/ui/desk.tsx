@@ -46,14 +46,14 @@ const MOTION_TONE: Record<Motion, Tone> = {
 
 export function MotionChip({ motion }: { motion: Motion }) {
   if (motion === "TBD") {
-    return <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">TBD</span>;
+    return <span className="text-[12.5px] text-[var(--alac-text-3)]">TBD</span>;
   }
   return <Badge tone={MOTION_TONE[motion] ?? "neutral"}>{motion}</Badge>;
 }
 
 /** Priority. Source data from the TAM, never set in this app. */
 export function PriorityChip({ priority }: { priority: Priority | null }) {
-  if (!priority) return <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">--</span>;
+  if (!priority) return <span className="text-[12.5px] text-[var(--alac-text-3)]">--</span>;
   if (priority === "unscored") {
     return <Badge tone="warn">UNSCORED</Badge>;
   }
@@ -78,23 +78,23 @@ export function ExecutionStages({
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
       <span
         title={`HeyReach: ${heyreach}`}
-        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+        className={`rounded-[var(--alac-radius-sm)] px-2 py-0.5 text-[11px] font-medium ${
           live(heyreach)
-            ? "bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)]"
-            : "bg-[var(--md-surface-container-low)] text-[var(--md-on-surface-muted)]"
+            ? "bg-[var(--alac-surface-2)] text-[var(--alac-text-2)]"
+            : "bg-[var(--alac-ground)] text-[var(--alac-text-3)]"
         }`}
       >
         HR
       </span>
-      <span aria-hidden="true" className="text-[var(--md-on-surface-muted)]">
+      <span aria-hidden="true" className="text-[var(--alac-text-3)]">
         &rsaquo;
       </span>
       <span
         title={`SourceWhale: ${sourcewhale}`}
-        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+        className={`rounded-[var(--alac-radius-sm)] px-2 py-0.5 text-[11px] font-medium ${
           live(sourcewhale)
-            ? "bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)]"
-            : "bg-[var(--md-surface-container-low)] text-[var(--md-on-surface-muted)]"
+            ? "bg-[var(--alac-surface-2)] text-[var(--alac-text-2)]"
+            : "bg-[var(--alac-ground)] text-[var(--alac-text-3)]"
         }`}
       >
         SW
@@ -114,7 +114,7 @@ export function ExecutionStages({
 export function ScoreCell({ score }: { score: string | null }) {
   if (score == null) {
     return (
-      <span className="readout text-[var(--md-on-surface-muted)]" title="Not scored">
+      <span className="readout text-[var(--alac-text-3)]" title="Not scored">
         &ndash;&ndash;
       </span>
     );
@@ -126,7 +126,7 @@ export function ScoreCell({ score }: { score: string | null }) {
 export function LinkCell({ href, label }: { href: string | null; label: string }) {
   if (!href) {
     return (
-      <span className="text-[12.5px] text-[var(--md-on-surface-muted)]" title={`No ${label} yet`}>
+      <span className="text-[12.5px] text-[var(--alac-text-3)]" title={`No ${label} yet`}>
         &ndash;&ndash;
       </span>
     );
@@ -179,7 +179,7 @@ export function HeatDelta({ delta }: { delta: number | null }) {
   if (delta == null) {
     return (
       <span
-        className="text-[12.5px] text-[var(--md-on-surface-muted)]"
+        className="text-[12.5px] text-[var(--alac-text-3)]"
         title="No TAM score to compare against, this company is not in the scored TAM"
       >
         no TAM score
@@ -189,10 +189,10 @@ export function HeatDelta({ delta }: { delta: number | null }) {
   const hotter = delta > 0;
   return (
     <span
-      className={`readout inline-flex items-center rounded-full px-2.5 py-0.5 text-[12.5px] ${
+      className={`readout inline-flex items-center rounded-[var(--alac-radius-sm)] px-2.5 py-0.5 text-[12.5px] ${
         hotter
-          ? "bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]"
-          : "bg-[var(--md-surface-container-low)] text-[var(--md-on-surface-variant)]"
+          ? "bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]"
+          : "bg-[var(--alac-ground)] text-[var(--alac-text-2)]"
       }`}
       title={
         hotter
@@ -208,10 +208,10 @@ export function HeatDelta({ delta }: { delta: number | null }) {
 
 /** The heat score with its meter, for a list row. */
 export function HeatScore({ score }: { score: number | null }) {
-  if (score == null) return <span className="readout text-[var(--md-on-surface-muted)]">--</span>;
+  if (score == null) return <span className="readout text-[var(--alac-text-3)]">--</span>;
   return (
     <div className="flex items-center gap-2.5">
-      <span className="readout w-7 shrink-0 text-right text-[14px] text-[var(--md-primary)]">
+      <span className="readout w-7 shrink-0 text-right text-[14px] text-[var(--alac-accent)]">
         {score}
       </span>
       <span className="w-[72px] shrink-0">
@@ -242,12 +242,12 @@ export function BoardSection({
   return (
     <section>
       <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="display text-[15px] text-[var(--md-on-surface)]">{title}</h2>
+        <h2 className="display text-[15px] text-[var(--alac-text)]">{title}</h2>
         {sub ? (
-          <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">{sub}</span>
+          <span className="text-[12.5px] text-[var(--alac-text-3)]">{sub}</span>
         ) : null}
         {href ? (
-          <Link href={href} className="link ml-auto text-[12.5px] font-medium text-[var(--md-primary)]">
+          <Link href={href} className="link ml-auto text-[12.5px] font-medium text-[var(--alac-accent)]">
             {hrefLabel ?? "Open"}
           </Link>
         ) : null}

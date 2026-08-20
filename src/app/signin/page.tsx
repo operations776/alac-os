@@ -1,52 +1,47 @@
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth";
 import { brand } from "@/config/brand";
+import { Logo } from "@/components/shell/logo";
 import { SignInForm } from "./form";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The sign in screen sets the tone for the product. It is the one place that
- * gets the full atmospheric treatment: two organic blur shapes behind a single
- * tonal card, which is the style at its most expressive. It states what the
- * system holds and makes no promise the app does not keep.
+ * The sign in screen sets the tone for the product, and it is the one place
+ * that gets the marketing site's own hero treatment: the mark, a periwinkle
+ * headline over the navy wash, and the tracked mono strap underneath. It
+ * states what the system holds and makes no promise the app does not keep.
  */
 export default async function SignInPage() {
-  // Already signed in: no reason to show the form again.
-  if (await currentSession()) redirect("/dashboard");
+  // Already signed in: no reason to show the form again. This used to send
+  // people to /dashboard, which stopped existing when the desk command center
+  // replaced the portfolio model, so signing in landed on a 404.
+  if (await currentSession()) redirect("/command");
 
   return (
-    <main className="surface-wash relative flex min-h-dvh items-center justify-center overflow-hidden px-5 py-10">
-      {/* Decorative only. Positioned partly off canvas so the shapes read as
-          colour bleeding in from outside the frame. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="blob left-[-10%] top-[-15%] h-[460px] w-[460px] bg-[var(--md-primary)] opacity-[0.22]" />
-        <div className="blob bottom-[-20%] right-[-10%] h-[400px] w-[400px] bg-[var(--md-tertiary)] opacity-[0.18]" />
-      </div>
+    <main className="surface-wash flex min-h-dvh items-center justify-center px-5 py-10">
+      <div className="w-full max-w-[440px]">
+        <Logo height={30} />
 
-      <div className="relative w-full max-w-[420px]">
-        <div className="mb-7 flex items-center gap-4">
-          <div
-            className="grid h-14 w-14 shrink-0 place-items-center rounded-[var(--md-radius-md)] bg-[var(--md-primary)] text-[17px] font-medium leading-none text-[var(--md-on-primary)] shadow-[var(--md-elev-2)]"
-            aria-hidden="true"
-          >
-            {brand.shortName.slice(0, 2)}
-          </div>
-          <div className="min-w-0">
-            <div className="display text-[26px] leading-tight text-[var(--md-on-surface)]">
-              {brand.name}
-            </div>
-            <div className="mt-0.5 text-[13px] text-[var(--md-on-surface-muted)]">
-              BD intelligence layer
-            </div>
-          </div>
+        {/* The site's own hero treatment: a periwinkle headline over the navy
+            wash, with the tracked mono strap under it. */}
+        <h1 className="display-hero mt-9 text-[34px] leading-[1.12] sm:text-[40px]">
+          The desk command center
+        </h1>
+        <p className="prose-measure mt-3 text-[14px] leading-[1.65] text-[var(--alac-text-2)]">
+          {brand.tagline}
+        </p>
+
+        <div className="mt-8">
+          <SignInForm />
         </div>
 
-        <SignInForm />
-
-        <p className="mt-6 text-[13px] leading-relaxed text-[var(--md-on-surface-muted)]">
-          {brand.tagline} Access is per operator
-          and every session is recorded against it.
+        <p className="placard mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] text-[var(--alac-text-3)]">
+          <span>Access is per operator</span>
+          <span aria-hidden="true" className="text-[var(--alac-line-strong)]">
+            |
+          </span>
+          <span>Every session is recorded</span>
         </p>
       </div>
     </main>

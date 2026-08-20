@@ -1,27 +1,33 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
+import { Barlow, DM_Sans } from "next/font/google";
 import { brand } from "@/config/brand";
 import "./globals.css";
 
 /**
- * One face, doing every job. Roboto is the canonical Material typeface, and
- * Material 3 draws its whole type scale from a single family: weight and size
- * separate a display heading from a caption, never a second family.
+ * The two faces the marketing site uses, for the same two jobs.
  *
- * That replaces the three face stack this file used to carry (Orbitron for
- * display, JetBrains Mono for body and numbers, Share Tech Mono for labels).
- * The theme is no longer a terminal, so a monospace ground is wrong, and
- * tabular figures are handled by `font-variant-numeric` on the `.readout`
- * recipe rather than by making the whole product monospace.
+ * Barlow announces: page titles, panel headings, anything that states
+ * something. DM Sans is read: body copy, table cells, every number.
  *
- * Loaded through next/font so it is self hosted and inlined at build time: a
- * strict CSP blocks a stylesheet fetched from fonts.googleapis.com, and self
+ * The third face, the tracked uppercase mono the brand puts under its hero
+ * and across its nav, is not loaded. The site declares it as
+ * `Courier New, monospace`, so it is a system stack and costs no request.
+ *
+ * Loaded through next/font so both are self hosted and inlined at build time:
+ * a strict CSP blocks a stylesheet fetched from fonts.googleapis.com, and self
  * hosting also removes a render blocking request.
- *
- * Roboto is a variable font, so weights are not enumerated here: the `.display`
- * and `.placard` recipes in globals.css pick the weight they need.
  */
-const body = Roboto({
+const display = Barlow({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-display",
+  // Barlow ships static weights rather than a variable axis, so the ones the
+  // theme actually uses have to be named. Adding a weight here means adding a
+  // font file to the bundle, so this list stays short on purpose.
+  weight: ["500", "600", "700"],
+});
+
+const body = DM_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-body",
@@ -38,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`h-full ${body.variable}`}>
+    <html lang="en" className={`h-full ${display.variable} ${body.variable}`}>
       {/* suppressHydrationWarning is scoped to this element and covers exactly
           one case: browser extensions such as Grammarly and password managers
           inject attributes into body before React hydrates, which React then

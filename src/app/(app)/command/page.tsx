@@ -64,7 +64,7 @@ export default async function CommandPage({
 
       {/* Performance snapshot, auto from PERFORMANCE. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-[13px] text-[var(--md-on-surface-variant)]">Performance period</span>
+        <span className="text-[13px] text-[var(--alac-text-2)]">Performance period</span>
         {PERIODS.map((p) => (
           <Link
             key={p}
@@ -72,8 +72,8 @@ export default async function CommandPage({
             aria-current={p === period ? "true" : undefined}
             className={`chip transition-colors duration-200 ${
               p === period
-                ? "bg-[var(--md-primary)] text-[var(--md-on-primary)]"
-                : "hover:bg-[color-mix(in_oklab,var(--md-primary)_16%,var(--md-secondary-container))]"
+                ? "bg-[var(--alac-accent)] text-[var(--alac-ground)]"
+                : "hover:bg-[color-mix(in_oklab,var(--alac-accent)_16%,var(--alac-surface-2))]"
             }`}
           >
             {p}
@@ -117,7 +117,7 @@ export default async function CommandPage({
             <>
               {week.length} of {NEXT_WEEK_TARGET} target
               {week.length !== NEXT_WEEK_TARGET ? (
-                <span className="text-[var(--md-warning)]">
+                <span className="text-[var(--alac-warn)]">
                   {" "}
                   &middot; {week.length > NEXT_WEEK_TARGET ? "over" : "under"} by{" "}
                   {Math.abs(week.length - NEXT_WEEK_TARGET)}
@@ -164,7 +164,7 @@ export default async function CommandPage({
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[820px] border-collapse">
                   <thead>
-                    <tr className="bg-[var(--md-surface-container-low)]">
+                    <tr className="bg-[var(--alac-ground)]">
                       <Th align="right">Heat</Th>
                       <Th>Company</Th>
                       <Th>What happened</Th>
@@ -176,9 +176,9 @@ export default async function CommandPage({
                     {heat.map((s) => (
                       <tr
                         key={s.id}
-                        className="row-hover border-b border-[var(--md-outline-variant)] last:border-0"
+                        className="row-hover border-b border-[var(--alac-line)] last:border-0"
                       >
-                        <td className="readout px-4 py-2.5 text-right align-top text-[14px] text-[var(--md-primary)]">
+                        <td className="readout px-4 py-2.5 text-right align-top text-[14px] text-[var(--alac-accent)]">
                           {s.heat_score ?? "--"}
                         </td>
                         <td className="px-4 py-2.5 align-top">
@@ -198,13 +198,13 @@ export default async function CommandPage({
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2.5 align-top text-[13px] leading-snug text-[var(--md-on-surface-variant)]">
+                        <td className="px-4 py-2.5 align-top text-[13px] leading-snug text-[var(--alac-text-2)]">
                           <span className="line-clamp-2">{s.what_happened}</span>
                         </td>
                         <td className="px-4 py-2.5 text-right align-top">
                           <HeatDelta delta={s.heat_vs_tam} />
                         </td>
-                        <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
+                        <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                           <span className="line-clamp-2">{s.recommended_move ?? "--"}</span>
                         </td>
                       </tr>
@@ -231,7 +231,7 @@ export default async function CommandPage({
         </BoardSection>
       </div>
 
-      <p className="mt-6 text-[12.5px] leading-relaxed text-[var(--md-on-surface-muted)]">
+      <p className="mt-6 text-[12.5px] leading-relaxed text-[var(--alac-text-3)]">
         Top 25 and Next 25 are ranked, not stored: priority 1 then 2 then 3, and inside each the
         highest final score first. {counts.unscored} strategic account
         {counts.unscored === 1 ? " is" : "s are"} held out of this ranking because they are not
@@ -255,9 +255,9 @@ function BandList({ rows }: { rows: QueueRow[] }) {
       {rows.map((a, i) => (
         <li
           key={a.id}
-          className="row-hover flex items-center gap-3 rounded-[var(--md-radius-md)] px-3 py-2.5"
+          className="row-hover flex items-center gap-3 rounded-[var(--alac-radius)] px-3 py-2.5"
         >
-          <span className="readout w-5 shrink-0 text-right text-[12.5px] text-[var(--md-on-surface-muted)]">
+          <span className="readout w-5 shrink-0 text-right text-[12.5px] text-[var(--alac-text-3)]">
             {i + 1}
           </span>
           <span className="w-8 shrink-0 text-right">
@@ -280,7 +280,7 @@ function QueueTable({ rows, showNextAction }: { rows: QueueRow[]; showNextAction
     <div className="overflow-x-auto">
       <table className="w-full min-w-[980px] border-collapse">
         <thead>
-          <tr className="bg-[var(--md-surface-container-low)]">
+          <tr className="bg-[var(--alac-ground)]">
             <Th align="right">Score</Th>
             <Th>Company</Th>
             <Th>Priority</Th>
@@ -294,7 +294,7 @@ function QueueTable({ rows, showNextAction }: { rows: QueueRow[]; showNextAction
         </thead>
         <tbody>
           {rows.map((a) => (
-            <tr key={a.id} className="row-hover border-b border-[var(--md-outline-variant)] last:border-0">
+            <tr key={a.id} className="row-hover border-b border-[var(--alac-line)] last:border-0">
               <td className="px-4 py-2.5 text-right align-top">
                 <ScoreCell score={a.final_score} />
               </td>
@@ -302,7 +302,7 @@ function QueueTable({ rows, showNextAction }: { rows: QueueRow[]; showNextAction
                 <Link href={`/queue/${a.id}`} className="link text-[14px] font-medium">
                   {a.company_name}
                 </Link>
-                <div className="readout mt-0.5 text-[12px] text-[var(--md-on-surface-muted)]">
+                <div className="readout mt-0.5 text-[12px] text-[var(--alac-text-3)]">
                   {a.record_id}
                 </div>
               </td>
@@ -325,8 +325,8 @@ function QueueTable({ rows, showNextAction }: { rows: QueueRow[]; showNextAction
                 <ExecutionStages heyreach={a.heyreach_stage} sourcewhale={a.sourcewhale_stage} />
               </td>
               {showNextAction ? (
-                <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
-                  {a.next_action ?? <span className="text-[var(--md-on-surface-muted)]">--</span>}
+                <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
+                  {a.next_action ?? <span className="text-[var(--alac-text-3)]">--</span>}
                 </td>
               ) : null}
             </tr>

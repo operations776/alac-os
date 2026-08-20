@@ -114,7 +114,7 @@ export default async function QueuePage({
       <form method="get" className="mb-5 flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-[280px]">
           <span
-            className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--md-on-surface-variant)]"
+            className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--alac-text-2)]"
             aria-hidden="true"
           >
             <Search size={16} strokeWidth={1.5} />
@@ -142,7 +142,7 @@ export default async function QueuePage({
             name="next"
             value="1"
             defaultChecked={onlyNext}
-            className="h-4 w-4 accent-[var(--md-primary)]"
+            className="h-4 w-4 accent-[var(--alac-accent)]"
           />
           Next week only
         </label>
@@ -160,7 +160,7 @@ export default async function QueuePage({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px] border-collapse">
               <thead>
-                <tr className="bg-[var(--md-surface-container-low)]">
+                <tr className="bg-[var(--alac-ground)]">
                   <Th align="right">Score</Th>
                   <Th>Company</Th>
                   <Th>Priority</Th>
@@ -174,7 +174,7 @@ export default async function QueuePage({
               </thead>
               <tbody>
                 {rows.map((a) => (
-                  <tr key={a.id} className="row-hover border-b border-[var(--md-outline-variant)] last:border-0">
+                  <tr key={a.id} className="row-hover border-b border-[var(--alac-line)] last:border-0">
                     <td className="px-4 py-2.5 text-right align-top">
                       <ScoreCell score={a.final_score} />
                     </td>
@@ -182,18 +182,18 @@ export default async function QueuePage({
                       <Link href={`/queue/${a.id}`} className="link text-[14px] font-medium">
                         {a.company_name}
                       </Link>
-                      <div className="readout mt-0.5 text-[12px] text-[var(--md-on-surface-muted)]">
+                      <div className="readout mt-0.5 text-[12px] text-[var(--alac-text-3)]">
                         {a.record_id}
                       </div>
                     </td>
                     <td className="px-4 py-2.5 align-top"><PriorityChip priority={a.priority} /></td>
                     <td className="px-4 py-2.5 align-top">
                       {a.next_week ? (
-                        <span className="chip min-h-[24px] bg-[var(--md-primary-container)] px-2.5 text-[11px] text-[var(--md-on-primary-container)]">
+                        <span className="chip min-h-[24px] bg-[var(--alac-accent-soft)] px-2.5 text-[11px] text-[var(--alac-accent-light)]">
                           YES
                         </span>
                       ) : (
-                        <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">no</span>
+                        <span className="text-[12.5px] text-[var(--alac-text-3)]">no</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 align-top"><MotionChip motion={a.recommended_motion} /></td>
@@ -213,7 +213,7 @@ export default async function QueuePage({
 
       {rows.length > 0 ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <span className="readout text-[13px] text-[var(--md-on-surface-muted)]">
+          <span className="readout text-[13px] text-[var(--alac-text-3)]">
             {first.toLocaleString()}&ndash;{last.toLocaleString()} of {total.toLocaleString()}
             {pages > 1 ? `, page ${page} of ${pages.toLocaleString()}` : ""}
           </span>

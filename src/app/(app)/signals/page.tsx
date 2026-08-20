@@ -88,7 +88,7 @@ export default async function SignalsPage() {
                   <div className="grid gap-5 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_300px]">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <span className="readout text-[13px] text-[var(--md-on-surface-muted)]">
+                        <span className="readout text-[13px] text-[var(--alac-text-3)]">
                           {i + 1}
                         </span>
                         {s.account_id ? (
@@ -101,11 +101,11 @@ export default async function SignalsPage() {
                         ) : (
                           <span className="display text-[18px]">{s.company_name}</span>
                         )}
-                        <span className="readout text-[13px] text-[var(--md-on-surface-muted)]">
+                        <span className="readout text-[13px] text-[var(--alac-text-3)]">
                           {formatDate(s.signal_date)}
                         </span>
                         {s.hq ? (
-                          <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">
+                          <span className="text-[12.5px] text-[var(--alac-text-3)]">
                             {s.hq}
                           </span>
                         ) : null}
@@ -117,7 +117,7 @@ export default async function SignalsPage() {
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {s.the_number ? (
-                          <span className="chip bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]">
+                          <span className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]">
                             {s.the_number}
                           </span>
                         ) : null}
@@ -127,8 +127,8 @@ export default async function SignalsPage() {
                       </div>
 
                       {s.best_contact ? (
-                        <p className="mt-3 text-[13px] text-[var(--md-on-surface-variant)]">
-                          <span className="text-[var(--md-on-surface-muted)]">Best contact: </span>
+                        <p className="mt-3 text-[13px] text-[var(--alac-text-2)]">
+                          <span className="text-[var(--alac-text-3)]">Best contact: </span>
                           {s.best_contact}
                         </p>
                       ) : null}
@@ -145,7 +145,7 @@ export default async function SignalsPage() {
                               Source <ExternalLink size={16} strokeWidth={1.5} />
                             </a>
                           ) : (
-                            <span className="text-[12.5px] text-[var(--md-on-surface-muted)]">
+                            <span className="text-[12.5px] text-[var(--alac-text-3)]">
                               Source: {s.primary_source}
                             </span>
                           )}
@@ -157,12 +157,12 @@ export default async function SignalsPage() {
                         total they add up to. */}
                     <div className="well px-4 py-3.5">
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="placard text-[12px] text-[var(--md-on-surface-variant)]">
+                        <span className="placard text-[12px] text-[var(--alac-text-2)]">
                           Heat score
                         </span>
-                        <span className="readout text-[26px] leading-none text-[var(--md-primary)]">
+                        <span className="readout text-[26px] leading-none text-[var(--alac-accent)]">
                           {s.heat_score ?? "--"}
-                          <span className="text-[13px] text-[var(--md-on-surface-muted)]"> / 100</span>
+                          <span className="text-[13px] text-[var(--alac-text-3)]"> / 100</span>
                         </span>
                       </div>
 
@@ -172,15 +172,15 @@ export default async function SignalsPage() {
                         ))}
                       </div>
 
-                      <div className="mt-3.5 flex items-baseline justify-between gap-3 border-t border-[var(--md-outline-variant)] pt-3">
-                        <span className="text-[13px] text-[var(--md-on-surface-variant)]">
+                      <div className="mt-3.5 flex items-baseline justify-between gap-3 border-t border-[var(--alac-line)] pt-3">
+                        <span className="text-[13px] text-[var(--alac-text-2)]">
                           Against TAM {s.tam_final_score ? Math.round(Number(s.tam_final_score)) : "--"}
                         </span>
                         <HeatDelta delta={s.heat_vs_tam} />
                       </div>
 
                       {disagrees ? (
-                        <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--md-warning)]">
+                        <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--alac-warn)]">
                           The components add to {sum} and the stored heat score is {s.heat_score}. Both
                           are shown exactly as recorded. A gap means the row was scored by a different
                           model version than the components describe.

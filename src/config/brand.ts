@@ -5,11 +5,12 @@ export const brand = {
   name: "ALAC OS",
   shortName: "ALAC",
   tagline: "Know who to work, why they matter, and what to do next.",
-  // The Material 3 seed colour. Every surface, container, and state layer in
-  // the product is a tone derived from this one value, which is why it is the
-  // only colour stated here. Mirrored as --md-primary in globals.css.
+  // The interface accent, taken from alachrsolutions.com rather than chosen:
+  // it is the periwinkle the site sets every heading in. Mirrored as
+  // --alac-accent in globals.css.
   //
-  // It is the interface colour rather than the ALAC HR Solutions corporate
-  // navy: this is an internal operator tool, not a client facing surface.
-  color: "#6750a4",
+  // The corporate navy #1a2563 is the ground the product sits on rather than
+  // an accent, because navy text on a navy page cannot carry.
+  color: "#8ba8f5",
+  navy: "#1a2563",
 } as const;
