@@ -94,6 +94,26 @@ Reconciled against the tree on 18 Aug. Where a ticket was written before a decis
 | ALAC-46 | Dark instrument-panel redesign built around the score ladder: DESIGN.md rewritten, globals.css token layer, primitives and every screen restyled | done |
 | ALAC-47 | Material Design 3 retheme, seeded #6750A4. Light tonal surfaces, Roboto, pill controls, filled text fields, MD3 state layers and motion. Replaces the dark terminal theme end to end: DESIGN.md rewritten, single `--md-*` token set, TickScale retired for Meter, every screen restyled | done |
 
+## Command center, 19 Aug
+
+The workbook Adrian and Darwin actually run the desk from replaces the portfolio model. Priority and Final Score become read only source data, Top 25 and Next 25 become derived rankings, and the computed score moves to signal heat.
+
+| ID | Ticket | Status |
+| --- | --- | --- |
+| ALAC-48 | Dependency free xlsx reader with the self closing cell fix, plus `test:unit` | done |
+| ALAC-49 | Migration 0004: drop the portfolio model, add tam_accounts, heat_signals, performance_weeks. Repoint people | done |
+| ALAC-50 | `import:desk`: batched upserts, prune to mirror the workbook, honest counts, people rematch | done |
+| ALAC-51 | Desk query layer, tenant scoped, with the ranking rule in one place | done |
+| ALAC-52 | /command: next week against the 10 target, signal heat, Top 25 and Next 25, performance snapshot | done |
+| ALAC-53 | /queue and /queue/[id]: filters, and the READY FOR QC checklist evaluated per account | done |
+| ALAC-54 | /signals: the six component heat breakdown against the TAM score | done |
+| ALAC-55 | /performance: period rollup, conversion rates, Thursday review | done |
+| ALAC-56 | Migration runner checksums normalized content, so CRLF does not break every applied migration on Windows | done |
+| ALAC-57 | Write back: the action columns are read only in the app today. The desk still edits them in the workbook | todo |
+| ALAC-58 | Compute heat from raw inputs rather than importing the six components already scored | todo |
+| ALAC-59 | Surface the duplicate company in the source workbook (one company under two Record IDs) as a data quality panel | todo |
+| ALAC-60 | Full SourceWhale ingestion once the export schema is confirmed, replacing the provisional counters | todo |
+
 ## Phase 2, after 13 Aug
 
 Live signal ingestion from funding and job-board sources. Instantly, HeyReach, and Recruiterflow write-back. Scheduled cron re-scoring. Multi-user roles and invitations. Sequences and send tracking. Feedback loop: rejection notes and manual overrides fed back as few-shot examples so the engine learns the operator's judgement.

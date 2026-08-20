@@ -1,10 +1,13 @@
 # THIS REPOSITORY IS PUBLIC.
 # Client data must never be committed. See README.md, "Private data".
-# Real CSVs live outside this repo and are read via ALAC_DATA_DIR.
+# The real workbook and CSVs live outside this repo, read via ALAC_DATA_DIR.
 
 # Client data, any form, anywhere in the tree
 *.csv
 *.tsv
+*.xlsx
+*.xls
+*.xlsm
 /data/
 /outputs/
 /private/

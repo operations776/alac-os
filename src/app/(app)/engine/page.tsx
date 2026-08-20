@@ -1,5 +1,5 @@
 import { sql } from "@/lib/server/db";
-import { getOrgId } from "@/lib/server/queries/portfolio";
+import { getOrgId } from "@/lib/server/queries/desk";
 import {
   Badge, Blank, Card, CardHeader, EmptyState, PageHeader, Th, formatDate,
 } from "@/components/ui/primitives";

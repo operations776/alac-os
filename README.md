@@ -1,24 +1,28 @@
 # ALAC OS
 
-A business development intelligence layer for a defense and deep-tech recruiting firm.
+The desk command center for a defense and deep-tech recruiting firm.
 
-It answers four questions in order: who are we trying to win this year and quarter, which accounts matter most right now, exactly who should be contacted today, and why, with evidence attached to every answer. The goal is to remove decision fatigue, so the operator opens it and executes rather than opening it and deciding.
+It is the application form of the operating workbook the desk already runs on. Four screens, in the order the work happens: the **command board** is the picture, the **account queue** is where preparation happens one company at a time, **signal heat** says what just changed, and **performance** is the Thursday review of where the desk is losing time.
 
-It is not an ATS or a CRM. It ranks accounts, explains the ranking, and hands over the next action. Execution lives in the firm's outreach tooling.
+It is not an ATS or a CRM. It prepares accounts and hands over a decision. Execution lives in HeyReach and SourceWhale.
 
 ## How it works
 
-**Scores are deterministic. The model explains them.** A pure function scores every account 0 to 100 across five components (ICP fit, hiring signal, timing, relationship, revenue potential) and stores the full arithmetic. That runs over thousands of accounts in seconds, costs nothing, and is reproducible.
+**Two scores, and only one of them is ours.**
 
-A second pass asks an LLM to explain the top accounts: why this account, why now, what to do next, what the risks are. Every claim it makes must cite a signal id that was supplied to it. A response citing anything else is rejected. That rule is enforced in code, which is what makes the reasoning auditable instead of decorative.
+The **TAM final score** and its Priority 1/2/3 band are finalized upstream in the Master TAM. This app imports them and never writes them back. Top 25 and Next 25 are not stored tiers: they are ranked at read time, priority first and then final score, so a stored value can never drift away from the ranking that defines it.
 
-Tier changes are recommendations, never direct writes. A human approves every promotion and demotion.
+The **heat score** is the computed one. Each signal is scored out of 100 across six components, hiring urgency out of 30, ICP fit out of 20, capital out of 15, talent scarcity out of 15, access out of 10, and freshness out of 10. Every screen shows the six components next to the total, and says so when they disagree, which is what keeps the breakdown an audit trail instead of decoration.
+
+The number the desk acts on is the gap between them. A signal well above its account's TAM rank is a company whose timing has moved ahead of its qualification, and a third of the signal log is companies that have produced a signal before the TAM has caught up with them at all.
+
+**Preparation is a handover, not a status.** An account moves NOT STARTED to IN RESEARCH to READY FOR QC, and READY FOR QC is itself the request for a decision. The app evaluates that checklist per account rather than restating it, and says so when an account is marked ready with work still open.
 
 ## Private data
 
 **This repository is public. Client data must never be committed.**
 
-No company names, contact names, emails, or suppression lists appear in any file here, including fixtures and tests. Real CSVs live outside the repo and are read at import time from the path in `ALAC_DATA_DIR`. `.gitignore` blocks `*.csv` and `data/` at every level. Test fixtures use synthetic companies.
+No company names, contact names, emails, or suppression lists appear in any file here, including fixtures and tests. The real workbook lives outside the repo and is read at import time from the path in `ALAC_DATA_DIR`. `.gitignore` blocks `*.csv`, `*.xlsx` and `data/` at every level. Test fixtures are synthetic.
 
 If you are adding a fixture, invent the data. Do not copy a real row "just for now".
 
@@ -35,7 +39,7 @@ The database is Neon Postgres. `DATABASE_URL` and `DATABASE_URL_UNPOOLED` come f
 
 Migrations are numbered SQL files in `migrations/`, applied by `npm run migrate` over the unpooled connection and recorded in `schema_migrations`. Each one runs in a transaction, so a failure leaves nothing half applied. Migrations always deploy before the code that reads them.
 
-Seed data is loaded with `npm run import:tam` and `npm run import:people`, both of which read from `ALAC_DATA_DIR` and are safe to run twice.
+Data is loaded with `npm run import:desk`, which reads the Desk Command Center workbook from `ALAC_DATA_DIR` and is safe to run twice. It mirrors the workbook rather than only adding to it, so a company dropped from the queue is pruned here too.
 
 ## Commands
 
@@ -46,9 +50,8 @@ Seed data is loaded with `npm run import:tam` and `npm run import:people`, both 
 | `npm run typecheck` | Types only |
 | `npm run lint` | ESLint |
 | `npm run verify:ai` | Confirm the model key and rate table resolve |
-| `npm run import:tam` | Load accounts |
-| `npm run import:people` | Load contacts and match them to accounts |
-| `npm run score` | Score every account, then run the reasoning pass |
+| `npm run import:desk` | Load the workbook: account queue, signal log, performance |
+| `npm run test:unit` | The xlsx parser checks, no database needed |
 | `npm run test:e2e` | Playwright |
 
 ## Documentation

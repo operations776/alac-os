@@ -1,0 +1,6 @@
+# SQL and shell scripts stay LF in the working tree. The migration runner
+# checksums content, and CRLF rewrites used to break every applied migration
+# on Windows. The runner normalizes too, this keeps diffs clean as well.
+*.sql text eol=lf
+*.mjs text eol=lf
+*.md  text eol=lf

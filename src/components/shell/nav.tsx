@@ -4,10 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
-  Building2,
-  ClipboardCheck,
-  Columns3,
+  Flame,
   LayoutGrid,
+  ListChecks,
   LogOut,
   Users,
 } from "lucide-react";
@@ -15,21 +14,25 @@ import { brand } from "@/config/brand";
 
 // Lucide only, 16px, stroke 1.5. No emoji. DESIGN.md section 7.
 //
-// `exact` exists because /portfolio/review is a child of /portfolio. Without
-// it the prefix match lights up both rows at once and the sidebar stops
-// telling you where you are.
+// The tabs of the desk, in the order the operating instructions put them:
+// the board is the picture, the queue is where the work happens, signals say
+// what changed, performance is the Thursday review.
+//
+// `exact` exists for any row that is a parent of another. It is false
+// everywhere here because no two routes nest, but it stays because the moment
+// one does, a prefix match lights up both rows and the rail stops telling you
+// where you are.
 //
 // The channel index numbers that used to sit in the left column are gone with
 // the terminal theme: a Material navigation drawer marks its selected item
 // with a tonal pill, which is a stronger signal than a lit digit and does not
 // need a second column to track down.
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", Icon: LayoutGrid, exact: false },
-  { href: "/portfolio", label: "Portfolio", Icon: Columns3, exact: true },
-  { href: "/portfolio/review", label: "Review", Icon: ClipboardCheck, exact: false },
-  { href: "/accounts", label: "Accounts", Icon: Building2, exact: false },
+  { href: "/command", label: "Command board", Icon: LayoutGrid, exact: false },
+  { href: "/queue", label: "Account queue", Icon: ListChecks, exact: false },
+  { href: "/signals", label: "Signal heat", Icon: Flame, exact: false },
+  { href: "/performance", label: "Performance", Icon: Activity, exact: false },
   { href: "/people", label: "People", Icon: Users, exact: false },
-  { href: "/engine", label: "Engine", Icon: Activity, exact: false },
 ];
 
 /**

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { sql } from "@/lib/server/db";
-import { getOrgId } from "@/lib/server/queries/portfolio";
+import { getOrgId } from "@/lib/server/queries/desk";
 import {
   Badge, Blank, Card, EmptyState, PageHeader, Th, formatDate,
 } from "@/components/ui/primitives";
@@ -19,7 +19,8 @@ type PersonRow = {
   connected_on: string | null;
   account_id: string | null;
   account_name: string | null;
-  open_roles_count: number | null;
+  final_score: string | null;
+  priority: string | null;
 };
 
 export default async function PeoplePage() {
@@ -34,17 +35,19 @@ export default async function PeoplePage() {
     );
   }
 
-  // Matched contacts at hiring companies first: that is the actionable end of
-  // the list, and an unmatched contact cannot be worked from here.
+  // Matched contacts at the highest ranked companies first: that is the
+  // actionable end of the list, and an unmatched contact cannot be worked from
+  // here. Ordering follows the queue's own rule, priority then final score.
   const rows = (await sql`
     select p.id, p.full_name, p.title, p.company_text, p.linkedin_url,
            p.seniority, p.is_decision_maker, p.connected_on, p.account_id,
-           a.company_name as account_name, a.open_roles_count
+           a.company_name as account_name, a.final_score, a.priority::text as priority
       from people p
-      left join accounts a on a.id = p.account_id
+      left join tam_accounts a on a.id = p.account_id
      where p.org_id = ${orgId}
-     order by (a.open_roles_count is not null and a.open_roles_count > 0) desc,
-              a.latest_score desc nulls last,
+     order by (p.account_id is not null) desc,
+              a.priority nulls last,
+              a.final_score desc nulls last,
               p.connected_on desc nulls last
      limit 100
   `) as PersonRow[];
@@ -65,9 +68,9 @@ export default async function PeoplePage() {
         title={`${s.total.toLocaleString()} first degree contacts`}
         lede={
           <>
-            {s.matched} are matched to a company in the portfolio and {s.decision_makers} hold a decision
-            making title. These need no introduction, which is why they are the shortest path to a
-            conversation.
+            {s.matched} are matched to a company in the account queue and {s.decision_makers} hold a
+            decision making title. These need no introduction, which is why they are the shortest path
+            to a conversation.
           </>
         }
       />
@@ -86,7 +89,7 @@ export default async function PeoplePage() {
                   <Th>Name</Th>
                   <Th>Title</Th>
                   <Th>Company</Th>
-                  <Th align="right">Open roles</Th>
+                  <Th align="right">TAM score</Th>
                   <Th>Connected</Th>
                 </tr>
               </thead>
@@ -119,13 +122,13 @@ export default async function PeoplePage() {
                     </td>
                     <td className="px-4 py-2.5 align-top text-[13.5px]">
                       {p.account_id ? (
-                        <Link href={`/accounts/${p.account_id}`} className="link font-medium">
+                        <Link href={`/queue/${p.account_id}`} className="link font-medium">
                           {p.account_name}
                         </Link>
                       ) : p.company_text ? (
                         <span
                           className="text-[var(--md-on-surface-muted)]"
-                          title="Not matched to a portfolio account"
+                          title="Not matched to a company in the account queue"
                         >
                           {p.company_text}
                         </span>
@@ -134,7 +137,7 @@ export default async function PeoplePage() {
                       )}
                     </td>
                     <td className="readout px-4 py-2.5 text-right align-top text-[13.5px]">
-                      {p.open_roles_count ? p.open_roles_count : <Blank />}
+                      {p.final_score != null ? Math.round(Number(p.final_score)) : <Blank />}
                     </td>
                     <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--md-on-surface-variant)]">
                       {formatDate(p.connected_on) ?? <Blank />}

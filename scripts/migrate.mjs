@@ -49,7 +49,19 @@ try {
   let count = 0;
   for (const filename of files) {
     const body = await readFile(path.join(dir, filename), "utf8");
-    const checksum = createHash("sha256").update(body).digest("hex").slice(0, 16);
+    // Checksum the content with line endings normalized, not the raw bytes.
+    //
+    // On Windows with core.autocrlf, git rewrites these files to CRLF in the
+    // working tree. The bytes change, the SQL does not, and a byte checksum
+    // then reports every already-applied migration as tampered with, which
+    // blocks all future migrations on that machine. Normalizing first makes
+    // the checksum mean "did the SQL change", which is what it is guarding.
+    //
+    // This keeps matching the checksums stored by earlier runs: those files
+    // were LF when applied, and normalizing a CRLF copy reproduces exactly
+    // that LF content.
+    const normalized = body.replace(/\r\n/g, "\n");
+    const checksum = createHash("sha256").update(normalized).digest("hex").slice(0, 16);
     const previous = seen.get(filename);
 
     if (previous) {
