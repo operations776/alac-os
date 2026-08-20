@@ -84,7 +84,7 @@ Reconciled against the tree on 18 Aug. Where a ticket was written before a decis
 | ALAC-41 | /people list exists. /people/[id] not built | todo |
 | ALAC-42 | SourceWhale read sync + CSV bridge through the same code path | todo |
 | ALAC-43 | Playwright specs for portfolio-review, decision-card, dashboard. Dep installed, no config and no specs yet. Daniyal runs them | todo |
-| ALAC-44 | Deploy to Vercel, env vars configured, migrations verified ahead of code | todo |
+| ALAC-44 | Deploy to Vercel, env vars configured, migrations verified ahead of code. Live at alac-os.vercel.app | done |
 | ALAC-45 | Dress rehearsal: the full demo story on the deployed URL | todo |
 
 ## Design
