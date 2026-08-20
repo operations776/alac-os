@@ -110,7 +110,7 @@ The workbook Adrian and Darwin actually run the desk from replaces the portfolio
 | ALAC-55 | /performance: period rollup, conversion rates, Thursday review | done |
 | ALAC-56 | Migration runner checksums normalized content, so CRLF does not break every applied migration on Windows | done |
 | ALAC-57 | Write back: the action columns are read only in the app today. The desk still edits them in the workbook | todo |
-| ALAC-58 | Compute heat from raw inputs rather than importing the six components already scored | doing |
+| ALAC-58 | Compute heat from raw inputs rather than importing the six components already scored | done |
 
 ## Signal pipeline, 20 Aug
 
@@ -122,9 +122,9 @@ fetchers are written to fill it.
 | --- | --- | --- |
 | ALAC-62 | Deterministic heat scorer: six components, terms, honest nulls, coverage. 14 checks | done |
 | ALAC-63 | Fiber AI client and `verify:fiber`, free endpoints only, key never logged | done |
-| ALAC-64 | Confirm the key and read the tracker rule catalogue. **Needs `FIBER_API_KEY`** | todo |
-| ALAC-65 | Push the 3,031 accounts that have a LinkedIn slug into a Fiber tracker company list | todo |
-| ALAC-66 | `signals:pull`: poll tracker signals, match to an account, score, upsert. Validate against `fire-dummy` first | todo |
+| ALAC-64 | Confirm the key and read the tracker rule catalogue. 25 company rules, 27 person | done |
+| ALAC-65 | `signals:setup`: tracker list, 11 rules, plan mode by default. Scoped to the 960 working accounts, not the P3 long tail | done |
+| ALAC-66 | `signals:pull`: poll, parse, match, score, upsert. Validated end to end on 55 dummy signals | done |
 | ALAC-67 | Job postings for signalled accounts only, count before searching, to feed hiring urgency and talent scarcity | todo |
 | ALAC-68 | Exa pass: narrative and a citable source URL per signal | todo |
 | ALAC-69 | OpenAI pass: `recommended_move`, grounded, cites the stored source or is rejected | todo |

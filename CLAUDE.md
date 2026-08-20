@@ -47,6 +47,8 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 - **Regex-parsing an xlsx cell.** A cell has two forms, `<c r="K5" s="38"/>` and `<c r="M5" t="s"><v>501</v></c>`. A naive `/<c([^>]*)>([\s\S]*?)<\/c>/` lets the empty self closing cell swallow the next one: the value lands under the wrong column letter and its shared string is never resolved, so a status arrives as the integer 501. Every row still parses, so the corruption is silent. Use `openWorkbook` in `src/lib/server/import/xlsx.mjs`, and keep `npm run test:unit` green.
 - **One statement per row against a remote database.** 3,045 accounts as 3,045 round trips is an import that runs for minutes. Batch with `insertChunked`, which bounds the chunk against the 65535 parameter ceiling.
 - **An import that only adds.** The workbook is the source of truth, so the import mirrors it: it prunes anything it did not see this run. Without that, a company dropped from the queue lives on, and a change to a row's key leaves the old row behind as a duplicate company.
+- **Writing a payload parser from the docs alone.** Fiber's `preview-signal` and its live `listTrackerSignals` do not return identical shapes: the preview nests under `signal` with `entity.identifiers`, the poll is flat, and `recent_layoffs` carries `numLaidOff` where the example implied `count`. The parser handles both and the fixtures in `test-fiber-signals.mjs` are copied from real responses. Read the live payload before trusting an example.
+- **Assuming one auth channel.** Fiber documents apiKey as query on GET and body on POST, but `fire-dummy` validates it as a required *query* parameter on a POST and rejects a query-only call as unauthenticated. The client sends query, body and `x-api-key` on every request; the extras are inert where unused.
 
 ## Commands
 
@@ -59,7 +61,10 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 | `npm run migrate` | Apply pending migrations over the unpooled connection |
 | `npm run verify:ai` | Confirm the OpenAI key and model rates resolve |
 | `npm run import:desk` | Load the Desk Command Center workbook from `ALAC_DATA_DIR`: account queue, signal log, performance. Mirrors the workbook, so it prunes what it does not see |
-| `npm run test:unit` | The xlsx parser checks. Fast, no database |
+| `npm run verify:fiber` | Confirm the Fiber key and print the tracker rule catalogue. Free endpoints only |
+| `npm run signals:setup` | Plan the Fiber tracker list. Add `-- --apply` to create it, `-- --dummy` for the integration test list |
+| `npm run signals:pull` | Poll, parse, match, score and record signals. `-- --dry` writes nothing, `-- --dummy` uses test signals |
+| `npm run test:unit` | The xlsx, heat scorer and signal parser checks. Fast, no database, no network |
 | `npm run test:e2e` | Playwright. **Daniyal runs this, not Claude.** Write the specs, hand him the verification step. |
 
 ## Reference

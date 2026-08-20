@@ -13,8 +13,10 @@
     "migrate": "node scripts/migrate.mjs",
     "create:user": "node scripts/create-user.mjs",
     "import:desk": "node scripts/import-command-center.mjs",
-    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs",
-    "verify:fiber": "node scripts/verify-fiber.mjs"
+    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs && node scripts/test-fiber-signals.mjs",
+    "verify:fiber": "node scripts/verify-fiber.mjs",
+    "signals:setup": "node scripts/signals-setup.mjs",
+    "signals:pull": "node scripts/signals-pull.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

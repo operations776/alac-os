@@ -7,10 +7,22 @@
 // endpoints, and a pinned SDK is a larger thing to keep current than four
 // fetch calls. If the surface grows past a dozen operations, revisit that.
 //
-// Auth is unusual and worth stating once: the API key goes in the QUERY STRING
-// for GET operations and in the JSON BODY for POST operations. There is no
-// Authorization header. That means the key can end up in a URL, so it is never
-// logged: `redact` scrubs it from anything this module prints or throws.
+// Auth is unusual and worth stating once. Fiber documents the key as query
+// string for GET and JSON body for POST, with `x-api-key` and Bearer as
+// alternatives. In practice at least one endpoint needs BOTH: POST
+// /v1/tracker/fire-dummy declares apiKey as a REQUIRED QUERY parameter, so
+// omitting it from the query fails schema validation with a 400, while sending
+// it only in the query fails auth with a 401 "No API key provided". The
+// combination succeeds.
+//
+// Rather than special casing that one route, this client sends the key on every
+// channel that applies: query string always, body on writes, and the x-api-key
+// header always. Fiber states body and query take precedence when several are
+// present, so the extra channels are inert where they are not needed and the
+// client stops caring which endpoint wants which.
+//
+// It also means the key reaches a URL, so it is never logged: `redact` scrubs
+// it from anything this module prints or throws.
 
 const BASE = "https://api.fiber.ai";
 
@@ -44,15 +56,19 @@ export class FiberError extends Error {
 async function call(operation, path, { key, method = "POST", query = {}, body = {}, retries = 2 } = {}) {
   if (!key) throw new FiberError("FIBER_API_KEY is not set", { operation });
 
+  // Query on every method, not just GET. See the note at the top of the file:
+  // fire-dummy validates apiKey as a required query parameter even though it
+  // is a POST.
   const url = new URL(path, BASE);
-  if (method === "GET") {
-    url.searchParams.set("apiKey", key);
-    for (const [k, v] of Object.entries(query)) {
-      if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
-    }
+  url.searchParams.set("apiKey", key);
+  for (const [k, v] of Object.entries(query)) {
+    if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
   }
 
-  const init = { method, headers: { accept: "application/json" } };
+  const init = {
+    method,
+    headers: { accept: "application/json", "x-api-key": key },
+  };
   if (method !== "GET") {
     init.headers["content-type"] = "application/json";
     init.body = JSON.stringify({ apiKey: key, ...body });
@@ -168,6 +184,16 @@ export const searchJobPostings = (key, slugs, extra = {}) =>
       },
     },
   });
+
+/**
+ * Fire one synthetic signal per dummy rule on a list.
+ *
+ * Free, no cooldown, and never evaluated during real monitoring, which makes it
+ * the way to validate the whole parse, match, score and write path without
+ * waiting for a company to actually raise money.
+ */
+export const fireTrackerDummy = (key, listId) =>
+  call("fireTrackerDummy", `/v1/tracker/fire-dummy/${encodeURIComponent(listId)}`, { key });
 
 /** How many postings a search would return. Use before spending on the search. */
 export const countJobPostings = (key, slugs, extra = {}) =>
