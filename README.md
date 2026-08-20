@@ -61,5 +61,6 @@ Data is loaded with `npm run import:desk`, which reads the Desk Command Center w
 | `ARCHITECTURE.md` | System spec: stack, tenancy, the ten data laws, the decision engine, env table |
 | `DESIGN.md` | UI contract: palette, type, spacing, component rules |
 | `AI.md` | Every model call, prompt version, cost, and the grounding rules |
+| `SCORING.md` | How targets are chosen, in plain English. Which 25 to work, how a company is scored, which signals are watched |
 | `CLAUDE.md` | Operating manual for agents working in this repo |
 | `TICKETS.md` | Work log |
