@@ -110,7 +110,26 @@ The workbook Adrian and Darwin actually run the desk from replaces the portfolio
 | ALAC-55 | /performance: period rollup, conversion rates, Thursday review | done |
 | ALAC-56 | Migration runner checksums normalized content, so CRLF does not break every applied migration on Windows | done |
 | ALAC-57 | Write back: the action columns are read only in the app today. The desk still edits them in the workbook | todo |
-| ALAC-58 | Compute heat from raw inputs rather than importing the six components already scored | todo |
+| ALAC-58 | Compute heat from raw inputs rather than importing the six components already scored | doing |
+
+## Signal pipeline, 20 Aug
+
+Replacing the hand curated signal log with a real one. The order matters: the
+scorer defines the input contract, so it is built and tested first and the
+fetchers are written to fill it.
+
+| ID | Ticket | Status |
+| --- | --- | --- |
+| ALAC-62 | Deterministic heat scorer: six components, terms, honest nulls, coverage. 14 checks | done |
+| ALAC-63 | Fiber AI client and `verify:fiber`, free endpoints only, key never logged | done |
+| ALAC-64 | Confirm the key and read the tracker rule catalogue. **Needs `FIBER_API_KEY`** | todo |
+| ALAC-65 | Push the 3,031 accounts that have a LinkedIn slug into a Fiber tracker company list | todo |
+| ALAC-66 | `signals:pull`: poll tracker signals, match to an account, score, upsert. Validate against `fire-dummy` first | todo |
+| ALAC-67 | Job postings for signalled accounts only, count before searching, to feed hiring urgency and talent scarcity | todo |
+| ALAC-68 | Exa pass: narrative and a citable source URL per signal | todo |
+| ALAC-69 | OpenAI pass: `recommended_move`, grounded, cites the stored source or is rejected | todo |
+| ALAC-70 | Show coverage and gaps on the signal card, so a partially scored signal says so | todo |
+| ALAC-71 | Schedule the pull, and reconcile against the workbook log until the desk trusts it | todo |
 | ALAC-59 | Surface the duplicate company in the source workbook (one company under two Record IDs) as a data quality panel | todo |
 | ALAC-60 | Full SourceWhale ingestion once the export schema is confirmed, replacing the provisional counters | todo |
 

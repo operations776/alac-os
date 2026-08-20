@@ -10,14 +10,11 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "verify:ai": "node scripts/verify-ai.mjs",
-    "import:tam": "node scripts/import-tam.mjs",
-    "import:people": "node scripts/import-connections.mjs",
-    "score": "node scripts/score.mjs && node scripts/reason.mjs",
-    "reason": "node scripts/reason.mjs",
     "migrate": "node scripts/migrate.mjs",
     "create:user": "node scripts/create-user.mjs",
     "import:desk": "node scripts/import-command-center.mjs",
-    "test:unit": "node scripts/test-xlsx.mjs"
+    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs",
+    "verify:fiber": "node scripts/verify-fiber.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
