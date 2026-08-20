@@ -35,10 +35,10 @@ const PREP = [
 
 const MOTIONS = [
   { value: "", label: "Any approach" },
-  { value: "TBD", label: "TBD" },
+  { value: "TBD", label: "Not decided" },
   { value: "LIVE LEAD", label: "Live lead" },
-  { value: "GENERAL BD", label: "General BD" },
-  { value: "MPC WEDGE", label: "MPC wedge" },
+  { value: "GENERAL BD", label: "New business" },
+  { value: "MPC WEDGE", label: "Lead with a candidate" },
   { value: "NURTURE", label: "Nurture" },
   { value: "HOLD", label: "Hold" },
 ];

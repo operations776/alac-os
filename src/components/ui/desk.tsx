@@ -26,8 +26,21 @@ const PREP_TONE: Record<PrepStatus, Tone> = {
   HOLD: "warn",
 };
 
+/**
+ * Where the research has got to. Keys are the database enum, labels are what
+ * the reader sees. "QC" was quality control, which is only obvious to whoever
+ * named the column.
+ */
+const PREP_LABEL: Record<PrepStatus, string> = {
+  "NOT STARTED": "Not started",
+  "IN RESEARCH": "Being researched",
+  "READY FOR QC": "Needs review",
+  APPROVED: "Approved",
+  HOLD: "On hold",
+};
+
 export function PrepChip({ status }: { status: PrepStatus }) {
-  return <Badge tone={PREP_TONE[status] ?? "neutral"}>{status}</Badge>;
+  return <Badge tone={PREP_TONE[status] ?? "neutral"}>{PREP_LABEL[status] ?? status}</Badge>;
 }
 
 /**
@@ -44,11 +57,32 @@ const MOTION_TONE: Record<Motion, Tone> = {
   HOLD: "warn",
 };
 
+/**
+ * How the account gets approached, in words rather than desk shorthand.
+ *
+ * The keys are a database enum and are matched on in filters, so they are
+ * never rewritten. Only the label the reader sees changes. "MPC" is Most
+ * Placeable Candidate, which is trade language: leading with a specific person
+ * rather than with the agency.
+ */
+const MOTION_LABEL: Record<Motion, string> = {
+  TBD: "Not decided",
+  "LIVE LEAD": "Live lead",
+  "GENERAL BD": "New business",
+  "MPC WEDGE": "Lead with a candidate",
+  NURTURE: "Nurture",
+  HOLD: "On hold",
+};
+
 export function MotionChip({ motion }: { motion: Motion }) {
   if (motion === "TBD") {
-    return <span className="text-[12.5px] text-[var(--alac-text-3)]">TBD</span>;
+    return (
+      <span className="text-[12.5px] text-[var(--alac-text-3)]" title="No approach chosen yet">
+        {MOTION_LABEL.TBD}
+      </span>
+    );
   }
-  return <Badge tone={MOTION_TONE[motion] ?? "neutral"}>{motion}</Badge>;
+  return <Badge tone={MOTION_TONE[motion] ?? "neutral"}>{MOTION_LABEL[motion] ?? motion}</Badge>;
 }
 
 /** Priority. Source data from the TAM, never set in this app. */
@@ -62,9 +96,16 @@ export function PriorityChip({ priority }: { priority: Priority | null }) {
 }
 
 /**
- * The two execution layers, shown together and in order. They are separate
- * columns in the workbook because LinkedIn warming happens before the BD
- * sequence, so showing them as one status would lose the ordering.
+ * The two outreach steps, shown together and in order.
+ *
+ * They are separate columns in the workbook because LinkedIn warming happens
+ * before the email sequence, so collapsing them into one status would lose the
+ * ordering that matters.
+ *
+ * Labelled "LinkedIn" and "Email" rather than by tool name. The tools are
+ * HeyReach and SourceWhale, and their initials were "HR" and "SW", which meant
+ * nothing to a reader and, worse, read as the company's own name: ALAC HR
+ * Solutions. The tool is an implementation detail of the step.
  */
 export function ExecutionStages({
   heyreach,
@@ -74,33 +115,31 @@ export function ExecutionStages({
   sourcewhale: string;
 }) {
   const live = (s: string) => s !== "NOT LOADED";
+  const chip = (on: boolean) =>
+    `rounded-[var(--alac-radius-sm)] px-2 py-0.5 text-[11px] font-medium ${
+      on
+        ? "bg-[var(--alac-surface-2)] text-[var(--alac-text-2)]"
+        : "bg-[var(--alac-ground)] text-[var(--alac-text-3)]"
+    }`;
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
       <span
-        title={`HeyReach: ${heyreach}`}
-        className={`rounded-[var(--alac-radius-sm)] px-2 py-0.5 text-[11px] font-medium ${
-          live(heyreach)
-            ? "bg-[var(--alac-surface-2)] text-[var(--alac-text-2)]"
-            : "bg-[var(--alac-ground)] text-[var(--alac-text-3)]"
-        }`}
+        title={`LinkedIn, in HeyReach: ${live(heyreach) ? heyreach : "not loaded yet"}`}
+        className={chip(live(heyreach))}
       >
-        HR
+        LinkedIn
       </span>
       <span aria-hidden="true" className="text-[var(--alac-text-3)]">
         &rsaquo;
       </span>
       <span
-        title={`SourceWhale: ${sourcewhale}`}
-        className={`rounded-[var(--alac-radius-sm)] px-2 py-0.5 text-[11px] font-medium ${
-          live(sourcewhale)
-            ? "bg-[var(--alac-surface-2)] text-[var(--alac-text-2)]"
-            : "bg-[var(--alac-ground)] text-[var(--alac-text-3)]"
-        }`}
+        title={`Email, in SourceWhale: ${live(sourcewhale) ? sourcewhale : "not loaded yet"}`}
+        className={chip(live(sourcewhale))}
       >
-        SW
+        Email
       </span>
       <span className="sr-only">
-        HeyReach {heyreach}, then SourceWhale {sourcewhale}
+        LinkedIn {heyreach}, then email {sourcewhale}
       </span>
     </span>
   );
