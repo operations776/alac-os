@@ -114,6 +114,13 @@ export default async function SignalsPage() {
                       <p className="prose-measure mt-2.5 text-[14px] leading-[1.6]">
                         {s.what_happened}
                       </p>
+                      {/* The full account of what changed. One line is enough
+                          to sort the board, not enough to decide from. */}
+                      {s.detail ? (
+                        <p className="prose-measure mt-2 text-[13px] leading-[1.65] text-[var(--alac-text-2)]">
+                          {s.detail}
+                        </p>
+                      ) : null}
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {s.the_number ? (

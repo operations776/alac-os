@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getOrgId, marketMap, marketCounts, type BandRow } from "@/lib/server/queries/desk";
-import { Card, EmptyState, NoticeLine, PageHeader, Stat } from "@/components/ui/primitives";
+import { Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { QuickLook } from "@/components/ui/quick-look";
 
 export const dynamic = "force-dynamic";
@@ -72,23 +72,16 @@ export default async function TargetsPage({
         <Stat label="Work now" value={counts.now ?? 0} hint="this week" />
         <Stat label="Up next" value={counts.next ?? 0} />
         <Stat label="Backlog" value={counts.backlog ?? 0} />
+        {/* Contacts sourced, not websites known. Every banded company now has
+            a website, so that count only ever read 960 of 960 and told nobody
+            anything. What is actually still missing is people. */}
         <Stat
-          label="Websites known"
-          value={`${counts.with_domain ?? 0} of ${counts.mapped ?? 0}`}
-          hint="needed to find people"
-          tone={(counts.with_domain ?? 0) < (counts.mapped ?? 0) ? "warn" : undefined}
+          label="Contacts sourced"
+          value={counts.with_targets ?? 0}
+          hint={`of ${counts.mapped ?? 0} companies`}
         />
       </div>
 
-      {(counts.with_domain ?? 0) < (counts.mapped ?? 0) ? (
-        <div className="mb-5">
-          <NoticeLine>
-            {(counts.mapped ?? 0) - (counts.with_domain ?? 0)} companies have no website on file yet.
-            Finding people at a company needs its real website, so those rows show the ranking but no
-            contacts until it is resolved.
-          </NoticeLine>
-        </div>
-      ) : null}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {BANDS.map((b) => (

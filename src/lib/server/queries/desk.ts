@@ -269,6 +269,8 @@ export type HeatRow = {
   heat_vs_tam: number | null;
   recommended_move: string | null;
   primary_source: string | null;
+  detail: string | null;
+  sources: string[];
 };
 
 /**
@@ -282,7 +284,7 @@ export async function signalHeat(orgId: string, limit = 100) {
            s.signal_date, s.what_happened, s.the_number, s.hq, s.best_contact,
            s.hiring_urgency, s.icp_fit, s.capital, s.talent_scarcity,
            s.access, s.freshness, s.heat_score, s.tam_final_score,
-           s.heat_vs_tam, s.recommended_move, s.primary_source
+           s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources
       from heat_signals s
       left join tam_accounts a on a.id = s.account_id
      where s.org_id = ${orgId}
@@ -297,7 +299,7 @@ export async function signalsForAccount(orgId: string, accountId: string) {
            s.signal_date, s.what_happened, s.the_number, s.hq, s.best_contact,
            s.hiring_urgency, s.icp_fit, s.capital, s.talent_scarcity,
            s.access, s.freshness, s.heat_score, s.tam_final_score,
-           s.heat_vs_tam, s.recommended_move, s.primary_source
+           s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources
       from heat_signals s
      where s.org_id = ${orgId} and s.account_id = ${accountId}
      order by s.signal_date desc nulls last
@@ -427,13 +429,64 @@ export type TargetRow = {
  * path to a conversation is a person who will recognise the sender.
  */
 export async function targetsForAccount(orgId: string, accountId: string) {
+  // Sourced contacts AND the warm network, as one ranked list.
+  //
+  // This used to read account_targets alone, which meant 109 accounts showed
+  // "no targets sourced" while the operator already knew people there. The
+  // warm network is the better list, not a footnote to it: someone who will
+  // recognise the sender outranks a stranger with a better title.
+  //
+  // A warm contact that has also been sourced appears once. account_targets
+  // already carries is_warm for exactly that case, so the union filters the
+  // people table down to whoever the vendor did not return.
   return (await sql`
     select t.id, t.full_name, t.title, t.linkedin_url, t.location, t.email,
            t.email_status, t.email_revealed, t.rank_score, t.rank_terms,
            t.is_warm, t.source::text as source
       from account_targets t
      where t.org_id = ${orgId} and t.account_id = ${accountId}
-     order by t.rank_score desc nulls last, t.full_name
+
+    union all
+
+    select p.id, p.full_name, p.title, p.linkedin_url, null as location,
+           null as email, null as email_status, false as email_revealed,
+           -- Warm contacts are ranked by ROLE, not just by the decision maker
+           -- flag. Nearly every senior contact carries that flag, so ranking
+           -- on it alone left six people tied at 95 and the tiebreak was
+           -- alphabetical: it put a Head of Marketing top at a company hiring
+           -- twenty engineers. Marketing does not own the requisition.
+           --
+           -- The bands mirror the sourced ranking, so a known talent lead and
+           -- a sourced one sort against each other sensibly.
+           (case
+              when p.title ~* 'talent|recruit|people ops|head of people' then 95
+              when p.title ~* 'engineer|technical|cto|chief technology' then 88
+              when p.title ~* 'chief|founder|ceo|coo|president' then 82
+              when p.title ~* 'program|product|operations' then 74
+              when p.is_decision_maker then 70
+              else 55
+            end) as rank_score,
+           (case
+              when p.title ~* 'talent|recruit|people ops|head of people'
+                then '["Already a first degree connection","Owns hiring"]'::jsonb
+              when p.title ~* 'engineer|technical|cto|chief technology'
+                then '["Already a first degree connection","Runs the team hiring"]'::jsonb
+              when p.title ~* 'chief|founder|ceo|coo|president'
+                then '["Already a first degree connection","Executive"]'::jsonb
+              else '["Already a first degree connection"]'::jsonb
+            end) as rank_terms,
+           true as is_warm,
+           'network' as source
+      from people p
+     where p.org_id = ${orgId} and p.account_id = ${accountId}
+       and not exists (
+         select 1 from account_targets t2
+          where t2.account_id = p.account_id
+            and lower(trim(trailing '/' from t2.linkedin_url)) =
+                lower(trim(trailing '/' from p.linkedin_url))
+       )
+
+     order by rank_score desc nulls last, full_name
      limit 25
   `) as TargetRow[];
 }
@@ -662,8 +715,60 @@ export async function marketCounts(orgId: string) {
       count(*) filter (where work_band = 'backlog')::int  as backlog,
       count(*) filter (where work_band is not null)::int  as mapped,
       count(*) filter (where domain is not null)::int     as with_domain,
+      count(*) filter (where exists (select 1 from account_targets t where t.account_id = tam_accounts.id))::int as with_targets,
       max(banded_at)                                      as last_mapped
       from tam_accounts where org_id = ${orgId}
-  `) as { now: number; next: number; backlog: number; mapped: number; with_domain: number; last_mapped: string | null }[];
+  `) as { now: number; next: number; backlog: number; mapped: number; with_domain: number; with_targets: number; last_mapped: string | null }[];
   return rows[0];
+}
+
+/**
+ * This week's hand kept counters.
+ *
+ * Returns every metric, including the ones never touched, so the screen shows
+ * a full row of zeros to click rather than appearing empty until first use.
+ */
+export async function manualMetrics(orgId: string) {
+  const rows = (await sql`
+    select metric, value
+      from manual_metrics
+     where org_id = ${orgId}
+       and week_starting = date_trunc('week', current_date)::date
+  `) as { metric: string; value: number }[];
+
+  const out: Record<string, number> = {
+    bd_calls: 0,
+    client_conversations: 0,
+    discoveries: 0,
+    qualified_opps: 0,
+    commercial_asks: 0,
+    searches_won: 0,
+    placements: 0,
+  };
+  for (const r of rows) out[r.metric] = r.value;
+  return out;
+}
+
+/** The drafted opening messages for an account. */
+export async function draftsForAccount(orgId: string, accountId: string) {
+  return (await sql`
+    select id, person_name, channel, body, opening_line, why_this_angle,
+           facts_used, sources, model, drafted_at, approved
+      from outreach_drafts
+     where org_id = ${orgId} and account_id = ${accountId}
+     order by drafted_at desc
+     limit 5
+  `) as {
+    id: string;
+    person_name: string;
+    channel: string;
+    body: string;
+    opening_line: string | null;
+    why_this_angle: string | null;
+    facts_used: string[];
+    sources: string[];
+    model: string | null;
+    drafted_at: string;
+    approved: boolean;
+  }[];
 }

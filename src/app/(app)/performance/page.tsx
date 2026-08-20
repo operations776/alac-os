@@ -1,10 +1,11 @@
 import Link from "next/link";
 import {
-  getOrgId, performanceRollup, performanceWeeks, type Period,
+  getOrgId, performanceRollup, performanceWeeks, manualMetrics, type Period,
 } from "@/lib/server/queries/desk";
 import {
   Card, CardHeader, EmptyState, NoticeLine, PageHeader, Stat, formatDate,
 } from "@/components/ui/primitives";
+import { Counter } from "@/components/ui/counter";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +49,10 @@ export default async function PerformancePage({
   }
 
   const period = (PERIODS.includes(params.period as Period) ? params.period : "WEEK") as Period;
-  const [roll, weeks] = await Promise.all([
+  const [roll, weeks, manual] = await Promise.all([
     performanceRollup(orgId, period),
     performanceWeeks(orgId, 12),
+    manualMetrics(orgId),
   ]);
 
   const rates = [
@@ -89,19 +91,41 @@ export default async function PerformancePage({
         </span>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-        <Stat label="BD calls" value={roll.bd_calls ?? "--"} />
-        <Stat label="Conversations" value={roll.client_conversations ?? "--"} />
-        <Stat label="Discoveries" value={roll.discoveries ?? "--"} />
-        <Stat label="Qualified opps" value={roll.qualified_opps ?? "--"} />
-        <Stat label="Commercial asks" value={roll.commercial_asks ?? "--"} />
-        <Stat label="Searches won" value={roll.searches_won ?? "--"} />
-        <Stat
-          label="Pipeline"
-          value={roll.pipeline_usd ? `$${Number(roll.pipeline_usd).toLocaleString()}` : "--"}
-        />
-        <Stat label="Placements" value={roll.placements ?? "--"} />
+      {/* Counted by hand, this week.
+          SourceWhale ingestion is not built, so the imported counters are all
+          zero and stay zero. These are the operator's own tally and nothing
+          overwrites them: they live in their own table, so a workbook re-import
+          cannot wipe a number somebody clicked. */}
+      <h2 className="display mb-2.5 text-[15px]">This week, counted by hand</h2>
+      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+        <Counter metric="bd_calls" label="BD calls" value={manual.bd_calls} />
+        <Counter metric="client_conversations" label="Conversations" value={manual.client_conversations} />
+        <Counter metric="discoveries" label="Discoveries" value={manual.discoveries} />
+        <Counter metric="qualified_opps" label="Qualified opps" value={manual.qualified_opps} />
+        <Counter metric="commercial_asks" label="Commercial asks" value={manual.commercial_asks} />
+        <Counter metric="searches_won" label="Searches won" value={manual.searches_won} />
+        <Counter metric="placements" label="Placements" value={manual.placements} />
       </div>
+      <p className="mb-7 text-[12px] text-[var(--alac-text-3)]">
+        Resets to a new row every Monday. Kept separately from the imported numbers, so nothing
+        here is overwritten when the workbook is reloaded.
+      </p>
+
+      {/* The imported numbers, unchanged and read only. */}
+      {(roll.weeks ?? 0) > 0 ? (
+        <>
+          <h2 className="display mb-2.5 text-[15px]">Reported by SourceWhale</h2>
+          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Stat label="BD calls" value={roll.bd_calls ?? "--"} />
+            <Stat label="Conversations" value={roll.client_conversations ?? "--"} />
+            <Stat label="Discoveries" value={roll.discoveries ?? "--"} />
+            <Stat
+              label="Pipeline"
+              value={roll.pipeline_usd ? `$${Number(roll.pipeline_usd).toLocaleString()}` : "--"}
+            />
+          </div>
+        </>
+      ) : null}
 
       <div className="mb-7">
         <Card>

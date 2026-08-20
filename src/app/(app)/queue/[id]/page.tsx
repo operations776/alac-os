@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import {
   getOrgId, accountById, signalsForAccount, peopleForAccount, PRIORITY_LABEL,
   targetsForAccount, rolesForAccount, accountPackage, briefForAccount,
+  draftsForAccount,
 } from "@/lib/server/queries/desk";
 import {
   Badge, Card, CardHeader, EmptyState, GaugeRow, NoticeLine,
@@ -14,6 +15,7 @@ import {
   PriorityChip,
 } from "@/components/ui/desk";
 import { TargetList, RoleList, Brief } from "@/components/ui/targets";
+import { DraftList } from "@/components/ui/drafts";
 
 export const dynamic = "force-dynamic";
 
@@ -47,13 +49,14 @@ export default async function QueueAccountPage({
   const account = await accountById(orgId, id);
   if (!account) notFound();
 
-  const [signals, people, targets, roles, pkg, brief] = await Promise.all([
+  const [signals, people, targets, roles, pkg, brief, drafts] = await Promise.all([
     signalsForAccount(orgId, account.id),
     peopleForAccount(orgId, account.id),
     targetsForAccount(orgId, account.id),
     rolesForAccount(orgId, account.id),
     accountPackage(orgId, account.id),
     briefForAccount(orgId, account.id),
+    draftsForAccount(orgId, account.id),
   ]);
 
   const checks = qcChecklist(account);
@@ -193,6 +196,20 @@ export default async function QueueAccountPage({
             <Brief brief={brief} />
           </Card>
 
+          {/* The drafted message. Written from the research, sent by a
+              human. There is no send button anywhere on this screen. */}
+          <Card>
+            <CardHeader
+              title="The first message"
+              sub={
+                drafts.length > 0
+                  ? "Researched, not templated. Copy it and send it yourself"
+                  : "Nothing drafted yet"
+              }
+            />
+            <DraftList drafts={drafts} />
+          </Card>
+
           {/* Who to contact. The question the desk is actually asking. */}
           <Card>
             <CardHeader
@@ -252,6 +269,14 @@ export default async function QueueAccountPage({
                       <p className="prose-measure mt-2 text-[13.5px] leading-[1.6]">
                         {s.what_happened}
                       </p>
+                      {/* What actually changed, in full. The one line summary
+                          says a round happened; this says how much, from whom,
+                          and what it means for hiring. */}
+                      {s.detail ? (
+                        <p className="prose-measure mt-2 text-[13px] leading-[1.65] text-[var(--alac-text-2)]">
+                          {s.detail}
+                        </p>
+                      ) : null}
                       <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
                         {parts.map((p) => (
                           <GaugeRow key={p.key} label={p.label} value={p.value} max={p.max} />
@@ -304,7 +329,22 @@ export default async function QueueAccountPage({
                 {people.map((p) => (
                   <li key={p.id} className="row-hover rounded-[var(--alac-radius)] px-3 py-2.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[13.5px] font-medium">{p.full_name}</span>
+                      {/* The name opens the profile. Every one of the 360
+                          matched contacts has a LinkedIn URL, so this is a
+                          link in practice and not just in theory. */}
+                      {p.linkedin_url ? (
+                        <a
+                          href={p.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="link inline-flex items-center gap-1.5 text-[13.5px] font-medium"
+                        >
+                          {p.full_name}
+                          <ExternalLink size={16} strokeWidth={1.5} />
+                        </a>
+                      ) : (
+                        <span className="text-[13.5px] font-medium">{p.full_name}</span>
+                      )}
                       {p.is_decision_maker ? (
                         <Badge tone="good" withIcon>Decision maker</Badge>
                       ) : null}
