@@ -73,6 +73,34 @@ export function normDomain(raw) {
   return d && d.includes(".") ? d : null;
 }
 
+/**
+ * A domain from a spreadsheet cell, or null.
+ *
+ * Stricter than normDomain, because the input is different. normDomain cleans a
+ * value from a system that was already trying to give a domain; this one reads
+ * whatever a human or an enrichment tool put in a column, which in practice
+ * includes email addresses, "n/a", "TBD", a bare company name, and a sentence.
+ *
+ * Anything that is not plausibly a hostname returns null rather than being
+ * stored. A wrong domain does not fail loudly: it silently searches a different
+ * company and puts a stranger's staff on the target list.
+ */
+export function cleanDomain(raw) {
+  if (raw === null || raw === undefined) return null;
+  let s = String(raw).trim().toLowerCase();
+  if (!s || ["-", "n/a", "na", "none", "tbd", "not found", "unknown"].includes(s)) return null;
+
+  // An email address in the domain column: take the host.
+  if (s.includes("@")) s = s.split("@").pop();
+
+  const d = normDomain(s);
+  if (!d) return null;
+
+  // A hostname, not a phrase. normDomain accepts anything containing a dot,
+  // which lets "acme inc. ltd" through.
+  return /^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/.test(d) ? d : null;
+}
+
 // Suffixes that carry no identity. Group and Holdings are deliberately kept:
 // "Acme Group" and "Acme" can be different companies.
 const LEGAL_SUFFIXES = [

@@ -188,3 +188,31 @@ test("age is whole days and order sensitive", () => {
 });
 
 console.log(`\n${run} checks passed`);
+
+/* ---- domain cleaning -------------------------------------------------- */
+// Enrichment tools return the same domain in half a dozen shapes, and a wrong
+// domain silently searches the wrong company, so this normalizes hard and
+// rejects anything that is not a domain rather than storing it.
+{
+  const { cleanDomain } = await import("../src/lib/server/import/normalize.mjs");
+  {
+    test("domains normalize from every shape a tool returns", () => {
+      assert.equal(cleanDomain("https://astranis.com/"), "astranis.com");
+      assert.equal(cleanDomain("www.astranis.com"), "astranis.com");
+      assert.equal(cleanDomain("HTTPS://WWW.Astranis.com/careers?x=1"), "astranis.com");
+      assert.equal(cleanDomain("  astranis.com  "), "astranis.com");
+      assert.equal(cleanDomain("neros.tech"), "neros.tech");
+      assert.equal(cleanDomain("trueanomaly.space"), "trueanomaly.space");
+    });
+
+    test("an email in the domain column yields its host", () => {
+      assert.equal(cleanDomain("nick@astranis.com"), "astranis.com");
+    });
+
+    test("anything that is not a domain is rejected, not stored", () => {
+      for (const bad of ["", "  ", "-", "n/a", "none", "not found", "TBD", "astranis", "a b c", null, undefined]) {
+        assert.equal(cleanDomain(bad), null, `"${bad}" must not become a domain`);
+      }
+    });
+  }
+}

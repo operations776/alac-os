@@ -18,7 +18,10 @@
     "signals:setup": "node scripts/signals-setup.mjs",
     "signals:pull": "node scripts/signals-pull.mjs",
     "enrich": "node scripts/enrich-account.mjs",
-    "map": "node scripts/map-market.mjs"
+    "map": "node scripts/map-market.mjs",
+    "export": "node scripts/export-accounts.mjs",
+    "import:domains": "node scripts/import-domains.mjs",
+    "verify:apify": "node scripts/verify-apify.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
