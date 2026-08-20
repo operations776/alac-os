@@ -50,8 +50,12 @@ if (!exaAvailable()) {
   console.log("markedly less specific. Get a key at https://exa.ai\n");
 }
 
-const client = new pg.Client({
+// A Pool, not a Client. The per account reads run concurrently in a
+// Promise.all, and a single Client serialises them and warns: one connection
+// cannot execute five queries at once.
+const client = new pg.Pool({
   connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
+  max: 6,
 });
 
 /**
@@ -148,7 +152,6 @@ async function detailSignal(signal, company, research) {
 }
 
 const run = async () => {
-  await client.connect();
   const orgs = await client.query("select id from orgs where slug = $1", [ORG_SLUG]);
   if (orgs.rows.length === 0) throw new Error(`No org with slug "${ORG_SLUG}".`);
   const orgId = orgs.rows[0].id;
@@ -212,7 +215,7 @@ const run = async () => {
     for (const a of accounts) {
       console.log(`\n=== ${a.company_name} ===`);
 
-      const [signals, roles, targets, warm] = await Promise.all([
+      const [signals, roles, targets, warm, stats] = await Promise.all([
         client.query(
           `select id, what_happened, the_number, signal_date, source::text as source, detail
              from heat_signals where org_id=$1 and account_id=$2
@@ -220,7 +223,7 @@ const run = async () => {
           [orgId, a.id],
         ),
         client.query(
-          `select title, location, posted_at from account_roles
+          `select title, location, job_function, posted_at from account_roles
             where org_id=$1 and account_id=$2 and qualified
             order by posted_at desc nulls last limit 12`,
           [orgId, a.id],
@@ -235,6 +238,17 @@ const run = async () => {
           `select full_name, title, linkedin_url, is_decision_maker
              from people where org_id=$1 and account_id=$2
             order by is_decision_maker desc limit 8`,
+          [orgId, a.id],
+        ),
+        // Counted over every qualified role, because the roles query above is
+        // capped at 12 for the prompt and a count off that sample would state
+        // "12 open roles" for a company with 44.
+        client.query(
+          `select count(*)::int as total,
+                  count(distinct location) filter (where location is not null)::int as sites,
+                  count(distinct job_function) filter (where job_function is not null)::int as fns,
+                  array_agg(distinct location) filter (where location is not null) as locations
+             from account_roles where org_id=$1 and account_id=$2 and qualified`,
           [orgId, a.id],
         ),
       ]);
@@ -306,6 +320,14 @@ const run = async () => {
         signals: signals.rows,
         roles: roles.rows,
         warmContacts: warm.rows,
+        roleStats: stats.rows[0]
+          ? {
+              total: Number(stats.rows[0].total),
+              sites: Number(stats.rows[0].sites),
+              functions: Number(stats.rows[0].fns),
+              locations: stats.rows[0].locations ?? [],
+            }
+          : null,
       });
       cost += out.cost ?? 0;
 

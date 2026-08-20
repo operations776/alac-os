@@ -328,7 +328,7 @@ export default async function QueueAccountPage({
               <ul className="flex flex-col gap-1 px-3 pb-3">
                 {people.map((p) => (
                   <li key={p.id} className="row-hover rounded-[var(--alac-radius)] px-3 py-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {/* The name opens the profile. Every one of the 360
                           matched contacts has a LinkedIn URL, so this is a
                           link in practice and not just in theory. */}
@@ -337,16 +337,18 @@ export default async function QueueAccountPage({
                           href={p.linkedin_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="link inline-flex items-center gap-1.5 text-[13.5px] font-medium"
+                          className="link inline-flex min-w-0 items-center gap-1.5 text-[13.5px] font-medium"
                         >
-                          {p.full_name}
+                          <span className="truncate">{p.full_name}</span>
                           <ExternalLink size={16} strokeWidth={1.5} />
                         </a>
                       ) : (
-                        <span className="text-[13.5px] font-medium">{p.full_name}</span>
+                        <span className="truncate text-[13.5px] font-medium">{p.full_name}</span>
                       )}
                       {p.is_decision_maker ? (
-                        <Badge tone="good" withIcon>Decision maker</Badge>
+                        <span className="ml-auto shrink-0">
+                          <Badge tone="good" withIcon>Decision maker</Badge>
+                        </span>
                       ) : null}
                     </div>
                     <div className="mt-1 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
