@@ -500,3 +500,170 @@ export async function briefForAccount(orgId: string, accountId: string) {
   }[];
   return rows[0] ?? null;
 }
+
+/* -------------------------------------------------------------------------
+   The command board, in one round trip
+   ---------------------------------------------------------------------- */
+
+/**
+ * Everything the board needs, as a single query.
+ *
+ * The board previously issued seven queries. Each one executes in about 1.5ms,
+ * so the database was never the problem: the cost was seven round trips to a
+ * database in another region, at roughly 250ms of network latency each. That
+ * is the whole two second page load, and no index can fix it.
+ *
+ * One statement, several subqueries, each returning its slice as json. The
+ * work is identical; what disappears is six network waits.
+ */
+export async function commandBoard(orgId: string, period: Period) {
+  const days = PERIOD_DAYS[period];
+  const rows = (await sql`
+    select
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select a.id, a.record_id, a.priority, a.final_score, a.company_name,
+               a.linkedin_url, a.next_week, a.sales_nav_url, a.battlecard_url,
+               a.recommended_motion, a.prep_status, a.next_action,
+               a.heyreach_stage, a.heyreach_date, a.heyreach_uploaded,
+               a.sourcewhale_stage
+          from tam_accounts a
+         where a.org_id = ${orgId} and a.next_week
+         order by a.priority nulls last, a.final_score desc nulls last
+      ) x) as next_week,
+
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select a.id, a.record_id, a.priority, a.final_score, a.company_name,
+               a.prep_status, a.battlecard_url
+          from tam_accounts a
+         where a.org_id = ${orgId} and a.priority is not null and a.priority <> 'unscored'
+         order by a.priority, a.final_score desc nulls last, a.company_name
+         limit 25
+      ) x) as top25,
+
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select a.id, a.record_id, a.priority, a.final_score, a.company_name,
+               a.prep_status, a.battlecard_url
+          from tam_accounts a
+         where a.org_id = ${orgId} and a.priority is not null and a.priority <> 'unscored'
+         order by a.priority, a.final_score desc nulls last, a.company_name
+         limit 25 offset 25
+      ) x) as next25,
+
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select s.id, s.company_name, s.account_id, s.what_happened, s.heat_score,
+               s.heat_vs_tam, s.recommended_move, s.coverage
+          from heat_signals s
+         where s.org_id = ${orgId}
+         order by s.heat_score desc nulls last, s.signal_date desc nulls last
+         limit 8
+      ) x) as heat,
+
+      (select row_to_json(x) from (
+        select count(*)::int as total,
+               count(*) filter (where next_week)::int as next_week,
+               count(*) filter (where prep_status = 'READY FOR QC')::int as ready_for_qc,
+               count(*) filter (where priority = 'unscored')::int as unscored
+          from tam_accounts where org_id = ${orgId}
+      ) x) as counts,
+
+      (select row_to_json(x) from (
+        select count(*)::int as total,
+               count(*) filter (where account_id is null)::int as unlinked,
+               count(*) filter (where heat_vs_tam > 0)::int as hotter_than_tam,
+               max(heat_score)::int as top_heat
+          from heat_signals where org_id = ${orgId}
+      ) x) as heat_stats,
+
+      (select row_to_json(x) from (
+        select sum(bd_calls)::int as bd_calls,
+               sum(client_conversations)::int as client_conversations,
+               sum(discoveries)::int as discoveries,
+               sum(qualified_opps)::int as qualified_opps,
+               sum(searches_won)::int as searches_won,
+               sum(pipeline_usd)::bigint as pipeline_usd,
+               count(*)::int as weeks
+          from performance_weeks
+         where org_id = ${orgId} and week_ending > (current_date - ${days}::int)
+      ) x) as perf
+  `) as {
+    next_week: QueueRow[];
+    top25: QueueRow[];
+    next25: QueueRow[];
+    heat: HeatRow[];
+    counts: Record<string, number>;
+    heat_stats: Record<string, number>;
+    perf: Record<string, number | null>;
+  }[];
+  return rows[0];
+}
+
+/* -------------------------------------------------------------------------
+   The market map
+   ---------------------------------------------------------------------- */
+
+export type BandRow = {
+  id: string;
+  record_id: string;
+  company_name: string;
+  domain: string | null;
+  priority: Priority | null;
+  final_score: string | null;
+  work_band: string | null;
+  work_reason: string | null;
+  work_score: number | null;
+  heat_score: number | null;
+  qualified_roles: number;
+  warm_contacts: number;
+  decision_makers: number;
+  targets: number;
+  top_contact: string | null;
+  top_contact_title: string | null;
+  prep_status: PrepStatus;
+};
+
+/**
+ * Work Now, Up Next and the Backlog, in one round trip.
+ *
+ * Everything a row needs to be actionable comes back with it: why it is in this
+ * band, what they are hiring for, who to call. A screen that made the operator
+ * click through to find out why a company is on the list would just be the
+ * spreadsheet again.
+ */
+export async function marketMap(orgId: string, band: string, limit = 25, offset = 0) {
+  return (await sql`
+    select a.id, a.record_id, a.company_name, a.domain, a.priority, a.final_score,
+           a.work_band, a.work_reason, a.work_score, a.prep_status,
+           (select max(h.heat_score) from heat_signals h where h.account_id = a.id) as heat_score,
+           (select count(*)::int from account_roles r
+             where r.account_id = a.id and r.qualified) as qualified_roles,
+           (select count(*)::int from people p where p.account_id = a.id) as warm_contacts,
+           (select count(*)::int from people p
+             where p.account_id = a.id and p.is_decision_maker) as decision_makers,
+           (select count(*)::int from account_targets t where t.account_id = a.id) as targets,
+           (select t.full_name from account_targets t
+             where t.account_id = a.id
+             order by t.rank_score desc nulls last limit 1) as top_contact,
+           (select t.title from account_targets t
+             where t.account_id = a.id
+             order by t.rank_score desc nulls last limit 1) as top_contact_title
+      from tam_accounts a
+     where a.org_id = ${orgId} and a.work_band = ${band}
+     order by a.work_score desc nulls last, a.company_name
+     limit ${limit} offset ${offset}
+  `) as BandRow[];
+}
+
+/** How many sit in each band, and how much of the map is actually prepared. */
+export async function marketCounts(orgId: string) {
+  const rows = (await sql`
+    select
+      count(*) filter (where work_band = 'now')::int      as now,
+      count(*) filter (where work_band = 'next')::int     as next,
+      count(*) filter (where work_band = 'backlog')::int  as backlog,
+      count(*) filter (where work_band is not null)::int  as mapped,
+      count(*) filter (where domain is not null)::int     as with_domain,
+      max(banded_at)                                      as last_mapped
+      from tam_accounts where org_id = ${orgId}
+  `) as { now: number; next: number; backlog: number; mapped: number; with_domain: number; last_mapped: string | null }[];
+  return rows[0];
+}

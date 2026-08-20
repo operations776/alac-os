@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 // them under the Master TAM and say not to change them.
 
 const PRIORITIES = [
-  { value: "", label: "All priorities" },
+  { value: "", label: "Any priority" },
   { value: "priority_1", label: "Priority 1" },
   { value: "priority_2", label: "Priority 2" },
   { value: "priority_3", label: "Priority 3" },
@@ -25,16 +25,16 @@ const PRIORITIES = [
 ];
 
 const PREP = [
-  { value: "", label: "All prep states" },
+  { value: "", label: "Any progress" },
   { value: "NOT STARTED", label: "Not started" },
   { value: "IN RESEARCH", label: "In research" },
-  { value: "READY FOR QC", label: "Ready for QC" },
+  { value: "READY FOR QC", label: "Needs review" },
   { value: "APPROVED", label: "Approved" },
   { value: "HOLD", label: "Hold" },
 ];
 
 const MOTIONS = [
-  { value: "", label: "All motions" },
+  { value: "", label: "Any approach" },
   { value: "TBD", label: "TBD" },
   { value: "LIVE LEAD", label: "Live lead" },
   { value: "GENERAL BD", label: "General BD" },
@@ -95,7 +95,7 @@ export default async function QueuePage({
   return (
     <div className="mx-auto max-w-[1320px] px-5 py-6 sm:px-8 sm:py-7">
       <PageHeader
-        eyebrow="Account queue"
+        eyebrow="Companies"
         title={`${total.toLocaleString()} ${total === 1 ? "company" : "companies"}`}
         lede={
           filtered
@@ -105,7 +105,7 @@ export default async function QueuePage({
         right={
           counts.ready_for_qc > 0 ? (
             <Link href="/queue?prep=READY+FOR+QC" className="btn btn-primary">
-              {counts.ready_for_qc} ready for QC
+              {counts.ready_for_qc} need review
             </Link>
           ) : null
         }
@@ -130,10 +130,10 @@ export default async function QueuePage({
         <select name="priority" defaultValue={priority} aria-label="Filter by priority" className="field w-auto">
           {PRIORITIES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-        <select name="prep" defaultValue={prep} aria-label="Filter by prep status" className="field w-auto">
+        <select name="prep" defaultValue={prep} aria-label="Filter by progress" className="field w-auto">
           {PREP.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-        <select name="motion" defaultValue={motion} aria-label="Filter by motion" className="field w-auto">
+        <select name="motion" defaultValue={motion} aria-label="Filter by approach" className="field w-auto">
           {MOTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
         <label className="chip cursor-pointer select-none">
@@ -161,15 +161,14 @@ export default async function QueuePage({
             <table className="w-full min-w-[1080px] border-collapse">
               <thead>
                 <tr className="bg-[var(--alac-ground)]">
-                  <Th align="right">Score</Th>
+                  <Th align="right">Fit</Th>
                   <Th>Company</Th>
                   <Th>Priority</Th>
-                  <Th>Next wk</Th>
-                  <Th>Motion</Th>
-                  <Th>Prep</Th>
-                  <Th>Leads</Th>
-                  <Th>Battlecard</Th>
-                  <Th>Execution</Th>
+                  <Th>This week</Th>
+                  <Th>Approach</Th>
+                  <Th>Progress</Th>
+                  <Th>Brief</Th>
+                  <Th>Outreach</Th>
                 </tr>
               </thead>
               <tbody>
@@ -198,7 +197,6 @@ export default async function QueuePage({
                     </td>
                     <td className="px-4 py-2.5 align-top"><MotionChip motion={a.recommended_motion} /></td>
                     <td className="px-4 py-2.5 align-top"><PrepChip status={a.prep_status} /></td>
-                    <td className="px-4 py-2.5 align-top"><LinkCell href={a.sales_nav_url} label="Leads" /></td>
                     <td className="px-4 py-2.5 align-top"><LinkCell href={a.battlecard_url} label="Card" /></td>
                     <td className="px-4 py-2.5 align-top">
                       <ExecutionStages heyreach={a.heyreach_stage} sourcewhale={a.sourcewhale_stage} />

@@ -1,8 +1,7 @@
 import Link from "next/link";
 
 import {
-  getOrgId, nextWeek, rankedBand, deskCounts, signalHeat, heatCounts,
-  performanceRollup, type QueueRow, type Period,
+  getOrgId, commandBoard, type QueueRow, type Period,
 } from "@/lib/server/queries/desk";
 import {
   Card, EmptyState, NoticeLine, PageHeader, Stat, Th,
@@ -44,21 +43,22 @@ export default async function CommandPage({
 
   const period = (PERIODS.includes(params.period as Period) ? params.period : "WEEK") as Period;
 
-  const [week, top25, next25, counts, heat, heatStats, perf] = await Promise.all([
-    nextWeek(orgId),
-    rankedBand(orgId, 0),
-    rankedBand(orgId, 25),
-    deskCounts(orgId),
-    signalHeat(orgId, 8),
-    heatCounts(orgId),
-    performanceRollup(orgId, period),
-  ]);
+  // One round trip, not seven. The queries each run in about 1.5ms; the page
+  // was slow because it waited on the network seven times.
+  const board = await commandBoard(orgId, period);
+  const week = board.next_week;
+  const top25 = board.top25;
+  const next25 = board.next25;
+  const heat = board.heat;
+  const counts = board.counts;
+  const heatStats = board.heat_stats;
+  const perf = board.perf;
 
   return (
     <div className="mx-auto max-w-[1320px] px-5 py-6 sm:px-8 sm:py-7">
       <PageHeader
-        eyebrow="Command board"
-        title="The operating picture"
+        eyebrow="Today"
+        title="What to work on"
         lede="Next week is set in the account queue, the bands rank themselves by priority then final score, and the performance snapshot follows the period selector. Nothing is typed on this screen."
       />
 
@@ -92,9 +92,9 @@ export default async function CommandPage({
           value={perf.pipeline_usd ? `$${Number(perf.pipeline_usd).toLocaleString()}` : "--"}
         />
         <Stat
-          label="Ready for QC"
+          label="Needs review"
           value={counts.ready_for_qc}
-          hint="waiting on Adrian"
+          hint="waiting on you"
           tone={counts.ready_for_qc > 0 ? "good" : undefined}
         />
       </div>
@@ -126,7 +126,7 @@ export default async function CommandPage({
             </>
           }
           href="/queue?next=1"
-          hrefLabel="Open in queue"
+          hrefLabel="Open list"
         >
           <Card className="overflow-hidden">
             {week.length === 0 ? (
@@ -152,7 +152,7 @@ export default async function CommandPage({
             </>
           }
           href="/signals"
-          hrefLabel="All signals"
+          hrefLabel="See all"
         >
           <Card className="overflow-hidden">
             {heat.length === 0 ? (
@@ -165,11 +165,11 @@ export default async function CommandPage({
                 <table className="w-full min-w-[820px] border-collapse">
                   <thead>
                     <tr className="bg-[var(--alac-ground)]">
-                      <Th align="right">Heat</Th>
+                      <Th align="right">Urgency</Th>
                       <Th>Company</Th>
                       <Th>What happened</Th>
-                      <Th align="right">vs TAM</Th>
-                      <Th>Move</Th>
+                      <Th align="right">vs fit</Th>
+                      <Th>Suggested move</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -284,11 +284,10 @@ function QueueTable({ rows, showNextAction }: { rows: QueueRow[]; showNextAction
             <Th align="right">Score</Th>
             <Th>Company</Th>
             <Th>Priority</Th>
-            <Th>Motion</Th>
-            <Th>Prep</Th>
-            <Th>Leads</Th>
-            <Th>Battlecard</Th>
-            <Th>Execution</Th>
+            <Th>Approach</Th>
+            <Th>Progress</Th>
+            <Th>Brief</Th>
+            <Th>Outreach</Th>
             {showNextAction ? <Th>Next action</Th> : null}
           </tr>
         </thead>
@@ -314,9 +313,6 @@ function QueueTable({ rows, showNextAction }: { rows: QueueRow[]; showNextAction
               </td>
               <td className="px-4 py-2.5 align-top">
                 <PrepChip status={a.prep_status} />
-              </td>
-              <td className="px-4 py-2.5 align-top">
-                <LinkCell href={a.sales_nav_url} label="Leads" />
               </td>
               <td className="px-4 py-2.5 align-top">
                 <LinkCell href={a.battlecard_url} label="Card" />

@@ -131,6 +131,7 @@ const run = async () => {
   for (const name of names) {
     const { rows } = await client.query(
       `select id, record_id, company_name, linkedin_url, priority::text as priority, final_score
+         , domain
          from tam_accounts
         where org_id = $1 and company_name ilike $2
         order by final_score desc nulls last limit 5`,
@@ -154,7 +155,7 @@ const run = async () => {
   const plans = [];
   for (const a of accounts) {
     const slug = linkedinSlug(a.linkedin_url);
-    const domain = slug ? domainFor(a, slug) : null;
+    const domain = a.domain ?? null;
 
     const warm = await client.query(
       `select full_name, title, linkedin_url, is_decision_maker
@@ -172,7 +173,7 @@ const run = async () => {
 
     plans.push({ account: a, slug, domain, warm: warm.rows, signals: signals.rows });
     console.log(`  ${a.company_name}`);
-    console.log(`    slug ${slug ?? "none"}   domain ${domain ?? "unknown"}`);
+    console.log(`    slug ${slug ?? "none"}   domain ${domain ?? "NOT RESOLVED, run: npm run map -- --domains"}`);
     console.log(`    warm contacts ${warm.rowCount}   existing signals ${signals.rowCount}`);
   }
 
@@ -435,19 +436,18 @@ const run = async () => {
  * company name would silently search the wrong company, so an unknown domain
  * skips the people search rather than guessing.
  */
-function domainFor(account, slug) {
-  // The workbook carries no domain column, so the LinkedIn slug is the best
-  // handle available and nearly every company in this TAM uses slug.com.
-  //
-  // This IS a guess, and it is the weakest link in the chain: a wrong domain
-  // returns a different company's staff, and those names would reach Adrian
-  // looking exactly as authoritative as the right ones. It is acceptable only
-  // because Prospeo returns zero results for a domain it does not know rather
-  // than guessing itself, so a bad guess fails loudly and cheaply.
-  //
-  // ALAC-73 replaces this with the domain from the company record.
-  return `${slug.replace(/-(inc|corp|llc|ltd)$/i, "")}.com`;
-}
+// The guess is gone. It used to derive "astranis.com" from the slug
+// "astranis", which measured 9 wrong out of the first 14 resolved:
+//
+//   neros.tech        was guessed neros-tech.com
+//   varda.com         was guessed varda-space-industries.com
+//   trueanomaly.space was guessed true-anomaly.com
+//
+// Every one of those would have searched a domain nobody owns, or worse, one
+// somebody else owns. `npm run map -- --domains` resolves the real value from
+// the LinkedIn URL and stores it, so this file now reads a fact instead of
+// inventing one, and an account without a resolved domain is skipped rather
+// than guessed at.
 
 run().catch((err) => {
   console.error(redact(String(err?.message ?? err), fiberKey));

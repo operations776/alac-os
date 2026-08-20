@@ -128,6 +128,62 @@ export const searchPerson = ({ website, seniorities, departments, page = 1 }) =>
   });
 
 /**
+ * Resolve a company from its LinkedIn URL.
+ *
+ * This retires the domain guess. The pilot derived "astranis.com" from the slug
+ * "astranis", which is right often enough to be dangerous: when it is wrong the
+ * people search returns a different company's staff, and those names reach the
+ * target list looking exactly as credible as the real ones.
+ *
+ * One credit per matched company, nothing when there is no match, and free to
+ * repeat within 90 days.
+ */
+export const enrichCompany = (linkedinUrl) =>
+  call("enrich-company", "enrich-company", { data: { company_linkedin_url: linkedinUrl } });
+
+/**
+ * Reveal a person's work email.
+ *
+ * The search returns a masked address with a verification status; this returns
+ * the address itself. One credit per email found, nothing when there is no
+ * match, and free to repeat within 90 days, so the button is cheap to press
+ * twice and costs nothing on a person already revealed.
+ *
+ * Mobile numbers come back masked and cost 10 credits to reveal. Not requested:
+ * a phone number is a different kind of intrusion from a work email and should
+ * be a separate, deliberate decision.
+ */
+export const enrichPerson = (linkedinUrl) =>
+  call("enrich-person", "enrich-person", { data: { linkedin_url: linkedinUrl } });
+
+/** The company fields the desk keeps. */
+export function normalizeCompany(res) {
+  const c = res?.company ?? {};
+  return {
+    external_id: c.company_id ?? null,
+    name: c.name ?? null,
+    domain: c.domain ?? null,
+    website: c.website ?? null,
+    employee_count: Number.isFinite(c.employee_count) ? c.employee_count : null,
+    linkedin_url: c.linkedin_url ?? null,
+    free: Boolean(res?.free_enrichment),
+  };
+}
+
+/** The email, from an enrich-person response. */
+export function normalizeEmail(res) {
+  const e = res?.person?.email;
+  if (!e) return { email: null, status: null, revealed: false, free: Boolean(res?.free_enrichment) };
+  return {
+    email: e.revealed ? (e.email ?? null) : null,
+    status: e.status ?? null,
+    revealed: Boolean(e.revealed),
+    verification: e.verification_method ?? null,
+    free: Boolean(res?.free_enrichment),
+  };
+}
+
+/**
  * Normalize one search result into the shape the desk stores.
  *
  * `current_job_title` is the field name, not `job_title`. Read from a live

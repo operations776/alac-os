@@ -6,7 +6,7 @@ import {
   targetsForAccount, rolesForAccount, accountPackage, briefForAccount,
 } from "@/lib/server/queries/desk";
 import {
-  Badge, Card, CardHeader, EmptyState, Eyebrow, GaugeRow, NoticeLine,
+  Badge, Card, CardHeader, EmptyState, GaugeRow, NoticeLine,
   formatDate,
 } from "@/components/ui/primitives";
 import {
@@ -17,24 +17,21 @@ import { TargetList, RoleList, Brief } from "@/components/ui/targets";
 
 export const dynamic = "force-dynamic";
 
-// The account package, as Adrian QCs it. The instructions set the standard:
-// decision-ready in five minutes or less, which is why the recommendation, the
-// two prepared artefacts, and the blocking gaps are above everything else.
-
-// READY FOR QC has a checklist attached to it, and the screen evaluates it
-// rather than restating it: these are the conditions the instructions require
-// to be true before an account is handed over.
+// One company: what changed, what they are hiring for, who to contact.
+//
+// The screen evaluates the handover checklist rather than restating it. The
+// Sales Navigator link the workbook tracks is deliberately not shown: it is a
+// saved search in another tool, and the people it would find are already on
+// this page with names and addresses attached.
 function qcChecklist(a: {
   battlecard_url: string | null;
-  sales_nav_url: string | null;
   recommended_motion: string;
   next_action: string | null;
 }) {
   return [
-    { ok: Boolean(a.battlecard_url), label: "Company battlecard is present" },
-    { ok: Boolean(a.sales_nav_url), label: "One combined target lead search is ready" },
-    { ok: a.recommended_motion !== "TBD", label: "Recommended motion is not TBD" },
-    { ok: Boolean(a.next_action), label: "Next action is one concrete verb-led action" },
+    { ok: Boolean(a.battlecard_url), label: "Research brief is written" },
+    { ok: a.recommended_motion !== "TBD", label: "Approach is decided" },
+    { ok: Boolean(a.next_action), label: "Next action is written down" },
   ];
 }
 
@@ -65,12 +62,12 @@ export default async function QueueAccountPage({
   return (
     <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
       <Link href="/queue" className="btn btn-ghost mb-4 -ml-4">
-        <ArrowLeft size={16} strokeWidth={1.5} /> Account queue
+        <ArrowLeft size={16} strokeWidth={1.5} /> All companies
       </Link>
 
       <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="min-w-0 flex-1">
-          <Eyebrow>{account.record_id}</Eyebrow>
+          
           <h1 className="display mt-1.5 text-[26px] leading-[1.2] sm:text-[32px]">
             {account.company_name}
           </h1>
@@ -104,7 +101,7 @@ export default async function QueueAccountPage({
             as something this app produced. */}
         <div className="w-[196px] rounded-[var(--alac-radius-lg)] bg-[var(--alac-surface)] px-5 pb-5 pt-4 shadow-[var(--alac-elev-1)]">
           <div className="placard text-[12px] text-[var(--alac-text-2)]">
-            TAM final score
+            Fit score
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
             <span className="readout text-[46px] leading-none text-[var(--alac-text)]">
@@ -113,8 +110,8 @@ export default async function QueueAccountPage({
             <span className="readout text-[14px] text-[var(--alac-text-3)]">/ 100</span>
           </div>
           <p className="mt-3 text-[12px] leading-snug text-[var(--alac-text-3)]">
-            {account.priority ? PRIORITY_LABEL[account.priority] : "No priority"}. Finalized in the
-            Master TAM, not set here.
+            {account.priority ? PRIORITY_LABEL[account.priority] : "No priority"}. Set in the master
+            list, not here.
           </p>
         </div>
       </header>
@@ -124,20 +121,15 @@ export default async function QueueAccountPage({
           {/* The handover. What Adrian is being asked to decide. */}
           <Card>
             <CardHeader
-              title="Account package"
-              sub="Decision-ready means Adrian can QC this in five minutes without more research"
+              title="Ready to work?"
+              sub="Everything you need to make the call in five minutes"
             />
             <div className="flex flex-col gap-4 px-5 pb-5">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 <ArtefactCard
-                  label="Company battlecard"
+                  label="Research brief"
                   href={account.battlecard_url}
-                  missing="Not built yet. The decision brief lives here, not in the queue."
-                />
-                <ArtefactCard
-                  label="Sales Nav target leads"
-                  href={account.sales_nav_url}
-                  missing="Not built yet. One combined search for the full target audience."
+                  missing="Not written yet."
                 />
               </div>
 
@@ -156,7 +148,7 @@ export default async function QueueAccountPage({
                   so it is shown as a state rather than as instructions. */}
               <div className="well px-4 py-3.5">
                 <div className="placard mb-2.5 text-[12px] text-[var(--alac-text-2)]">
-                  Ready for QC checklist
+                  Before you review
                 </div>
                 <ul className="flex flex-col gap-2">
                   {checks.map((c) => (
@@ -204,7 +196,7 @@ export default async function QueueAccountPage({
           {/* Who to contact. The question the desk is actually asking. */}
           <Card>
             <CardHeader
-              title="Who to target"
+              title="Who to contact"
               sub={
                 pkg.targets > 0
                   ? `${pkg.targets} sourced, ${pkg.warm_targets} already first degree, ${pkg.verified_emails} with a verified address`
@@ -285,12 +277,12 @@ export default async function QueueAccountPage({
 
         <div className="flex flex-col gap-5">
           <Card>
-            <CardHeader title="Execution" sub="Network warming first, then business development" />
+            <CardHeader title="Outreach" sub="LinkedIn first, then direct outreach" />
             <dl className="flex flex-col gap-2.5 px-5 pb-5 text-[13px]">
-              <Row label="HeyReach" value={account.heyreach_stage} />
+              <Row label="LinkedIn" value={account.heyreach_stage} />
               <Row label="First loaded" value={formatDate(account.heyreach_date) ?? "not recorded"} />
               <Row label="Uploaded" value={account.heyreach_uploaded ? "Yes" : "No"} />
-              <Row label="SourceWhale" value={account.sourcewhale_stage} />
+              <Row label="Direct outreach" value={account.sourcewhale_stage} />
             </dl>
             <div className="px-5 pb-5">
               <NoticeLine>
@@ -301,7 +293,7 @@ export default async function QueueAccountPage({
           </Card>
 
           <Card>
-            <CardHeader title="People you know" sub={`${people.length} matched`} />
+            <CardHeader title="People you already know" sub={`${people.length} matched`} />
             {people.length === 0 ? (
               <EmptyState
                 title="No warm contacts"

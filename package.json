@@ -17,7 +17,8 @@
     "verify:fiber": "node scripts/verify-fiber.mjs",
     "signals:setup": "node scripts/signals-setup.mjs",
     "signals:pull": "node scripts/signals-pull.mjs",
-    "enrich": "node scripts/enrich-account.mjs"
+    "enrich": "node scripts/enrich-account.mjs",
+    "map": "node scripts/map-market.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

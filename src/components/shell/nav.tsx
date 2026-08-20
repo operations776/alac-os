@@ -6,6 +6,7 @@ import {
   Activity,
   Flame,
   LayoutGrid,
+  Target,
   ListChecks,
   LogOut,
   Users,
@@ -29,11 +30,12 @@ import { Logo } from "./logo";
 // with a tonal pill, which is a stronger signal than a lit digit and does not
 // need a second column to track down.
 const NAV = [
-  { href: "/command", label: "Command board", Icon: LayoutGrid, exact: false },
-  { href: "/queue", label: "Account queue", Icon: ListChecks, exact: false },
-  { href: "/signals", label: "Signal heat", Icon: Flame, exact: false },
-  { href: "/performance", label: "Performance", Icon: Activity, exact: false },
-  { href: "/people", label: "People", Icon: Users, exact: false },
+  { href: "/command", label: "Today", Icon: LayoutGrid, exact: false },
+  { href: "/targets", label: "Who to target", Icon: Target, exact: false },
+  { href: "/queue", label: "All companies", Icon: ListChecks, exact: false },
+  { href: "/signals", label: "What changed", Icon: Flame, exact: false },
+  { href: "/performance", label: "Results", Icon: Activity, exact: false },
+  { href: "/people", label: "Your network", Icon: Users, exact: false },
 ];
 
 /**

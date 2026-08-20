@@ -40,13 +40,13 @@ export default async function SignalsPage() {
       />
 
       <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Signals scored" value={stats.total} />
-        <Stat label="Hotter than TAM" value={stats.hotter_than_tam} hint="timing ahead of rank" />
-        <Stat label="Top heat" value={stats.top_heat ?? "--"} />
+        <Stat label="Things that changed" value={stats.total} />
+        <Stat label="More urgent than rank" value={stats.hotter_than_tam} hint="worth moving on now" />
+        <Stat label="Highest urgency" value={stats.top_heat ?? "--"} />
         <Stat
-          label="Not in TAM yet"
+          label="Not on the list yet"
           value={stats.unlinked}
-          hint="signal without an account"
+          hint="new company"
           tone={stats.unlinked > 0 ? "warn" : undefined}
         />
       </div>

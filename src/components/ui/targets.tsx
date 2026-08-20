@@ -1,6 +1,7 @@
-import { ExternalLink, Mail, Lock } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Badge, EmptyState, formatDate } from "./primitives";
 import type { RoleRow, TargetRow } from "@/lib/server/queries/desk";
+import { RevealEmail } from "./reveal-email";
 
 /**
  * Who to contact, and what they are hiring for.
@@ -53,36 +54,17 @@ export function TargetRowItem({ target }: { target: TargetRow }) {
 }
 
 /**
- * The email, in the three states it genuinely has.
- *
- * A verified address that has not been revealed is a real asset that costs
- * extra to expose, and collapsing it into "no email" would hide a reachable
- * person behind an apparent gap.
+ * The email. Delegated to a client component because finding one is an action
+ * with a cost, not a value to render.
  */
 function EmailState({ target }: { target: TargetRow }) {
-  if (target.email_revealed && target.email) {
-    return (
-      <a href={`mailto:${target.email}`} className="link inline-flex items-center gap-1.5 text-[12px]">
-        <Mail size={16} strokeWidth={1.5} />
-        {target.email}
-      </a>
-    );
-  }
-  if (target.email_status === "VERIFIED") {
-    return (
-      <span
-        className="chip min-h-[24px] px-2 text-[10px]"
-        title="Prospeo holds a verified address for this person. Revealing it costs a credit."
-      >
-        <Lock size={16} strokeWidth={1.5} />
-        Email held
-      </span>
-    );
-  }
   return (
-    <span className="text-[12px] text-[var(--alac-text-3)]" title="No address on file">
-      &ndash;&ndash;
-    </span>
+    <RevealEmail
+      targetId={target.id}
+      email={target.email}
+      status={target.email_status}
+      revealed={target.email_revealed}
+    />
   );
 }
 
