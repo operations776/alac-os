@@ -319,6 +319,18 @@ export default async function QueueAccountPage({
 
           <Card>
             <CardHeader title="People you already know" sub={`${people.length} matched`} />
+            {/* The warm intro. His strongest openings name a real person and
+                what they said, and that only works when somebody is actually
+                there to ask. The app cannot know what was said, so it points
+                at the door rather than writing the line itself. */}
+            {people.length >= 2 ? (
+              <div className="px-5 pb-1">
+                <NoticeLine>
+                  You know {people.length} people here. An introduction from one of them opens
+                  better than anything cold. Ask the closest one first.
+                </NoticeLine>
+              </div>
+            ) : null}
             {people.length === 0 ? (
               <EmptyState
                 title="No warm contacts"
