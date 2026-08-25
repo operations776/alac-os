@@ -12,6 +12,10 @@
 /outputs/
 /private/
 
+# Client deliverables. No client data in them, but retainer scope and
+# delivery dates are commercial and this repository is public.
+/docs/roadmap.html
+
 # Secrets
 .env
 .env.*

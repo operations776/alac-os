@@ -128,8 +128,8 @@ fetchers are written to fill it.
 | ALAC-67 | Job postings, count before searching, capped at 25. Feeds hiring urgency and talent scarcity | done |
 | ALAC-69 | OpenAI narrative: forced schema, grounded on supplied names, rejected if it invents one | done |
 | ALAC-72 | Prospeo people search, deterministic target ranking, warm network merged into the pool | done |
-| ALAC-73 | Company domain is guessed from the LinkedIn slug. Store the real domain on tam_accounts | todo |
-| ALAC-74 | Reveal a held email on demand, one credit, from the target list | todo |
+| ALAC-73 | Real domain stored on tam_accounts via Prospeo enrich-company, replacing slug guessing. 960 of 960 | done |
+| ALAC-74 | Reveal a held email on demand, one credit, from the target list | done |
 | ALAC-75 | Roll the pilot out past two accounts, batched and budgeted | todo |
 | ALAC-68 | Exa pass: narrative and a citable source URL per signal | todo |
 | ALAC-69 | OpenAI pass: `recommended_move`, grounded, cites the stored source or is rejected | todo |
