@@ -213,15 +213,10 @@ export async function readyForQc(orgId: string) {
 
 export async function accountById(orgId: string, id: string) {
   const rows = (await sql`
-    select a.id, a.record_id, a.priority, a.final_score, a.company_name,
-           a.linkedin_url, a.next_week, a.sales_nav_url, a.battlecard_url,
-           a.recommended_motion, a.prep_status, a.next_action,
-           a.heyreach_stage, a.heyreach_date, a.heyreach_uploaded,
-           a.sourcewhale_stage
-      from tam_accounts a
-     where a.org_id = ${orgId} and a.id = ${id}
+    select * from account_desk
+     where org_id = ${orgId} and id = ${id}
      limit 1
-  `) as QueueRow[];
+  `) as DeskRow[];
   return rows[0] ?? null;
 }
 
@@ -277,6 +272,7 @@ export type HeatRow = {
   person_name: string | null;
   person_title: string | null;
   confidence: string | null;
+  work_band: string | null;
 };
 
 /**
@@ -292,7 +288,7 @@ export async function signalHeat(orgId: string, limit = 100) {
            s.access, s.freshness, s.heat_score, s.tam_final_score,
            s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources,
            s.source::text as source, s.category, s.amount_usd, s.person_name,
-           s.person_title, s.confidence
+           s.person_title, s.confidence, a.work_band
       from heat_signals s
       left join tam_accounts a on a.id = s.account_id
      where s.org_id = ${orgId}
@@ -507,6 +503,9 @@ export type RoleRow = {
   seniority: string | null;
   posted_at: string | null;
   qualified: boolean;
+  first_seen: string | null;
+  salary_text: string | null;
+  relevance: number | null;
 };
 
 /**
@@ -517,10 +516,12 @@ export type RoleRow = {
  */
 export async function rolesForAccount(orgId: string, accountId: string) {
   return (await sql`
-    select r.id, r.title, r.url, r.location, r.seniority, r.posted_at, r.qualified
+    select r.id, r.title, r.url, r.location, r.seniority, r.posted_at, r.qualified,
+           r.first_seen, r.salary_text, r.relevance
       from account_roles r
      where r.org_id = ${orgId} and r.account_id = ${accountId}
-     order by r.qualified desc, r.posted_at desc nulls last
+     order by r.qualified desc, r.relevance desc nulls last,
+              coalesce(r.first_seen, r.posted_at) desc nulls last
      limit 40
   `) as RoleRow[];
 }
@@ -593,31 +594,46 @@ export async function commandBoard(orgId: string, period: Period) {
       ) x) as next_week,
 
       (select coalesce(json_agg(x), '[]'::json) from (
-        select a.id, a.record_id, a.priority, a.final_score, a.company_name,
-               a.prep_status, a.battlecard_url
-          from tam_accounts a
-         where a.org_id = ${orgId} and a.priority is not null and a.priority <> 'unscored'
-         order by a.priority, a.final_score desc nulls last, a.company_name
-         limit 25
-      ) x) as top25,
+        select * from account_desk
+         where org_id = ${orgId} and work_band = 'now'
+         order by work_score desc nulls last, company_name
+      ) x) as now,
 
       (select coalesce(json_agg(x), '[]'::json) from (
-        select a.id, a.record_id, a.priority, a.final_score, a.company_name,
-               a.prep_status, a.battlecard_url
-          from tam_accounts a
-         where a.org_id = ${orgId} and a.priority is not null and a.priority <> 'unscored'
-         order by a.priority, a.final_score desc nulls last, a.company_name
-         limit 25 offset 25
-      ) x) as next25,
+        select * from account_desk
+         where org_id = ${orgId} and work_band = 'next'
+         order by work_score desc nulls last, company_name
+      ) x) as next,
 
       (select coalesce(json_agg(x), '[]'::json) from (
         select s.id, s.company_name, s.account_id, s.what_happened, s.heat_score,
-               s.heat_vs_tam, s.recommended_move, s.coverage
+               s.heat_vs_tam, s.recommended_move, s.coverage, s.signal_date,
+               s.category, s.source::text as source, a.work_band
           from heat_signals s
+          left join tam_accounts a on a.id = s.account_id
          where s.org_id = ${orgId}
-         order by s.heat_score desc nulls last, s.signal_date desc nulls last
+         order by s.signal_date desc nulls last, s.heat_score desc nulls last
          limit 8
       ) x) as heat,
+
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select r.id, r.account_id, a.company_name, a.work_band, r.title, r.url,
+               r.location, r.salary_text, r.seniority, r.first_seen, r.relevance,
+               0 as open_at_company, null::text as why_now
+          from account_roles r
+          join tam_accounts a on a.id = r.account_id
+         where r.org_id = ${orgId} and r.qualified
+           and r.first_seen >= current_date - 1
+         order by r.relevance desc nulls last, r.first_seen desc
+         limit 10
+      ) x) as roles_today,
+
+      (select row_to_json(x) from (
+        select count(*) filter (where first_seen >= current_date - 1)::int as today,
+               count(*) filter (where first_seen >= current_date - 7)::int as week,
+               max(fetched_at) as pulled_at
+          from account_roles where org_id = ${orgId} and qualified
+      ) x) as role_counts,
 
       (select row_to_json(x) from (
         select count(*)::int as total,
@@ -648,9 +664,11 @@ export async function commandBoard(orgId: string, period: Period) {
       ) x) as perf
   `) as {
     next_week: QueueRow[];
-    top25: QueueRow[];
-    next25: QueueRow[];
+    now: DeskRow[];
+    next: DeskRow[];
     heat: HeatRow[];
+    roles_today: FreshRole[];
+    role_counts: { today: number; week: number; pulled_at: string | null };
     counts: Record<string, number>;
     heat_stats: Record<string, number>;
     perf: Record<string, number | null>;
@@ -662,56 +680,45 @@ export async function commandBoard(orgId: string, period: Period) {
    The market map
    ---------------------------------------------------------------------- */
 
-export type BandRow = {
-  id: string;
-  record_id: string;
-  company_name: string;
+/**
+ * One account as the desk sees it: the queue row plus every input the next
+ * move needs. Read from the account_desk view, so every screen that shows a
+ * company shows the same numbers for it.
+ */
+export type DeskRow = QueueRow & {
   domain: string | null;
-  priority: Priority | null;
-  final_score: string | null;
   work_band: string | null;
   work_reason: string | null;
   work_score: number | null;
+  banded_at: string | null;
   heat_score: number | null;
+  signal_date: string | null;
+  signal_category: string | null;
+  signal_text: string | null;
   qualified_roles: number;
+  fresh_roles: number;
   warm_contacts: number;
   decision_makers: number;
   targets: number;
   top_contact: string | null;
   top_contact_title: string | null;
-  prep_status: PrepStatus;
+  has_draft: boolean;
 };
 
+export type BandRow = DeskRow;
+
 /**
- * Work Now, Up Next and the Backlog, in one round trip.
- *
- * Everything a row needs to be actionable comes back with it: why it is in this
- * band, what they are hiring for, who to call. A screen that made the operator
- * click through to find out why a company is on the list would just be the
- * spreadsheet again.
+ * Work now, Up next and the Backlog. The reason travels with the row: a screen
+ * that made the operator click through to find out why a company is on the
+ * list would just be the spreadsheet again.
  */
 export async function marketMap(orgId: string, band: string, limit = 25, offset = 0) {
   return (await sql`
-    select a.id, a.record_id, a.company_name, a.domain, a.priority, a.final_score,
-           a.work_band, a.work_reason, a.work_score, a.prep_status,
-           (select max(h.heat_score) from heat_signals h where h.account_id = a.id) as heat_score,
-           (select count(*)::int from account_roles r
-             where r.account_id = a.id and r.qualified) as qualified_roles,
-           (select count(*)::int from people p where p.account_id = a.id) as warm_contacts,
-           (select count(*)::int from people p
-             where p.account_id = a.id and p.is_decision_maker) as decision_makers,
-           (select count(*)::int from account_targets t where t.account_id = a.id) as targets,
-           (select t.full_name from account_targets t
-             where t.account_id = a.id
-             order by t.rank_score desc nulls last limit 1) as top_contact,
-           (select t.title from account_targets t
-             where t.account_id = a.id
-             order by t.rank_score desc nulls last limit 1) as top_contact_title
-      from tam_accounts a
-     where a.org_id = ${orgId} and a.work_band = ${band}
-     order by a.work_score desc nulls last, a.company_name
+    select * from account_desk
+     where org_id = ${orgId} and work_band = ${band}
+     order by work_score desc nulls last, company_name
      limit ${limit} offset ${offset}
-  `) as BandRow[];
+  `) as DeskRow[];
 }
 
 /** How many sit in each band, and how much of the map is actually prepared. */
@@ -792,6 +799,7 @@ export type FreshRole = {
   salary_text: string | null;
   seniority: string | null;
   first_seen: string | null;
+  relevance: number | null;
   open_at_company: number;
   why_now: string | null;
 };
@@ -808,11 +816,12 @@ export type FreshRole = {
  * new role plus the round that paid for it is a call and a new role alone is a
  * job board.
  */
-export async function freshRoles(orgId: string, days = 7, limit = 60) {
+export async function freshRoles(orgId: string, days = 7, limit = 60, sort: "new" | "relevant" = "new") {
+  const byRelevance = sort === "relevant";
   return (await sql`
     select r.id, r.account_id, a.company_name, a.work_band,
            r.title, r.url, r.location, r.salary_text, r.seniority,
-           r.first_seen,
+           r.first_seen, r.relevance,
            (select count(*)::int from account_roles x
              where x.account_id = a.id and x.qualified) as open_at_company,
            (select h.what_happened from heat_signals h
@@ -823,7 +832,8 @@ export async function freshRoles(orgId: string, days = 7, limit = 60) {
      where r.org_id = ${orgId}
        and r.qualified
        and r.first_seen >= current_date - ${days}::int
-     order by r.first_seen desc nulls last, a.company_name, r.title
+     order by case when ${byRelevance} then r.relevance end desc nulls last,
+              r.first_seen desc nulls last, a.company_name, r.title
      limit ${limit}
   `) as FreshRole[];
 }
@@ -836,9 +846,10 @@ export async function freshRoleCounts(orgId: string) {
       count(*) filter (where first_seen >= current_date - 1)::int    as day,
       count(*) filter (where first_seen >= current_date - 7)::int    as week,
       count(distinct account_id) filter (where first_seen >= current_date - 7)::int as companies,
-      count(*)::int                                                  as total
+      count(*)::int                                                  as total,
+      max(fetched_at)                                                as pulled_at
     from account_roles
     where org_id = ${orgId} and qualified
-  `) as Record<string, number>[];
+  `) as { today: number; day: number; week: number; companies: number; total: number; pulled_at: string | null }[];
   return rows[0];
 }

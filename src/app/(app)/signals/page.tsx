@@ -65,7 +65,7 @@ export default async function SignalsPage() {
       <PageHeader
         eyebrow="Signal heat"
         title="What just changed"
-        lede="Every signal is scored out of 100 across six components, and shown against the account's standing TAM score. A signal above its TAM rank is a company whose timing moved ahead of its qualification."
+        lede="Newest first. Every signal is scored out of 100 and shown against the company's standing fit score. A strong signal promotes the company into the working list on the next refresh, and each row says which band it sits in."
       />
 
       <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -143,6 +143,11 @@ export default async function SignalsPage() {
                         ) : s.source === "workbook" ? (
                           <span className="chip" title="Entered by hand from the workbook">
                             From the workbook
+                          </span>
+                        ) : null}
+                        {s.account_id ? (
+                          <span className="chip" title="Which band the company sits in">
+                            {s.work_band === "now" ? "Work now" : s.work_band === "next" ? "Up next" : s.work_band === "backlog" ? "Backlog" : "Not ranked"}
                           </span>
                         ) : null}
                         {s.hq ? (

@@ -52,7 +52,13 @@ const run = async () => {
             (select max(h.heat_score) from heat_signals h
               where h.account_id = a.id) as heat_score,
             (select max(h.heat_vs_tam) from heat_signals h
-              where h.account_id = a.id) as heat_vs_tam
+              where h.account_id = a.id) as heat_vs_tam,
+            (select max(h.signal_date) from heat_signals h
+              where h.account_id = a.id and h.heat_score >= 60) as heat_date,
+            (select count(*)::int from account_roles r
+              where r.account_id = a.id and r.qualified
+                and r.first_seen >= current_date - 7) as fresh_roles,
+            a.prep_status
        from tam_accounts a
       where a.org_id = $1
         and (a.priority in ('priority_1','priority_2','unscored') or a.next_week)`,
@@ -109,6 +115,7 @@ const run = async () => {
       warmContacts: r.warm_contacts,
       decisionMakers: r.decision_makers,
       qualifiedRoles: r.qualified_roles,
+      freshRoles: r.fresh_roles,
     });
     return { ...r, work_score: score, work_reason: reasons.join(". ") };
   });

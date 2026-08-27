@@ -145,6 +145,10 @@ Provisioned automatically by the Neon integration and pulled with `vercel env pu
 | `OPENAI_MODEL` | no | no | Model override. Changing it means changing `MODEL_RATES` in `src/lib/server/ai/pricing.ts` in the same commit, or `agent_runs.cost_usd` lies. |
 | `ALAC_DATA_DIR` | no | importers only | Absolute path to the client workspace holding the real CSVs. Deliberately outside this public repo. |
 | `ALAC_SEED_PASSWORD` | no | `create:user` only | Password for `npm run create:user`. Unset: one is generated and printed once. Never committed, never a default. |
+| `PREDICTLEADS_API_KEY` | no | refresh only | Signals and open roles. Read by the scripts, never at request time, so it lives in GitHub Actions secrets and `.env.local`, not in Vercel. |
+| `PREDICTLEADS_API_TOKEN` | no | refresh only | The second half of the PredictLeads credential. Both are required or the client refuses to start. |
+| `PROSPEO_API_KEY` | no | reveal button | People search and on-demand email reveal. The reveal runs in a server action, so this one is in Vercel. |
+| `APIFY_TOKEN` | no | wider pull | LinkedIn org ids and the monthly wider jobs pull. Scripts only. |
 | `SOURCEWHALE_API_KEY` | no | phase 2 | Read-oriented sync. See section 9. Unset: the CSV bridge covers the same code path. |
 | `CRON_SECRET` | no | phase 2 | Shared secret for scheduled runs. |
 

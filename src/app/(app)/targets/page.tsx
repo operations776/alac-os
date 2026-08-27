@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getOrgId, marketMap, marketCounts, type BandRow } from "@/lib/server/queries/desk";
 import { Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
 import { QuickLook } from "@/components/ui/quick-look";
+import { NextMove, LifecycleChip } from "@/components/ui/desk";
+import { DESK, ROLLOVER_RULES } from "@/config/desk.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,7 @@ const BANDS = [
   {
     key: "now",
     label: "Work now",
-    blurb: "The 25 to contact this week",
+    blurb: `The ${DESK.NOW_SIZE} being contacted now`,
   },
   {
     key: "next",
@@ -65,7 +67,7 @@ export default async function TargetsPage({
       <PageHeader
         eyebrow="Who to target"
         title="The whole market, in order"
-        lede="Every company ranked by how well they fit, what just changed, and who you already know there. The reason is on every row."
+        lede={`Every company ranked by how well they fit, what just changed, and who you already know there. Re-ranked ${DESK.REFRESH}. The reason and the next move are on every row.`}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -100,6 +102,13 @@ export default async function TargetsPage({
         ))}
         <span className="ml-auto text-[12.5px] text-[var(--alac-text-3)]">{active.blurb}</span>
       </div>
+
+      <details className="mb-4 rounded-[var(--alac-radius)] bg-[var(--alac-surface)] px-4 py-3 text-[13px]">
+        <summary className="cursor-pointer text-[var(--alac-text-2)]">How companies move between the bands</summary>
+        <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 text-[var(--alac-text-2)]">
+          {ROLLOVER_RULES.map((r) => <li key={r}>{r}</li>)}
+        </ul>
+      </details>
 
       {rows.length === 0 ? (
         <Card>
@@ -168,6 +177,7 @@ function AccountCard({ row, rank }: { row: BandRow; rank: number }) {
         </Link>
 
         <span className="flex shrink-0 items-center gap-2">
+          <LifecycleChip row={row} />
           <QuickLook
             company={row.company_name}
             reason={row.work_reason}
@@ -200,10 +210,18 @@ function AccountCard({ row, rank }: { row: BandRow; rank: number }) {
         </p>
       ) : null}
 
+      <div className="mt-3 pl-11">
+        <NextMove row={row} />
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 pl-11 text-[12.5px]">
         <Fact
           label="Open roles"
-          value={row.qualified_roles > 0 ? `${row.qualified_roles} relevant` : "none found"}
+          value={
+            row.fresh_roles > 0
+              ? `${row.fresh_roles} new this week, ${row.qualified_roles} relevant`
+              : row.qualified_roles > 0 ? `${row.qualified_roles} relevant` : "none found"
+          }
           dim={row.qualified_roles === 0}
         />
         <Fact

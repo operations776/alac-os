@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Badge, Meter, type Tone } from "./primitives";
-import { PRIORITY_LABEL, type Motion, type PrepStatus, type Priority } from "@/lib/server/queries/desk";
+import { PRIORITY_LABEL, type DeskRow, type Motion, type PrepStatus, type Priority } from "@/lib/server/queries/desk";
+import { nextMove, lifecycle } from "@/lib/scoring/next-move.mjs";
 
 /**
  * Shared desk chrome. These render the workbook's own vocabulary, so the
@@ -294,4 +295,51 @@ export function BoardSection({
       {children}
     </section>
   );
+}
+
+/* -------------------------------------------------------------------------
+   The next move and the lifecycle stage
+   ---------------------------------------------------------------------- */
+
+const MOVE_TONE: Record<string, Tone> = { call: "good", prepare: "brand", wait: "neutral" };
+
+/**
+ * One instruction per company, the same everywhere it appears.
+ *
+ * Computed, not stored, from the desk row, so the board, the target list and
+ * the account page cannot disagree about what to do next.
+ */
+export function NextMove({ row, compact }: { row: DeskRow; compact?: boolean }) {
+  const m = nextMove(row);
+  return (
+    <span className={compact ? "inline-flex min-w-0 items-baseline gap-2" : "flex flex-col gap-1"}>
+      <span className="inline-flex shrink-0 items-center gap-2">
+        <Badge tone={MOVE_TONE[m.kind] ?? "neutral"}>
+          {m.kind === "call" ? "Reach out" : m.kind === "wait" ? "Wait" : "Prepare"}
+        </Badge>
+        <span className="text-[13.5px] font-medium text-[var(--alac-text)]">{m.move}</span>
+      </span>
+      {compact ? null : (
+        <span className="text-[12.5px] leading-snug text-[var(--alac-text-2)]">{m.why}</span>
+      )}
+    </span>
+  );
+}
+
+const STAGE_TONE: Record<string, Tone> = {
+  "Needs review": "brand",
+  Approved: "good",
+  "LinkedIn warming": "good",
+  "In sequence": "good",
+  "On hold": "warn",
+};
+
+/** Where the company is in its life, from research through to sequence. */
+export function LifecycleChip({
+  row,
+}: {
+  row: Pick<DeskRow, "prep_status" | "heyreach_stage" | "sourcewhale_stage">;
+}) {
+  const stage = lifecycle(row);
+  return <Badge tone={STAGE_TONE[stage] ?? "neutral"}>{stage}</Badge>;
 }

@@ -10,7 +10,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 
 ## The model, in one paragraph
 
-`tam_accounts` is the account queue, keyed on Record ID. `heat_signals` is the signal log, six components out of 100 plus the delta against the account's TAM score. `performance_weeks` is one row per SourceWhale week, carrying the counters and the Thursday choke point analysis. The command board stores nothing: Top 25 and Next 25 are ranked at read time by priority then final score, and the performance snapshot is a rollup. `people` is the warm network, matched to accounts by normalized company name and independent of the TAM.
+`tam_accounts` is the account queue, keyed on Record ID. `heat_signals` is the signal log, six components out of 100 plus the delta against the account's TAM score. `performance_weeks` is one row per SourceWhale week, carrying the counters and the Thursday choke point analysis. Work now and Up next are the `work_band` written by `map-market` on every refresh, from fit, what changed, who you know and what went up this week. The `account_desk` view carries every input the next move needs, and `nextMove()` in `src/lib/scoring/next-move.mjs` turns them into one instruction per company, derived on read. The performance snapshot is a rollup. `people` is the warm network, matched to accounts by normalized company name and independent of the TAM.
 
 ## Workflow
 
@@ -47,8 +47,9 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 - **Regex-parsing an xlsx cell.** A cell has two forms, `<c r="K5" s="38"/>` and `<c r="M5" t="s"><v>501</v></c>`. A naive `/<c([^>]*)>([\s\S]*?)<\/c>/` lets the empty self closing cell swallow the next one: the value lands under the wrong column letter and its shared string is never resolved, so a status arrives as the integer 501. Every row still parses, so the corruption is silent. Use `openWorkbook` in `src/lib/server/import/xlsx.mjs`, and keep `npm run test:unit` green.
 - **One statement per row against a remote database.** 3,045 accounts as 3,045 round trips is an import that runs for minutes. Batch with `insertChunked`, which bounds the chunk against the 65535 parameter ceiling.
 - **An import that only adds.** The workbook is the source of truth, so the import mirrors it: it prunes anything it did not see this run. Without that, a company dropped from the queue lives on, and a change to a row's key leaves the old row behind as a duplicate company.
-- **Writing a payload parser from the docs alone.** Fiber's `preview-signal` and its live `listTrackerSignals` do not return identical shapes: the preview nests under `signal` with `entity.identifiers`, the poll is flat, and `recent_layoffs` carries `numLaidOff` where the example implied `count`. The parser handles both and the fixtures in `test-fiber-signals.mjs` are copied from real responses. Read the live payload before trusting an example.
-- **Assuming one auth channel.** Fiber documents apiKey as query on GET and body on POST, but `fire-dummy` validates it as a required *query* parameter on a POST and rejects a query-only call as unauthenticated. The client sends query, body and `x-api-key` on every request; the extras are inert where unused.
+- **Writing a payload parser from the docs alone.** PredictLeads returns `posted_at` as null on every job and dates events by `effective_date` with `found_at` as the fallback. The client was written against live responses, not the examples. Read the live payload before trusting an example.
+- **A regex through a shell heredoc.** `\b` became a literal backspace and `qualifyRole` rejected all 4,122 titles without throwing. Anything that filters silently gets a unit test (`test-predictleads.mjs`), and regexes are written with the Write tool, never through bash.
+- **Ranking before pulling.** The bands are computed from signal and role counts, so `map-market` after `signals` and `jobs`, never before. `npm run refresh` fixes the order.
 
 ## Commands
 
@@ -61,10 +62,11 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 | `npm run migrate` | Apply pending migrations over the unpooled connection |
 | `npm run verify:ai` | Confirm the OpenAI key and model rates resolve |
 | `npm run import:desk` | Load the Desk Command Center workbook from `ALAC_DATA_DIR`: account queue, signal log, performance. Mirrors the workbook, so it prunes what it does not see |
-| `npm run verify:fiber` | Confirm the Fiber key and print the tracker rule catalogue. Free endpoints only |
-| `npm run signals:setup` | Plan the Fiber tracker list. Add `-- --apply` to create it, `-- --dummy` for the integration test list |
-| `npm run signals:pull` | Poll, parse, match, score and record signals. `-- --dry` writes nothing, `-- --dummy` uses test signals |
-| `npm run test:unit` | The xlsx, heat scorer and signal parser checks. Fast, no database, no network |
+| `npm run refresh` | Signals, then roles, then re-rank the bands. What the Monday and Thursday Action runs |
+| `npm run signals -- --apply` | Pull and score PredictLeads events for Work now and Up next. Plan only without `--apply` |
+| `npm run jobs -- --apply` | Pull open roles for the same 50, qualify, score relevance. `--today` lists what appeared in 24 hours |
+| `npm run map` | Re-rank the market into Work now, Up next, Backlog. Free |
+| `npm run test:unit` | xlsx, heat, outreach, PredictLeads and next-move checks. Fast, no database, no network |
 | `npm run test:e2e` | Playwright. **Daniyal runs this, not Claude.** Write the specs, hand him the verification step. |
 
 ## Reference

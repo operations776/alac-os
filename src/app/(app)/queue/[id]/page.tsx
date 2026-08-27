@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/primitives";
 import {
   ExecutionStages, HEAT_COMPONENTS, HeatDelta, MotionChip, PrepChip,
-  PriorityChip,
+  PriorityChip, NextMove, LifecycleChip,
 } from "@/components/ui/desk";
 import { TargetList, RoleList, Brief } from "@/components/ui/targets";
 import { DraftList } from "@/components/ui/drafts";
@@ -29,11 +29,17 @@ function qcChecklist(a: {
   battlecard_url: string | null;
   recommended_motion: string;
   next_action: string | null;
+  top_contact: string | null;
+  has_draft: boolean;
 }) {
+  // Each open item says what closes it, so the list is a set of jobs rather
+  // than a set of verdicts.
   return [
-    { ok: Boolean(a.battlecard_url), label: "Research brief is written" },
-    { ok: a.recommended_motion !== "TBD", label: "Approach is decided" },
-    { ok: Boolean(a.next_action), label: "Next action is written down" },
+    { ok: Boolean(a.top_contact), label: "A contact is named", fix: "Source people for this company, or match the warm network" },
+    { ok: a.has_draft, label: "The first message is drafted", fix: "Run the draft for this company; it appears below as The first message" },
+    { ok: a.recommended_motion !== "TBD", label: "Approach is decided", fix: "Set the approach in the workbook queue: new business, live lead, or lead with a candidate" },
+    { ok: Boolean(a.battlecard_url), label: "Research brief is written", fix: "Write the brief and paste its link into the workbook" },
+    { ok: Boolean(a.next_action), label: "Next action is written down", fix: "One line in the workbook: who, what, when" },
   ];
 }
 
@@ -75,9 +81,15 @@ export default async function QueueAccountPage({
             {account.company_name}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            <LifecycleChip row={account} />
             <PriorityChip priority={account.priority} />
             <MotionChip motion={account.recommended_motion} />
             <PrepChip status={account.prep_status} />
+            {account.work_band ? (
+              <span className="chip">
+                {account.work_band === "now" ? "Work now" : account.work_band === "next" ? "Up next" : "Backlog"}
+              </span>
+            ) : null}
             {account.next_week ? (
               <span className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]">
                 Next week
@@ -128,6 +140,13 @@ export default async function QueueAccountPage({
               sub="Everything you need to make the call in five minutes"
             />
             <div className="flex flex-col gap-4 px-5 pb-5">
+              <div className="rounded-[var(--alac-radius)] bg-[var(--alac-surface-2)] px-4 py-3.5">
+                <div className="placard mb-2 text-[12px] text-[var(--alac-text-2)]">Next move</div>
+                <NextMove row={account} />
+                {account.work_reason ? (
+                  <p className="mt-2 text-[12.5px] leading-snug text-[var(--alac-text-3)]">Why it is on the list: {account.work_reason}</p>
+                ) : null}
+              </div>
               <div className="grid gap-3">
                 <ArtefactCard
                   label="Research brief"
@@ -161,14 +180,11 @@ export default async function QueueAccountPage({
                           {c.ok ? "Done" : "Open"}
                         </Badge>
                       </span>
-                      <span
-                        className={
-                          c.ok
-                            ? "text-[var(--alac-text-2)]"
-                            : "text-[var(--alac-text)]"
-                        }
-                      >
+                      <span className={c.ok ? "text-[var(--alac-text-2)]" : "text-[var(--alac-text)]"}>
                         {c.label}
+                        {!c.ok ? (
+                          <span className="block text-[12px] leading-snug text-[var(--alac-text-3)]">{c.fix}</span>
+                        ) : null}
                       </span>
                     </li>
                   ))}
@@ -338,8 +354,11 @@ export default async function QueueAccountPage({
               />
             ) : (
               <ul className="flex flex-col gap-1 px-3 pb-3">
-                {people.map((p) => (
+                {people.map((p, i) => (
                   <li key={p.id} className="row-hover rounded-[var(--alac-radius)] px-3 py-2.5">
+                    {i === 0 && people.length > 1 ? (
+                      <div className="placard mb-1 text-[10px] text-[var(--alac-accent)]">Ask first</div>
+                    ) : null}
                     <div className="flex items-center gap-3">
                       {/* The name opens the profile. Every one of the 360
                           matched contacts has a LinkedIn URL, so this is a

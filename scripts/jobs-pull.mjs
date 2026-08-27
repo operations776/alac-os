@@ -17,6 +17,7 @@ import {
   predictLeadsAvailable,
   PredictLeadsError,
 } from "../src/lib/server/integrations/predictleads.mjs";
+import { roleScore } from "../src/lib/scoring/roles.mjs";
 
 config({ path: ".env.local" });
 
@@ -42,39 +43,6 @@ const pool = new pg.Pool({
 
 const daysAgo = (d) =>
   d ? Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000) : null;
-
-/**
- * How strong an opening one role is, out of 100.
- *
- * Freshness dominates on purpose. Every other factor describes the role, and
- * this one describes the opportunity: a director level opening posted today is
- * worth more as an approach than a better matched one posted six weeks ago
- * that four agencies have already called about.
- */
-function roleScore(r) {
-  const age = daysAgo(r.first_seen);
-  const fresh = age === null ? 20 : age <= 1 ? 45 : age <= 3 ? 38 : age <= 7 ? 30 : age <= 14 ? 22 : age <= 30 ? 14 : 6;
-
-  const t = String(r.title ?? "").toLowerCase();
-  let seniority = 10;
-  if (/chief|vp|vice president|head of/.test(t)) seniority = 25;
-  else if (/director|principal|staff/.test(t)) seniority = 22;
-  else if (/senior|sr\.|lead/.test(t)) seniority = 18;
-  else if (/manager/.test(t)) seniority = 15;
-
-  // The disciplines ALAC actually places into. A role outside them is real
-  // hiring but not their hiring.
-  let fit = 6;
-  if (/engineer|engineering|scientist|architect|technician/.test(t)) fit = 20;
-  else if (/program|product|manufacturing|operations|quality/.test(t)) fit = 16;
-  else if (/security|clearance|classified/.test(t)) fit = 18;
-
-  // A published band means a candidate conversation can start without a
-  // salary discovery call, which makes the role easier to work.
-  const paid = r.salary ? 10 : 0;
-
-  return Math.min(100, fresh + seniority + fit + paid);
-}
 
 async function main() {
   const org = await pool.query("select id from orgs where slug=$1", [ORG_SLUG]);
@@ -128,17 +96,18 @@ async function main() {
         `insert into account_roles
            (org_id, account_id, external_id, title, url, location, seniority,
             job_function, posted_at, qualified, source, salary_text, occupation,
-            contract, first_seen, last_seen, fetched_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'predictleads',$11,$12,$13,$14,$15,now())
+            contract, first_seen, last_seen, relevance, fetched_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'predictleads',$11,$12,$13,$14,$15,$16,now())
          on conflict (org_id, account_id, external_id) do update set
            title=excluded.title, url=excluded.url, location=excluded.location,
            seniority=excluded.seniority, qualified=excluded.qualified,
            salary_text=excluded.salary_text, occupation=excluded.occupation,
-           last_seen=excluded.last_seen, fetched_at=now()`,
+           last_seen=excluded.last_seen, relevance=excluded.relevance, fetched_at=now()`,
         [
           orgId, a.id, r.external_id, r.title, r.url, r.location, r.seniority,
           r.categories?.[0] ?? null, r.first_seen, ok,
           r.salary, r.occupation, r.contract, r.first_seen, r.last_seen,
+          ok ? roleScore(r) : null,
         ],
       );
       written += 1;

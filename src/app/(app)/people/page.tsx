@@ -55,9 +55,10 @@ export default async function PeoplePage() {
   const stats = (await sql`
     select count(*)::int as total,
            count(*) filter (where account_id is not null)::int as matched,
-           count(*) filter (where is_decision_maker)::int as decision_makers
+           count(*) filter (where is_decision_maker)::int as decision_makers,
+           max(created_at) as imported_at
       from people where org_id = ${orgId}
-  `) as { total: number; matched: number; decision_makers: number }[];
+  `) as { total: number; matched: number; decision_makers: number; imported_at: string | null }[];
 
   const s = stats[0];
 
@@ -70,7 +71,9 @@ export default async function PeoplePage() {
           <>
             {s.matched} are matched to a company in the account queue and {s.decision_makers} hold a
             decision making title. These need no introduction, which is why they are the shortest path
-            to a conversation.
+            to a conversation. Source: your LinkedIn connections export, last loaded{" "}
+            {formatDate(s.imported_at) ?? "never"}. Re-export and reload it monthly; nothing here
+            refreshes itself.
           </>
         }
       />

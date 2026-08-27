@@ -14,6 +14,8 @@
 // worth working".
 
 /** The three bands, in the order they are worked. */
+import { DESK } from "../../config/desk.mjs";
+
 export const BANDS = ["now", "next", "backlog"];
 
 const PRIORITY_WEIGHT = {
@@ -32,6 +34,8 @@ const PRIORITY_WEIGHT = {
  *   fit        up to 55   where the master list already put them
  *   urgency    up to 30   something changed, and how recently
  *   reach      up to 15   you already know someone, so it starts warm
+ *   roles      up to 10   a relevant role went up this week, so there is a
+ *                         requisition to talk about, not just a company
  *
  * Fit dominates because it is a considered judgement made with more context
  * than this app has. Urgency moves a company up but cannot rescue a poor fit,
@@ -46,6 +50,7 @@ export function workScore({
   warmContacts,
   decisionMakers,
   qualifiedRoles,
+  freshRoles = 0,
 }) {
   const reasons = [];
   let score = 0;
@@ -85,7 +90,10 @@ export function workScore({
     reasons.push(`You know ${warmContacts} ${warmContacts === 1 ? "person" : "people"} there`);
   }
 
-  if (qualifiedRoles > 0) {
+  if (freshRoles > 0) {
+    score += Math.min(10, 4 + freshRoles * 2);
+    reasons.push(`${freshRoles} relevant ${freshRoles === 1 ? "role" : "roles"} posted this week`);
+  } else if (qualifiedRoles > 0) {
     reasons.push(`${qualifiedRoles} relevant ${qualifiedRoles === 1 ? "role" : "roles"} open`);
   }
 
@@ -102,14 +110,48 @@ export function workScore({
  * else is the backlog, which is not a rejection: it is the list the next signal
  * promotes from.
  */
-export function assignBands(rows, { nowSize = 25, nextSize = 25 } = {}) {
-  const sorted = rows
+export function assignBands(
+  rows,
+  { nowSize = DESK.NOW_SIZE, nextSize = DESK.NEXT_SIZE, asOf } = {},
+) {
+  const now = new Date(asOf ?? Date.now()).getTime();
+  const isHot = (r) =>
+    r.heat_score != null &&
+    r.heat_score >= DESK.PROMOTE_HEAT &&
+    r.heat_date != null &&
+    (now - new Date(r.heat_date).getTime()) / 86_400_000 <= DESK.SIGNAL_FRESH_DAYS;
+
+  // The rollover rules, as code. src/config/desk.mjs states them in words.
+  //
+  // On hold is out of the working bands whatever its score: a human said
+  // stop. A hot signal is at least Up next whatever its fit: that is how a
+  // signal on the board enters the working list instead of sitting beside it.
+  const eligible = rows.filter((r) => r.prep_status !== "HOLD");
+  const held = rows.filter((r) => r.prep_status === "HOLD");
+
+  const sorted = eligible
     .slice()
     .sort((a, b) => (b.work_score ?? 0) - (a.work_score ?? 0) || a.company_name.localeCompare(b.company_name));
 
-  return sorted.map((row, i) => ({
+  const banded = sorted.map((row, i) => ({
     ...row,
     work_band: i < nowSize ? "now" : i < nowSize + nextSize ? "next" : "backlog",
     rank: i + 1,
   }));
+
+  // Promote hot backlog rows into Up next by swapping with the coldest rows at
+  // the bottom of Up next. Band sizes stay fixed, which is what keeps the list
+  // something a person can hold in their head.
+  const hotBacklog = banded.filter((r) => r.work_band === "backlog" && isHot(r));
+  for (const promote of hotBacklog) {
+    const demote = banded
+      .filter((r) => r.work_band === "next" && !isHot(r))
+      .sort((a, b) => (a.work_score ?? 0) - (b.work_score ?? 0))[0];
+    if (!demote) break;
+    promote.work_band = "next";
+    promote.work_reason = `Promoted on a strong signal. ${promote.work_reason ?? ""}`.trim();
+    demote.work_band = "backlog";
+  }
+
+  return banded.concat(held.map((row) => ({ ...row, work_band: "backlog", rank: null })));
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { getOrgId, freshRoles, freshRoleCounts } from "@/lib/server/queries/desk";
-import { Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
+import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ function ago(d: string | null): string {
 export default async function RolesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; sort?: string }>;
 }) {
   const params = await searchParams;
   const orgId = await getOrgId();
@@ -45,8 +45,16 @@ export default async function RolesPage({
   }
 
   const range = RANGES.find((r) => r.key === params.range) ?? RANGES[1];
+  const sort = params.sort === "relevant" ? "relevant" : "new";
+  const qs = (r: string, s: string) => {
+    const p = new URLSearchParams();
+    if (r !== "week") p.set("range", r);
+    if (s !== "new") p.set("sort", s);
+    const q = p.toString();
+    return q ? `/roles?${q}` : "/roles";
+  };
   const [roles, counts] = await Promise.all([
-    freshRoles(orgId, range.days, 80),
+    freshRoles(orgId, range.days, 80, sort),
     freshRoleCounts(orgId),
   ]);
 
@@ -55,21 +63,21 @@ export default async function RolesPage({
       <PageHeader
         eyebrow="Open roles"
         title="What to call about"
-        lede="Roles that went up recently at the companies you are working. Newest first, because a job posted this morning is a reason to call this morning."
+        lede="Roles that went up recently at the companies you are working. Newest first by default; switch to most relevant to rank by seniority, discipline and whether a salary is published."
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Posted today" value={counts.today ?? 0} hint="nobody has called yet" />
         <Stat label="This week" value={counts.week ?? 0} />
         <Stat label="Companies hiring" value={counts.companies ?? 0} hint="this week" />
-        <Stat label="Relevant roles open" value={counts.total ?? 0} hint="all companies" />
+        <Stat label="Relevant roles open" value={counts.total ?? 0} hint={`pulled ${formatDate(counts.pulled_at ?? null) ?? "never"}`} />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {RANGES.map((r) => (
           <Link
             key={r.key}
-            href={r.key === "week" ? "/roles" : `/roles?range=${r.key}`}
+            href={qs(r.key, sort)}
             aria-current={r.key === range.key ? "true" : undefined}
             className={`chip transition-colors ${
               r.key === range.key
@@ -80,8 +88,17 @@ export default async function RolesPage({
             {r.label}
           </Link>
         ))}
-        <span className="ml-auto text-[12.5px] text-[var(--alac-text-3)]">
-          Every role links to the company&apos;s own careers page
+        <span className="ml-auto flex items-center gap-2">
+          {(["new", "relevant"] as const).map((s) => (
+            <Link
+              key={s}
+              href={qs(range.key, s)}
+              aria-current={s === sort ? "true" : undefined}
+              className={`chip transition-colors ${s === sort ? "bg-[var(--alac-surface-2)] text-[var(--alac-text)]" : "hover:bg-[var(--alac-surface-2)]"}`}
+            >
+              {s === "new" ? "Newest" : "Most relevant"}
+            </Link>
+          ))}
         </span>
       </div>
 
@@ -114,6 +131,11 @@ export default async function RolesPage({
                   <span className="readout ml-auto text-[12.5px] text-[var(--alac-text-3)]">
                     {ago(r.first_seen)}
                   </span>
+                  {r.relevance != null ? (
+                    <span className="readout text-[12.5px] text-[var(--alac-accent)]" title="Relevance out of 100: freshness, seniority, discipline, published salary">
+                      {r.relevance}
+                    </span>
+                  ) : null}
                 </div>
 
                 <p className="mt-1.5 text-[15px] font-medium">{r.title}</p>

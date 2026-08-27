@@ -134,7 +134,12 @@ fetchers are written to fill it.
 | ALAC-68 | Exa pass: narrative and a citable source URL per signal | todo |
 | ALAC-69 | OpenAI pass: `recommended_move`, grounded, cites the stored source or is rejected | todo |
 | ALAC-70 | Show coverage and gaps on the signal card, so a partially scored signal says so | todo |
-| ALAC-71 | Schedule the pull, and reconcile against the workbook log until the desk trusts it | todo |
+| ALAC-71 | Schedule the pull: `npm run refresh` on Monday and Thursday from GitHub Actions | done |
+| ALAC-76 | One next move per company, derived, shown on Today, Who to target and the account page | done |
+| ALAC-77 | Lifecycle stage derived from prep and outreach fields; rollover rules stated once and enforced in assignBands | done |
+| ALAC-78 | Roles ranked by relevance, stored and recomputed each pull; account_desk view carries every input the desk needs | done |
+| ALAC-79 | SourceWhale read sync into the funnel and per-company stage. Blocked on Adrian's API key | blocked |
+| ALAC-80 | Content angles from the same signals: a copyable "what to post" per strong signal | todo |
 | ALAC-59 | Surface the duplicate company in the source workbook (one company under two Record IDs) as a data quality panel | todo |
 | ALAC-60 | Full SourceWhale ingestion once the export schema is confirmed, replacing the provisional counters | todo |
 
