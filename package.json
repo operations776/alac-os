@@ -13,10 +13,7 @@
     "migrate": "node scripts/migrate.mjs",
     "create:user": "node scripts/create-user.mjs",
     "import:desk": "node scripts/import-command-center.mjs",
-    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs && node scripts/test-fiber-signals.mjs && node scripts/test-outreach.mjs",
-    "verify:fiber": "node scripts/verify-fiber.mjs",
-    "signals:setup": "node scripts/signals-setup.mjs",
-    "signals:pull": "node scripts/signals-pull.mjs",
+    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs && node scripts/test-outreach.mjs",
     "enrich": "node scripts/enrich-account.mjs",
     "map": "node scripts/map-market.mjs",
     "export": "node scripts/export-accounts.mjs",
@@ -24,7 +21,8 @@
     "verify:apify": "node scripts/verify-apify.mjs",
     "roles": "node scripts/pull-roles.mjs",
     "draft": "node scripts/draft-outreach.mjs",
-    "signals": "node scripts/signals-predictleads.mjs"
+    "signals": "node scripts/signals-predictleads.mjs",
+    "jobs": "node scripts/jobs-pull.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

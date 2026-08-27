@@ -14,6 +14,7 @@
 import { config } from "dotenv";
 import pg from "pg";
 import { normCompany } from "../src/lib/server/import/normalize.mjs";
+import { scoreHeat } from "../src/lib/scoring/heat.mjs";
 import {
   companySignals,
   describeSignal,
@@ -92,14 +93,21 @@ async function main() {
   const orgId = org.rows[0].id;
 
   const accounts = await pool.query(
-    `select id, company_name, domain, work_band, final_score
-       from tam_accounts
-      where org_id=$1
-        and domain is not null
-        and ($2::text is null or work_band = $2)
-        and ($2::text is not null or work_band in ('now','next'))
-      order by case work_band when 'now' then 0 when 'next' then 1 else 2 end,
-               final_score desc nulls last`,
+    `select a.id, a.company_name, a.domain, a.work_band, a.final_score, a.priority::text as priority,
+            (select count(*) from account_roles r
+              where r.account_id=a.id and r.qualified)::int as qualified_roles,
+            (select count(*) from people p where p.account_id=a.id)::int as warm_contacts,
+            (select count(*) from people p
+              where p.account_id=a.id and p.is_decision_maker)::int as decision_makers,
+            (select json_agg(json_build_object('title', r.title, 'posted_at', r.posted_at))
+               from account_roles r where r.account_id=a.id and r.qualified) as jobs
+       from tam_accounts a
+      where a.org_id=$1
+        and a.domain is not null
+        and ($2::text is null or a.work_band = $2)
+        and ($2::text is not null or a.work_band in ('now','next'))
+      order by case a.work_band when 'now' then 0 when 'next' then 1 else 2 end,
+               a.final_score desc nulls last`,
     [orgId, BAND],
   );
 
@@ -137,6 +145,21 @@ async function main() {
 
     for (const s of good) {
       const u = urgency(s);
+      // The full six component score, using the same scorer every other signal
+      // on this desk goes through. Scoring only urgency would leave the other
+      // five null, and a live funding round would then rank below a hand typed
+      // workbook row scored out of 100.
+      const scored = scoreHeat({
+        jobs: a.jobs ?? [],
+        priority: a.priority,
+        finalScore: a.final_score == null ? null : Number(a.final_score),
+        amountUsd: s.amount == null ? null : Number(s.amount),
+        roundLabel: s.financing_type,
+        warmContacts: a.warm_contacts,
+        decisionMakers: a.decision_makers,
+        signalDate: s.signal_date,
+      });
+      const c = scored.components;
       // Conflict on the provider id, so a rerun updates in place. The score is
       // recomputed on every pull because recency decays whether or not the
       // signal changed.
@@ -149,16 +172,27 @@ async function main() {
             source, source_event_id, external_id, category, confidence,
             what_happened, detail, signal_date, primary_source, sources,
             amount_usd, headcount, person_name, person_title, location_text,
-            hiring_urgency, heat_score, last_scored, scored_at)
+            hiring_urgency, icp_fit, capital, talent_scarcity, access, freshness,
+            heat_score, tam_final_score, heat_vs_tam, breakdown, coverage,
+            last_scored, scored_at)
          values ($1,$2,$3,$4,$5,'predictleads',$6,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,
-                 $14,$15,$16,$17,$18,$19,$20, now(), now())
+                 $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28::jsonb,$29,
+                 now(), now())
          on conflict (org_id, external_id) where external_id is not null
          do update set
            what_happened=excluded.what_happened,
            detail=excluded.detail,
            confidence=excluded.confidence,
            hiring_urgency=excluded.hiring_urgency,
+           icp_fit=excluded.icp_fit,
+           capital=excluded.capital,
+           talent_scarcity=excluded.talent_scarcity,
+           access=excluded.access,
+           freshness=excluded.freshness,
            heat_score=excluded.heat_score,
+           heat_vs_tam=excluded.heat_vs_tam,
+           breakdown=excluded.breakdown,
+           coverage=excluded.coverage,
            primary_source=excluded.primary_source,
            sources=excluded.sources,
            last_scored=now(),
@@ -177,7 +211,15 @@ async function main() {
           JSON.stringify(s.source_url ? [s.source_url] : []),
           s.amount ?? null, s.headcount ?? null, s.contact ?? null,
           s.job_title ?? null, s.location ?? null,
-          u, u,
+          // Urgency stays ours: the category weighting knows a funding round
+          // means hiring, which a job count alone cannot say.
+          Math.max(u, c.hiring_urgency ?? 0),
+          c.icp_fit, c.capital, c.talent_scarcity, c.access, c.freshness,
+          scored.heat_score,
+          a.final_score == null ? null : Number(a.final_score),
+          a.final_score == null ? null : scored.heat_score - Number(a.final_score),
+          JSON.stringify(scored.terms ?? []),
+          scored.coverage ?? null,
         ],
       );
       written += 1;

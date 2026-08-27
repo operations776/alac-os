@@ -187,21 +187,52 @@ export function describeSignal(s) {
 /**
  * Open roles, straight from PredictLeads.
  *
- * Kept separate from the signal pull because roles are refreshed on their own
- * rhythm and cost their own credits.
+ * Verified live: `first_seen_at` and `last_seen_at` are timestamps to the
+ * minute and were the current day on the first call, so "posted today" is a
+ * real question this can answer. `posted_at` is null on every row seen, which
+ * is why first_seen is the date used: it is when the posting entered the feed,
+ * which is the closest honest proxy for when it went up.
+ *
+ * The url is the employer's own board, usually Greenhouse or Lever, so a role
+ * on the screen is one click from the live posting rather than from a search.
  */
 export async function companyJobs(domain, { limit = 100 } = {}) {
   const json = await call(`/companies/${encodeURIComponent(domain)}/job_openings`, { limit });
   return (json.data ?? []).map((row) => {
     const a = row.attributes ?? {};
+    const loc = Array.isArray(a.location_data) ? a.location_data[0] : null;
     return {
       external_id: row.id,
       title: a.title ?? a.normalized_title ?? null,
-      location: a.location ?? null,
+      // The raw location string is a full geographic path, "Seattle,
+      // Washington, United States, Northern America, Americas", which is
+      // unreadable in a list. The structured form gives back a city.
+      location: loc?.city
+        ? [loc.city, loc.state ?? loc.country].filter(Boolean).join(", ")
+        : (a.location ?? null),
       url: a.url ?? null,
       first_seen: a.first_seen_at ? String(a.first_seen_at).slice(0, 10) : null,
       last_seen: a.last_seen_at ? String(a.last_seen_at).slice(0, 10) : null,
-      category: a.job_opening_category ?? null,
+      seniority: a.seniority ?? null,
+      salary: a.salary ?? null,
+      categories: Array.isArray(a.categories) ? a.categories : [],
+      occupation: a.onet_data?.occupation_name ?? null,
+      contract: Array.isArray(a.contract_types) ? a.contract_types[0] : null,
     };
   });
+}
+
+/**
+ * Roles worth a recruiting conversation.
+ *
+ * The same rule the Apify pull already applies, kept in one place so both
+ * sources agree on what counts. A role that fails is not dropped: "they are
+ * hiring, but not for anything we can help with" is a real answer and a
+ * different one from "they are not hiring".
+ */
+export function qualifyRole(title = "") {
+  const t = String(title).toLowerCase();
+  if (/(intern|internship|apprentice|student)/.test(t)) return false;
+  if (/(receptionist|office manager|janitor|barista|driver)/.test(t)) return false;
+  return /(engineer|engineering|scientist|architect|developer|technician|program|product|director|vp|vice president|head|chief|principal|staff|lead|manager)/.test(t);
 }

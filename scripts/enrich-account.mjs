@@ -9,20 +9,18 @@
 //
 // Order matters and follows cost. Free and already-owned data first, then the
 // cheap searches, then the model. Nothing chargeable runs without --apply, and
-// the estimate is printed before it does, which is Fiber's own operating rule
+// the estimate is printed before it does, so nothing chargeable is a surprise
 // and a good one regardless.
 //
 //   1. the account, its warm network and its live signals   free, already here
-//   2. open roles                          Fiber, 1 credit per posting found
+//   2. open roles                          PredictLeads, one request per company
 //   3. people to target                    Prospeo, 1 credit per request
 //   4. score                               local, deterministic, free
 //   5. narrative                           OpenAI, grounded, cents
 
 import { config } from "dotenv";
 import pg from "pg";
-import {
-  searchJobPostings, countJobPostings, linkedinSlug, redact,
-} from "../src/lib/server/integrations/fiber.mjs";
+import { companyJobs, PredictLeadsError } from "../src/lib/server/integrations/predictleads.mjs";
 import {
   searchPerson, normalizePerson, rankTarget, accountInformation,
   SENIORITY, DEPARTMENT,
@@ -32,7 +30,6 @@ import { writeNarrative } from "../src/lib/server/ai/narrative.mjs";
 
 config({ path: ".env.local" });
 
-const fiberKey = process.env.FIBER_API_KEY;
 const ORG_SLUG = process.env.ALAC_ORG_SLUG ?? "alac";
 const APPLY = process.argv.includes("--apply");
 const NO_AI = process.argv.includes("--no-ai");
@@ -72,39 +69,7 @@ function qualifyRole(title = "") {
   return /\b(engineer|engineering|scientist|architect|developer|technician|program|product|director|vp|vice president|head|chief|principal|staff|lead|manager)\b/.test(t);
 }
 
-/**
- * A readable place from Fiber's location object.
- *
- * The field is a full geocode: address parts, coordinates and a timezone. Only
- * the formatted address is wanted, and a plain string is still accepted in case
- * a posting carries one.
- */
-function locationText(loc) {
-  if (!loc) return null;
-  if (typeof loc === "string") return loc;
-  if (loc.formatted_address) return loc.formatted_address;
-  if (loc.full_address) return loc.full_address;
-  // Built explicitly rather than as a chain: `a ?? b ?? c || null` is a syntax
-  // error in JS, and mixing the two operators is the second time it has bitten
-  // in this file.
-  const parts = [loc.city, loc.state_code ?? loc.state_name, loc.country_code].filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : null;
-}
-
-/**
- * A date, from whatever Fiber sends.
- *
- * posted_at arrives as a full timestamp. Slicing the first ten characters of a
- * Date object's toString gives "Mon Jul 06", not a date, so it is parsed
- * properly and returned as yyyy-mm-dd for a date column.
- */
-function toDate(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-}
-
-/** Fiber's seniority strings, mapped to the scorer's vocabulary. */
+/** Provider seniority strings, mapped to the scorer's vocabulary. */
 function normSeniority(level = "") {
   const s = String(level).toLowerCase();
   if (/executive|chief|c-level/.test(s)) return "executive";
@@ -178,33 +143,14 @@ const run = async () => {
   }
 
   // ---- estimate ----------------------------------------------------------
-  console.log("\nCost estimate:");
-  let jobEstimate = 0;
-  for (const p of plans) {
-    if (!p.slug) continue;
-    try {
-      // A count call is itself 1 credit, and it is the cheapest insurance
-      // there is: Anduril returns 2,697 open postings, so fetching blind would
-      // have spent 2,697 credits against a 460 balance in a single call.
-      const c = await countJobPostings(fiberKey, [p.slug]);
-      const n = c?.output?.totalJobsFound ?? c?.output?.count ?? 0;
-      p.jobCount = n;
-      const willFetch = Math.min(n, ROLE_LIMIT);
-      jobEstimate += willFetch;
-      console.log(
-        `  ${p.account.company_name}: ${n.toLocaleString()} open postings` +
-          (n > ROLE_LIMIT
-            ? `, fetching the ${ROLE_LIMIT} most recent (${willFetch} credits)`
-            : `  (${willFetch} credits)`),
-      );
-    } catch (err) {
-      p.jobCount = null;
-      console.log(`  ${p.account.company_name}: count failed, ${redact(err.message, fiberKey)}`);
-    }
-  }
+  console.log("Cost estimate:");
+  // No per posting count call. Fiber charged a credit per posting found, so
+  // counting first was the only protection against a company with 2,697 open
+  // roles emptying the balance in one call. PredictLeads is not metered that
+  // way, so the roles arrive in one request per company.
   const peopleEstimate = plans.length; // one request each
   console.log(`  people search: ${peopleEstimate} request(s), 1 Prospeo credit each`);
-  console.log(`  TOTAL: about ${jobEstimate + plans.length} Fiber credits, ${peopleEstimate} Prospeo credits`);
+  console.log(`  TOTAL: ${peopleEstimate} Prospeo credits, plus one PredictLeads request per company`);
 
   const acct = await accountInformation().catch(() => null);
   if (acct?.response) {
@@ -232,33 +178,29 @@ const run = async () => {
       const a = p.account;
       console.log(`\n=== ${a.company_name} ===`);
 
-      // ---- 2. open roles, Fiber -----------------------------------------
+      // ---- 2. open roles, PredictLeads ----------------------------------
       let roles = [];
-      if (p.slug && p.jobCount !== 0) {
+      if (a.domain) {
         try {
-          const res = await searchJobPostings(fiberKey, [p.slug], { pageSize: ROLE_LIMIT, isActive: 'true' });
-          // The postings live under output.data and the fields are snake_case,
-          // unlike the tracker signal payloads which are camelCase. Read from a
-          // live response, not from the shape the tracker uses.
-          const postings = res?.output?.data ?? [];
-          roles = (Array.isArray(postings) ? postings : []).map((j) => ({
-            external_id: String(j.job_id ?? j.job_url ?? Math.random()),
+          const pulled = await companyJobs(a.domain, { limit: ROLE_LIMIT });
+          roles = pulled.map((j) => ({
+            external_id: j.external_id,
             title: j.title ?? "(untitled)",
-            url: j.job_url ?? null,
-            // standardized_location is a rich object, not a string. Storing it
-            // whole put a JSON blob in a text column and made the roles table
-            // unreadable, so the formatted address is taken and the rest
-            // discarded: the desk needs "Costa Mesa, CA", not coordinates.
-            location: locationText(j.standardized_location),
-            seniority: j.seniority_level ?? null,
-            job_function: Array.isArray(j.job_function) ? j.job_function.join(", ") : (j.job_function ?? null),
-            posted_at: toDate(j.posted_at),
+            url: j.url,
+            location: j.location,
+            seniority: j.seniority,
+            job_function: j.categories?.[0] ?? null,
+            posted_at: j.first_seen,
             qualified: qualifyRole(j.title ?? ""),
-            description: j.description ?? null,
+            description: null,
           }));
           console.log(`  roles fetched: ${roles.length}, qualified ${roles.filter((r) => r.qualified).length}`);
         } catch (err) {
-          console.log(`  roles failed: ${redact(err.message, fiberKey)}`);
+          if (err instanceof PredictLeadsError && err.status === 404) {
+            console.log("  roles: no PredictLeads record for this domain");
+          } else {
+            console.log(`  roles failed: ${String(err.message).slice(0, 90)}`);
+          }
         }
       }
 
@@ -422,7 +364,7 @@ const run = async () => {
     console.log(`\nDone. OpenAI cost this run: $${totalCost.toFixed(4)}`);
   } catch (err) {
     await client.query("update agent_runs set status='failed', error=$2, finished_at=now() where id=$1",
-      [runId, redact(String(err?.message ?? err), fiberKey).slice(0, 2000)]).catch(() => {});
+      [runId, String(err?.message ?? err).slice(0, 2000)]).catch(() => {});
     throw err;
   } finally {
     await client.end().catch(() => {});
@@ -450,6 +392,6 @@ const run = async () => {
 // than guessed at.
 
 run().catch((err) => {
-  console.error(redact(String(err?.message ?? err), fiberKey));
+  console.error(String(err?.message ?? err));
   process.exit(1);
 });
