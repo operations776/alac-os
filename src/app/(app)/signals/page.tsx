@@ -8,6 +8,35 @@ import { HEAT_COMPONENTS, HeatDelta } from "@/components/ui/desk";
 
 export const dynamic = "force-dynamic";
 
+/** The provider's category codes, in words a reader does not have to decode. */
+const CATEGORY_LABEL: Record<string, string> = {
+  receives_financing: "Raised money",
+  increases_headcount_by: "Grew headcount",
+  hires: "Hired someone senior",
+  leaves: "Someone senior left",
+  expands_offices_to: "Opened an office",
+  expands_offices_in: "Expanded an office",
+  expands_facilities: "Expanded facilities",
+  acquires: "Acquired a company",
+  signs_new_client: "Won a client",
+  launches: "Launched something",
+  has_valuation: "New valuation",
+  invests_into: "Took investment",
+  partners_with: "New partnership",
+  closes_offices_in: "Closed an office",
+};
+
+/** Money, short. $250,000,000 is unreadable in a chip; $250M is not. */
+function formatMoney(v: string | null): string | null {
+  if (!v) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 0 : 1).replace(/.0$/, "")}B`;
+  if (n >= 1e6) return `${Math.round(n / 1e6)}M`;
+  if (n >= 1e3) return `${Math.round(n / 1e3)}K`;
+  return `${n}`;
+}
+
 // SIGNAL HEAT. The second scoring system, and the one this app actually
 // computes against.
 //
@@ -104,6 +133,18 @@ export default async function SignalsPage() {
                         <span className="readout text-[13px] text-[var(--alac-text-3)]">
                           {formatDate(s.signal_date)}
                         </span>
+                        {s.source === "predictleads" ? (
+                          <span
+                            className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent)]"
+                            title="Found by the system, not typed in"
+                          >
+                            Found automatically
+                          </span>
+                        ) : s.source === "workbook" ? (
+                          <span className="chip" title="Entered by hand from the workbook">
+                            From the workbook
+                          </span>
+                        ) : null}
                         {s.hq ? (
                           <span className="text-[12.5px] text-[var(--alac-text-3)]">
                             {s.hq}
@@ -123,6 +164,22 @@ export default async function SignalsPage() {
                       ) : null}
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {s.amount_usd ? (
+                          <span className="chip bg-[var(--alac-good-soft)] text-[var(--alac-good)]">
+                            {formatMoney(s.amount_usd)}
+                          </span>
+                        ) : null}
+                        {s.person_name ? (
+                          <span className="chip" title={s.person_title ?? undefined}>
+                            {s.person_name}
+                            {s.person_title ? `, ${s.person_title}` : ""}
+                          </span>
+                        ) : null}
+                        {s.category ? (
+                          <span className="chip text-[var(--alac-text-3)]">
+                            {CATEGORY_LABEL[s.category] ?? s.category.replace(/_/g, " ")}
+                          </span>
+                        ) : null}
                         {s.the_number ? (
                           <span className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]">
                             {s.the_number}

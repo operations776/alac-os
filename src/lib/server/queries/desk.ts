@@ -271,6 +271,12 @@ export type HeatRow = {
   primary_source: string | null;
   detail: string | null;
   sources: string[];
+  source: string | null;
+  category: string | null;
+  amount_usd: string | null;
+  person_name: string | null;
+  person_title: string | null;
+  confidence: string | null;
 };
 
 /**
@@ -284,11 +290,13 @@ export async function signalHeat(orgId: string, limit = 100) {
            s.signal_date, s.what_happened, s.the_number, s.hq, s.best_contact,
            s.hiring_urgency, s.icp_fit, s.capital, s.talent_scarcity,
            s.access, s.freshness, s.heat_score, s.tam_final_score,
-           s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources
+           s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources,
+           s.source::text as source, s.category, s.amount_usd, s.person_name,
+           s.person_title, s.confidence
       from heat_signals s
       left join tam_accounts a on a.id = s.account_id
      where s.org_id = ${orgId}
-     order by s.heat_score desc nulls last, s.signal_date desc nulls last
+     order by s.signal_date desc nulls last, s.heat_score desc nulls last
      limit ${limit}
   `) as HeatRow[];
 }
@@ -771,4 +779,66 @@ export async function draftsForAccount(orgId: string, accountId: string) {
     drafted_at: string;
     approved: boolean;
   }[];
+}
+
+export type FreshRole = {
+  id: string;
+  account_id: string;
+  company_name: string;
+  work_band: string | null;
+  title: string;
+  url: string | null;
+  location: string | null;
+  salary_text: string | null;
+  seniority: string | null;
+  first_seen: string | null;
+  open_at_company: number;
+  why_now: string | null;
+};
+
+/**
+ * Roles that went up recently, newest first.
+ *
+ * The desk question is "what can I call about today". A role posted this
+ * morning is a reason to contact somebody this morning; the same role in three
+ * weeks is one of forty and no longer a reason for anything, so this screen is
+ * ordered by when it appeared rather than by how well it scores.
+ *
+ * `why_now` is the account's strongest signal, carried onto the row, because a
+ * new role plus the round that paid for it is a call and a new role alone is a
+ * job board.
+ */
+export async function freshRoles(orgId: string, days = 7, limit = 60) {
+  return (await sql`
+    select r.id, r.account_id, a.company_name, a.work_band,
+           r.title, r.url, r.location, r.salary_text, r.seniority,
+           r.first_seen,
+           (select count(*)::int from account_roles x
+             where x.account_id = a.id and x.qualified) as open_at_company,
+           (select h.what_happened from heat_signals h
+             where h.account_id = a.id
+             order by h.signal_date desc nulls last limit 1) as why_now
+      from account_roles r
+      join tam_accounts a on a.id = r.account_id
+     where r.org_id = ${orgId}
+       and r.qualified
+       and r.first_seen >= current_date - ${days}::int
+     order by r.first_seen desc nulls last, a.company_name, r.title
+     limit ${limit}
+  `) as FreshRole[];
+}
+
+/** Counts for the fresh roles header. */
+export async function freshRoleCounts(orgId: string) {
+  const rows = (await sql`
+    select
+      count(*) filter (where first_seen >= current_date)::int        as today,
+      count(*) filter (where first_seen >= current_date - 1)::int    as day,
+      count(*) filter (where first_seen >= current_date - 7)::int    as week,
+      count(distinct account_id) filter (where first_seen >= current_date - 7)::int as companies,
+      count(*)::int                                                  as total
+    from account_roles
+    where org_id = ${orgId} and qualified
+  `) as Record<string, number>[];
+  return rows[0];
 }
