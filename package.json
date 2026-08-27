@@ -13,7 +13,7 @@
     "migrate": "node scripts/migrate.mjs",
     "create:user": "node scripts/create-user.mjs",
     "import:desk": "node scripts/import-command-center.mjs",
-    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs && node scripts/test-outreach.mjs",
+    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs && node scripts/test-outreach.mjs && node scripts/test-predictleads.mjs",
     "enrich": "node scripts/enrich-account.mjs",
     "map": "node scripts/map-market.mjs",
     "export": "node scripts/export-accounts.mjs",

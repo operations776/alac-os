@@ -232,7 +232,7 @@ export async function companyJobs(domain, { limit = 100 } = {}) {
  */
 export function qualifyRole(title = "") {
   const t = String(title).toLowerCase();
-  if (/(intern|internship|apprentice|student)/.test(t)) return false;
-  if (/(receptionist|office manager|janitor|barista|driver)/.test(t)) return false;
-  return /(engineer|engineering|scientist|architect|developer|technician|program|product|director|vp|vice president|head|chief|principal|staff|lead|manager)/.test(t);
+  if (/\b(intern|internship|apprentice|student)\b/.test(t)) return false;
+  if (/\b(receptionist|office manager|janitor|barista|driver)\b/.test(t)) return false;
+  return /\b(engineer|engineering|scientist|architect|developer|technician|program|product|director|vp|vice president|head|chief|principal|staff|lead|manager)\b/.test(t);
 }
