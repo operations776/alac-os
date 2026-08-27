@@ -23,7 +23,8 @@
     "import:domains": "node scripts/import-domains.mjs",
     "verify:apify": "node scripts/verify-apify.mjs",
     "roles": "node scripts/pull-roles.mjs",
-    "draft": "node scripts/draft-outreach.mjs"
+    "draft": "node scripts/draft-outreach.mjs",
+    "signals": "node scripts/signals-predictleads.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
