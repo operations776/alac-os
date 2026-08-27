@@ -16,7 +16,7 @@
 import { config } from "dotenv";
 import pg from "pg";
 import { enrichCompany, normalizeCompany } from "../src/lib/server/integrations/prospeo.mjs";
-import { workScore, assignBands } from "../src/lib/scoring/bands.mjs";
+import { workScore, assignBands, describeMove } from "../src/lib/scoring/bands.mjs";
 
 config({ path: ".env.local" });
 
@@ -58,7 +58,15 @@ const run = async () => {
             (select count(*)::int from account_roles r
               where r.account_id = a.id and r.qualified
                 and r.first_seen >= current_date - 7) as fresh_roles,
-            a.prep_status
+            a.prep_status,
+            a.work_band as prev_band,
+            -- Worked: any sign a human has touched it recently. These never
+            -- get demoted by the ranking.
+            (a.prep_status <> 'NOT STARTED'
+              or exists (select 1 from account_notes n where n.account_id = a.id)
+              or exists (select 1 from desk_marks m where m.account_id = a.id and m.done)
+              or exists (select 1 from outreach_drafts d where d.account_id = a.id
+                          and d.sent_at >= now() - interval '21 days')) as active
        from tam_accounts a
       where a.org_id = $1
         and (a.priority in ('priority_1','priority_2','unscored') or a.next_week)`,
@@ -141,6 +149,32 @@ const run = async () => {
         where a.id = v.id and a.org_id = $1`,
       params,
     );
+  }
+
+  // The move log. One row per company whose band changed, with the reason
+  // as ranked. First run against an unranked market records every entry.
+  const moves = banded
+    .filter((r) => r.prev_band !== r.work_band)
+    .map((r) => ({ id: r.id, name: r.company_name, from: r.prev_band ?? null, to: r.work_band,
+                   why: describeMove(r.prev_band ?? null, r.work_band, r.work_reason) }));
+  for (let i = 0; i < moves.length; i += CHUNK) {
+    const slice = moves.slice(i, i + CHUNK);
+    const params = [orgId];
+    const values = slice.map((m) => {
+      params.push(m.id, m.from, m.to, m.why);
+      const n = params.length;
+      return `($1, ${n - 3}::uuid, ${n - 2}::text, ${n - 1}::text, ${n}::text)`;
+    });
+    await client.query(
+      `insert into band_moves (org_id, account_id, from_band, to_band, reason) values ${values.join(",")}`,
+      params,
+    );
+  }
+  const up = moves.filter((m) => m.from && m.why.startsWith("Up")).length;
+  const down = moves.filter((m) => m.why.startsWith("Down")).length;
+  console.log(`Moved: ${moves.length} (${up} up, ${down} down, ${moves.length - up - down} new)`);
+  for (const m of moves.filter((m) => m.from).slice(0, 20)) {
+    console.log(`  ${m.name.slice(0, 34).padEnd(36)}${m.why}`);
   }
 
   const counts = banded.reduce((m, r) => ({ ...m, [r.work_band]: (m[r.work_band] ?? 0) + 1 }), {});

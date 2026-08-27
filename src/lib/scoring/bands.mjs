@@ -153,5 +153,37 @@ export function assignBands(
     demote.work_band = "backlog";
   }
 
+  // The sticky rule. A company somebody is working (messaged in the last
+  // three weeks, notes on it, ticks on it, research started) never drops
+  // below the band it was in. The ranking is about who to start on; it has no
+  // business pulling a conversation out from under him. It swaps with the
+  // weakest unworked row in the band it is keeping, so the sizes hold.
+  const order = { now: 0, next: 1, backlog: 2 };
+  for (const keep of banded) {
+    if (!keep.active || !keep.prev_band) continue;
+    if (order[keep.work_band] <= order[keep.prev_band]) continue;
+    const swap = banded
+      .filter((r) => r.work_band === keep.prev_band && !r.active && !isHot(r))
+      .sort((a, b) => (a.work_score ?? 0) - (b.work_score ?? 0))[0];
+    if (!swap) continue;
+    swap.work_band = keep.work_band;
+    keep.work_band = keep.prev_band;
+    keep.work_reason = `Kept: you are working it. ${keep.work_reason ?? ""}`.trim();
+  }
+
   return banded.concat(held.map((row) => ({ ...row, work_band: "backlog", rank: null })));
+}
+
+/**
+ * What changed between two rankings, in words.
+ * prev null means the company was not ranked before.
+ */
+export function describeMove(prev, next, reason) {
+  const name = { now: "Work now", next: "Up next", backlog: "Backlog" };
+  if (!prev) return `Entered ${name[next]}`;
+  const up = ({ now: 0, next: 1, backlog: 2 })[next] < ({ now: 0, next: 1, backlog: 2 })[prev];
+  const head = `${up ? "Up" : "Down"} from ${name[prev]} to ${name[next]}`;
+  if (reason?.startsWith("Promoted")) return `${head}: a strong signal`;
+  if (reason?.startsWith("Kept")) return head;
+  return up ? `${head}: ${reason?.split(".")[0]?.toLowerCase() ?? "rank rose"}` : `${head}: others moved ahead`;
 }

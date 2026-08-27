@@ -4,7 +4,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import {
   getOrgId, accountById, signalsForAccount, peopleForAccount, PRIORITY_LABEL,
   targetsForAccount, rolesForAccount, accountPackage, briefForAccount,
-  draftsForAccount, notesForAccount, marksForAccount,
+  draftsForAccount, notesForAccount, marksForAccount, movesForAccount,
 } from "@/lib/server/queries/desk";
 import {
   Badge, Card, CardHeader, EmptyState, GaugeRow, NoticeLine,
@@ -68,7 +68,7 @@ export default async function QueueAccountPage({
   const account = await accountById(orgId, id);
   if (!account) notFound();
 
-  const [signals, people, targets, roles, pkg, brief, drafts, notes, marks] = await Promise.all([
+  const [signals, people, targets, roles, pkg, brief, drafts, notes, marks, moves] = await Promise.all([
     signalsForAccount(orgId, account.id),
     peopleForAccount(orgId, account.id),
     targetsForAccount(orgId, account.id),
@@ -78,6 +78,7 @@ export default async function QueueAccountPage({
     draftsForAccount(orgId, account.id),
     notesForAccount(orgId, account.id),
     marksForAccount(orgId, account.id),
+    movesForAccount(orgId, account.id),
   ]);
 
   const checks = qcChecklist(account, marks);
@@ -179,6 +180,11 @@ export default async function QueueAccountPage({
                 {account.work_reason ? (
                   <p className="mt-2 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
                     Why it is on the list: {account.work_reason}
+                  </p>
+                ) : null}
+                {moves.length > 0 ? (
+                  <p className="mt-1 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
+                    {moves.map((m) => `${m.reason}, ${formatDate(m.moved_at)}`).join(" · ")}
                   </p>
                 ) : null}
               </div>

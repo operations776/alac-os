@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getOrgId, marketMap, marketCounts, type BandRow } from "@/lib/server/queries/desk";
+import { getOrgId, marketMap, marketCounts, recentMoves, type BandRow } from "@/lib/server/queries/desk";
 import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
 import { QuickLook } from "@/components/ui/quick-look";
 import { NextMove, LifecycleChip } from "@/components/ui/desk";
@@ -54,10 +54,16 @@ export default async function TargetsPage({
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const perPage = band === "backlog" ? 50 : 25;
 
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, moves] = await Promise.all([
     marketMap(orgId, band, perPage, (page - 1) * perPage),
     marketCounts(orgId),
+    recentMoves(orgId, 30),
   ]);
+  // Only the latest refresh's moves. Older ones are on each company's page.
+  const latest = moves[0]?.moved_at ? new Date(moves[0].moved_at).getTime() : null;
+  const thisRefresh = latest
+    ? moves.filter((m) => Math.abs(new Date(m.moved_at).getTime() - latest) < 10 * 60_000)
+    : [];
 
   const active = BANDS.find((b) => b.key === band)!;
   const total = counts[band as "now" | "next" | "backlog"] ?? 0;
@@ -103,6 +109,25 @@ export default async function TargetsPage({
         ))}
         <span className="ml-auto text-[12.5px] text-[var(--alac-text-3)]">{active.blurb}</span>
       </div>
+
+      {thisRefresh.length > 0 ? (
+        <details className="mb-3 rounded-[var(--alac-radius)] bg-[var(--alac-surface)] px-4 py-3 text-[13px]" open={band === "now"}>
+          <summary className="cursor-pointer text-[var(--alac-text-2)]">
+            Moved on the last refresh: {thisRefresh.length} {thisRefresh.length === 1 ? "company" : "companies"},{" "}
+            {formatDate(thisRefresh[0].moved_at)}
+          </summary>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {thisRefresh.map((m) => (
+              <li key={m.id} className="flex flex-wrap items-baseline gap-x-3">
+                <Link href={`/queue/${m.account_id}`} className="link font-medium">{m.company_name}</Link>
+                <span className={m.reason?.startsWith("Up") ? "text-[var(--alac-good)]" : "text-[var(--alac-text-3)]"}>
+                  {m.reason}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       <details className="mb-4 rounded-[var(--alac-radius)] bg-[var(--alac-surface)] px-4 py-3 text-[13px]">
         <summary className="cursor-pointer text-[var(--alac-text-2)]">How companies move between the bands</summary>

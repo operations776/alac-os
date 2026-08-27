@@ -721,6 +721,39 @@ export async function notesForAccount(orgId: string, accountId: string) {
   `) as { id: string; body: string; created_at: string }[];
 }
 
+export type MoveRow = {
+  id: string;
+  account_id: string;
+  company_name: string;
+  from_band: string | null;
+  to_band: string;
+  reason: string | null;
+  moved_at: string;
+};
+
+/** Who changed band, newest first. Entries into an unranked market are noise and are skipped. */
+export async function recentMoves(orgId: string, limit = 40) {
+  return (await sql`
+    select m.id, m.account_id, a.company_name, m.from_band, m.to_band, m.reason, m.moved_at
+      from band_moves m
+      join tam_accounts a on a.id = m.account_id
+     where m.org_id = ${orgId} and m.from_band is not null
+     order by m.moved_at desc, a.company_name
+     limit ${limit}
+  `) as MoveRow[];
+}
+
+/** One company's band history, newest first. */
+export async function movesForAccount(orgId: string, accountId: string) {
+  return (await sql`
+    select m.id, m.account_id, null::text as company_name, m.from_band, m.to_band, m.reason, m.moved_at
+      from band_moves m
+     where m.org_id = ${orgId} and m.account_id = ${accountId}
+     order by m.moved_at desc
+     limit 10
+  `) as MoveRow[];
+}
+
 /** Marks by hand: checklist items done, roles already mentioned. */
 export async function marksForAccount(orgId: string, accountId: string) {
   const rows = (await sql`

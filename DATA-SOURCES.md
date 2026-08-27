@@ -113,6 +113,13 @@ the refresh wrote.
 Order matters. The map reads signal and role counts, so ranking before pulling
 would rank last week's world.
 
+Once a month, the 1st, the backlog gets a signals-only sweep (about 910 calls,
+roughly $36 on pay-as-you-go) followed by a re-rank. That is how a backlog
+company earns its way up. Every band change is written to `band_moves` with a
+reason, shown on Who to target as "Moved on the last refresh" and on the
+company page as its history. A company with any activity on it (note, tick,
+message in 21 days, research started) is never demoted by the ranking.
+
 ### How companies move between bands
 
 Stated in [`src/config/desk.mjs`](src/config/desk.mjs) and enforced in

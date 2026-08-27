@@ -8,6 +8,7 @@
 import assert from "node:assert/strict";
 import { nextMove, lifecycle } from "../src/lib/scoring/next-move.mjs";
 import { roleScore } from "../src/lib/scoring/roles.mjs";
+import { assignBands, describeMove } from "../src/lib/scoring/bands.mjs";
 
 let run = 0;
 const test = (name, fn) => {
@@ -91,6 +92,26 @@ test("role relevance is freshness first and capped at 100", () => {
   const old = roleScore({ title: "Senior Engineer", first_seen: "2026-06-01", salary_text: "$1" }, AS_OF);
   assert.ok(today > old);
   assert.ok(roleScore({ title: "Chief Engineer", first_seen: AS_OF, salary_text: "x" }, AS_OF) <= 100);
+});
+
+test("a worked company never drops a band, an unworked one takes its place", () => {
+  const rows = [
+    { company_name: "a", work_score: 90 },
+    { company_name: "b", work_score: 80 },
+    { company_name: "c", work_score: 10, prev_band: "now", active: true },
+    { company_name: "d", work_score: 5 },
+  ];
+  const out = Object.fromEntries(assignBands(rows, { nowSize: 2, nextSize: 1 }).map((r) => [r.company_name, r.work_band]));
+  assert.equal(out.c, "now");
+  assert.equal(out.b, "next");
+  assert.equal(out.a, "now");
+  assert.equal(out.d, "backlog");
+});
+
+test("moves are described in words", () => {
+  assert.equal(describeMove(null, "next"), "Entered Up next");
+  assert.equal(describeMove("backlog", "next", "Promoted on a strong signal. x"), "Up from Backlog to Up next: a strong signal");
+  assert.equal(describeMove("next", "backlog", "whatever"), "Down from Up next to Backlog: others moved ahead");
 });
 
 console.log(`\n${run} checks passed`);

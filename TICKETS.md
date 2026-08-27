@@ -142,6 +142,7 @@ fetchers are written to fill it.
 | ALAC-80 | Content angles from the same signals: a copyable "what to post" per strong signal | todo |
 | ALAC-81 | The tracker: notes per company, hand marks on the checklist, mentioned roles, messages written and marked sent, whole rows clickable, Results hidden | done |
 | ALAC-82 | Add a company not in the TAM from the app, with website, LinkedIn and location; lands in Up next and is ranked on the next refresh | done |
+| ALAC-83 | Band moves recorded with reasons; worked companies never demoted; monthly backlog signal sweep | done |
 | ALAC-59 | Surface the duplicate company in the source workbook (one company under two Record IDs) as a data quality panel | todo |
 | ALAC-60 | Full SourceWhale ingestion once the export schema is confirmed, replacing the provisional counters | todo |
 

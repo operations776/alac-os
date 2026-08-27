@@ -1,17 +1,33 @@
 name: Refresh the desk
 
-# Twice a week, Monday and Thursday at 06:00 UTC, before the London morning.
-# Signals are free to re-read; roles cost per pull, which is why this is not
-# daily. See src/config/desk.mjs, REFRESH. Run by hand from the Actions tab
-# with workflow_dispatch.
+# Twice a week, Monday and Thursday at 06:00 UTC, before the London morning:
+# signals and roles for the 50 being worked, then a re-rank. Signals are
+# cheap to re-read; roles are metered, which is why this is not daily.
+#
+# Once a month, the 1st at 06:30 UTC: signals only, for the backlog. About
+# 910 PredictLeads calls, so roughly $36 that month on the pay-as-you-go
+# rate. This is how a backlog company earns its way up: the re-rank that
+# follows promotes anything with a strong signal into Up next.
+#
+# See src/config/desk.mjs, REFRESH. Run by hand from the Actions tab.
 on:
   schedule:
     - cron: "0 6 * * 1,4"
+    - cron: "30 6 1 * *"
   workflow_dispatch:
+    inputs:
+      backlog:
+        description: "Also sweep the backlog for signals"
+        type: boolean
+        default: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      PREDICTLEADS_API_KEY: ${{ secrets.PREDICTLEADS_API_KEY }}
+      PREDICTLEADS_API_TOKEN: ${{ secrets.PREDICTLEADS_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,8 +35,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run refresh
-        env:
-          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
-          PREDICTLEADS_API_KEY: ${{ secrets.PREDICTLEADS_API_KEY }}
-          PREDICTLEADS_API_TOKEN: ${{ secrets.PREDICTLEADS_API_TOKEN }}
+      - name: Backlog sweep, signals only
+        if: github.event.schedule == '30 6 1 * *' || inputs.backlog == true
+        run: node scripts/signals-predictleads.mjs --apply --band backlog
+      - name: Work now and Up next, then re-rank
+        if: github.event.schedule != '30 6 1 * *'
+        run: npm run refresh
+      - name: Re-rank after the sweep
+        if: github.event.schedule == '30 6 1 * *'
+        run: node scripts/map-market.mjs
