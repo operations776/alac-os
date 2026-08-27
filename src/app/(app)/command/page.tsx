@@ -5,6 +5,7 @@ import {
   getOrgId, commandBoard, type DeskRow, type QueueRow, type Period,
 } from "@/lib/server/queries/desk";
 import { DESK } from "@/config/desk.mjs";
+import { Row } from "@/components/ui/clickable";
 import {
   Card, EmptyState, NoticeLine, PageHeader, Stat, Th, formatDate,
 } from "@/components/ui/primitives";
@@ -136,7 +137,7 @@ export default async function CommandPage({
                   </thead>
                   <tbody>
                     {now.map((a, i) => (
-                      <tr key={a.id} className="row-hover border-b border-[var(--alac-line)] last:border-0">
+                      <Row key={a.id} href={`/queue/${a.id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
                         <td className="readout px-4 py-2.5 text-right align-top text-[12.5px] text-[var(--alac-text-3)]">
                           {i + 1}
                         </td>
@@ -144,11 +145,25 @@ export default async function CommandPage({
                           <Link href={`/queue/${a.id}`} className="link text-[14px] font-medium">
                             {a.company_name}
                           </Link>
+                          {a.domain ? (
+                            <div className="text-[12px] text-[var(--alac-text-3)]">{a.domain}</div>
+                          ) : null}
                           <div className="mt-0.5 text-[12px] text-[var(--alac-text-3)]">
                             Fit {a.final_score != null ? Math.round(Number(a.final_score)) : "--"}
                             {a.heat_score != null ? ` · Urgency ${a.heat_score}` : ""}
                             {a.decision_makers > 0 ? ` · ${a.decision_makers} decision ${a.decision_makers === 1 ? "maker" : "makers"} known` : ""}
                           </div>
+                          {a.last_contacted_at ? (
+                            <div className="mt-0.5 text-[12px] text-[var(--alac-good)]">
+                              Messaged {a.last_contacted_name ?? "someone"} {ago(a.last_contacted_at)}
+                              {a.contacted_count > 1 ? `, ${a.contacted_count} people so far` : ""}
+                            </div>
+                          ) : null}
+                          {a.last_note ? (
+                            <div className="mt-0.5 line-clamp-1 text-[12px] text-[var(--alac-text-3)]" title={a.last_note}>
+                              Note: {a.last_note}
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-4 py-2.5 align-top"><LifecycleChip row={a} /></td>
                         <td className="px-4 py-2.5 align-top"><NextMove row={a} /></td>
@@ -169,7 +184,7 @@ export default async function CommandPage({
                             <span className="text-[var(--alac-text-3)]">nothing recorded</span>
                           )}
                         </td>
-                      </tr>
+                      </Row>
                     ))}
                   </tbody>
                 </table>
@@ -196,7 +211,7 @@ export default async function CommandPage({
             ) : (
               <ul className="flex flex-col gap-0.5 px-3 py-2">
                 {rolesToday.map((r) => (
-                  <li key={r.id} className="row-hover flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[var(--alac-radius-sm)] px-3 py-2">
+                  <Row as="li" key={r.id} href={`/queue/${r.account_id}`} className="row-hover flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[var(--alac-radius-sm)] px-3 py-2">
                     <span className="readout w-7 shrink-0 text-right text-[13px] text-[var(--alac-accent)]" title="Relevance, out of 100">
                       {r.relevance ?? "--"}
                     </span>
@@ -211,7 +226,7 @@ export default async function CommandPage({
                         Posting <ExternalLink size={16} strokeWidth={1.5} />
                       </a>
                     ) : null}
-                  </li>
+                  </Row>
                 ))}
               </ul>
             )}
@@ -249,7 +264,7 @@ export default async function CommandPage({
                   </thead>
                   <tbody>
                     {heat.map((s) => (
-                      <tr key={s.id} className="row-hover border-b border-[var(--alac-line)] last:border-0">
+                      <Row key={s.id} href={s.account_id ? `/queue/${s.account_id}` : `/queue/new?name=${encodeURIComponent(s.company_name)}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
                         <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-3)]">
                           {ago(s.signal_date)}
                         </td>
@@ -259,7 +274,12 @@ export default async function CommandPage({
                               {s.company_name}
                             </Link>
                           ) : (
-                            <span className="text-[14px] font-medium" title="Not in the scored TAM yet">{s.company_name}</span>
+                            <span className="text-[14px] font-medium">
+                              {s.company_name}{" "}
+                              <Link href={`/queue/new?name=${encodeURIComponent(s.company_name)}`} className="link text-[12px] font-normal">
+                                add to the list
+                              </Link>
+                            </span>
                           )}
                           {s.category ? (
                             <div className="mt-0.5 text-[12px] text-[var(--alac-text-3)]">{CATEGORY_LABEL[s.category] ?? s.category}</div>
@@ -275,7 +295,7 @@ export default async function CommandPage({
                         <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                           {s.work_band === "now" ? "Work now" : s.work_band === "next" ? "Up next" : s.work_band === "backlog" ? "Backlog" : "Not ranked"}
                         </td>
-                      </tr>
+                      </Row>
                     ))}
                   </tbody>
                 </table>
@@ -369,7 +389,7 @@ function BandList({ rows }: { rows: DeskRow[] }) {
   return (
     <ol className="px-3 pb-3">
       {rows.map((a, i) => (
-        <li key={a.id} className="row-hover flex items-center gap-3 rounded-[var(--alac-radius)] px-3 py-2.5">
+        <Row as="li" key={a.id} href={`/queue/${a.id}`} className="row-hover flex items-center gap-3 rounded-[var(--alac-radius)] px-3 py-2.5">
           <span className="readout w-5 shrink-0 text-right text-[12.5px] text-[var(--alac-text-3)]">{i + 1}</span>
           <span className="w-8 shrink-0 text-right"><ScoreCell score={a.final_score} /></span>
           <Link href={`/queue/${a.id}`} className="link min-w-0 flex-1 truncate text-[14px] font-medium">
@@ -377,7 +397,7 @@ function BandList({ rows }: { rows: DeskRow[] }) {
           </Link>
           <span className="hidden min-w-0 flex-1 truncate text-[12.5px] text-[var(--alac-text-3)] md:inline">{a.work_reason}</span>
           <span className="shrink-0"><NextMove row={a} compact /></span>
-        </li>
+        </Row>
       ))}
     </ol>
   );
@@ -401,7 +421,7 @@ function QueueTable({ rows }: { rows: QueueRow[] }) {
         </thead>
         <tbody>
           {rows.map((a) => (
-            <tr key={a.id} className="row-hover border-b border-[var(--alac-line)] last:border-0">
+            <Row key={a.id} href={`/queue/${a.id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
               <td className="px-4 py-2.5 text-right align-top"><ScoreCell score={a.final_score} /></td>
               <td className="px-4 py-2.5 align-top">
                 <Link href={`/queue/${a.id}`} className="link text-[14px] font-medium">{a.company_name}</Link>
@@ -415,7 +435,7 @@ function QueueTable({ rows }: { rows: QueueRow[] }) {
               <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                 {a.next_action ?? <span className="text-[var(--alac-text-3)]">--</span>}
               </td>
-            </tr>
+            </Row>
           ))}
         </tbody>
       </table>

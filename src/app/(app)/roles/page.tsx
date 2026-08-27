@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { getOrgId, freshRoles, freshRoleCounts } from "@/lib/server/queries/desk";
 import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
+import { Row } from "@/components/ui/clickable";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +113,7 @@ export default async function RolesPage({
       ) : (
         <ol className="rise-list flex flex-col gap-3">
           {roles.map((r) => (
-            <li key={r.id}>
+            <Row as="li" key={r.id} href={`/queue/${r.account_id}`}>
               <Card interactive className="px-5 py-4">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
                   <Link
@@ -170,7 +171,7 @@ export default async function RolesPage({
                   </p>
                 ) : null}
               </Card>
-            </li>
+            </Row>
           ))}
         </ol>
       )}

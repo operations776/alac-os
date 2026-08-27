@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity,
   Flame,
   LayoutGrid,
   Target,
@@ -36,7 +35,6 @@ const NAV = [
   { href: "/queue", label: "All companies", Icon: ListChecks, exact: false },
   { href: "/signals", label: "What changed", Icon: Flame, exact: false },
   { href: "/roles", label: "Open roles", Icon: Briefcase, exact: false },
-  { href: "/performance", label: "Results", Icon: Activity, exact: false },
   { href: "/people", label: "Your network", Icon: Users, exact: false },
 ];
 

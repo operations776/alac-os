@@ -5,6 +5,7 @@ import {
   Card, EmptyState, GaugeRow, NoticeLine, PageHeader, Stat, formatDate,
 } from "@/components/ui/primitives";
 import { HEAT_COMPONENTS, HeatDelta } from "@/components/ui/desk";
+import { Row } from "@/components/ui/clickable";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +113,7 @@ export default async function SignalsPage() {
             const disagrees = s.heat_score != null && sum !== s.heat_score;
 
             return (
-              <li key={s.id}>
+              <Row as="li" key={s.id} href={s.account_id ? `/queue/${s.account_id}` : "/signals"}>
                 <Card>
                   <div className="grid gap-5 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_300px]">
                     <div className="min-w-0">
@@ -128,7 +129,15 @@ export default async function SignalsPage() {
                             {s.company_name}
                           </Link>
                         ) : (
-                          <span className="display text-[18px]">{s.company_name}</span>
+                          <>
+                            <span className="display text-[18px]">{s.company_name}</span>
+                            <Link
+                              href={`/queue/new?name=${encodeURIComponent(s.company_name)}`}
+                              className="btn btn-secondary"
+                            >
+                              Add to the list
+                            </Link>
+                          </>
                         )}
                         <span className="readout text-[13px] text-[var(--alac-text-3)]">
                           {formatDate(s.signal_date)}
@@ -258,7 +267,7 @@ export default async function SignalsPage() {
                     </div>
                   </div>
                 </Card>
-              </li>
+              </Row>
             );
           })}
         </ol>

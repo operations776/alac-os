@@ -103,6 +103,21 @@ export function nextMove(a, asOf) {
           why: "LinkedIn is loaded and the email step is not. The sequence rule is LinkedIn first.",
         };
   }
+  const contactedAgo = days(a.last_contacted_at, asOf);
+  if (contactedAgo != null && contactedAgo >= 0 && contactedAgo < 7) {
+    return {
+      kind: "wait",
+      move: `Wait for ${a.last_contacted_name ?? "the reply"}`,
+      why: `You messaged ${a.last_contacted_name ?? "them"} ${ago(contactedAgo)}. Follow up in ${7 - contactedAgo} ${7 - contactedAgo === 1 ? "day" : "days"} if nothing comes back.`,
+    };
+  }
+  if (contactedAgo != null && contactedAgo >= 7 && contactedAgo <= 21) {
+    return {
+      kind: "call",
+      move: `Follow up with ${a.last_contacted_name ?? first ?? "them"}`,
+      why: `Messaged ${ago(contactedAgo)} with no reply recorded. One follow up, then park it.`,
+    };
+  }
   if (!a.domain) {
     return {
       kind: "prepare",

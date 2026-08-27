@@ -208,6 +208,8 @@ when it was last loaded.
 | People, decision maker flag | LinkedIn export | reloaded monthly |
 | Targets, emails | Prospeo, on demand | |
 | Drafts, briefs | This app, OpenAI | rejected if ungrounded |
+| Notes, checklist marks, mentioned roles, messages and sent dates | Adrian, in the app | the tracker; nothing here sends |
+| Hand-added companies (MAN-n) | Adrian, in the app | ranked on the next refresh, never scored |
 | Lifecycle stage, next move | Derived on read from the above | never stored |
 
 ---

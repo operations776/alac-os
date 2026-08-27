@@ -1,7 +1,12 @@
-import { ExternalLink } from "lucide-react";
+import { Check, ExternalLink } from "lucide-react";
 import { Badge, EmptyState, formatDate } from "./primitives";
 import type { RoleRow, TargetRow } from "@/lib/server/queries/desk";
 import { RevealEmail } from "./reveal-email";
+import { MessageButton } from "./tracker";
+import { setMark } from "@/app/(app)/queue/[id]/tracker";
+
+/** What was written to whom, keyed on person name. */
+export type SentMap = Map<string, { body: string; sent_at: string | null; channel: string }>;
 
 /**
  * Who to contact, and what they are hiring for.
@@ -15,8 +20,17 @@ import { RevealEmail } from "./reveal-email";
  * One person. Rank on the left, the reasons behind it in the title attribute
  * so the ordering is never mysterious, and the email state stated exactly.
  */
-export function TargetRowItem({ target }: { target: TargetRow }) {
+export function TargetRowItem({
+  target,
+  accountId,
+  sent,
+}: {
+  target: TargetRow;
+  accountId: string;
+  sent?: SentMap;
+}) {
   const reasons = Array.isArray(target.rank_terms) ? target.rank_terms : [];
+  const m = sent?.get(target.full_name);
   return (
     <li className="row-hover flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[var(--alac-radius-sm)] px-3 py-2.5">
       <span
@@ -48,6 +62,13 @@ export function TargetRowItem({ target }: { target: TargetRow }) {
       <span className="flex shrink-0 items-center gap-2">
         {target.is_warm ? <Badge tone="good">First degree</Badge> : null}
         <EmailState target={target} />
+        <MessageButton
+          accountId={accountId}
+          person={target.full_name}
+          channel={m?.channel ?? (target.email ? "email" : "linkedin")}
+          body={m?.body}
+          sentAt={m?.sent_at}
+        />
       </span>
     </li>
   );
@@ -68,7 +89,15 @@ function EmailState({ target }: { target: TargetRow }) {
   );
 }
 
-export function TargetList({ targets }: { targets: TargetRow[] }) {
+export function TargetList({
+  targets,
+  accountId,
+  sent,
+}: {
+  targets: TargetRow[];
+  accountId: string;
+  sent?: SentMap;
+}) {
   if (targets.length === 0) {
     return (
       <EmptyState
@@ -80,7 +109,7 @@ export function TargetList({ targets }: { targets: TargetRow[] }) {
   return (
     <ul className="flex flex-col gap-0.5 px-3 pb-3">
       {targets.map((t) => (
-        <TargetRowItem key={t.id} target={t} />
+        <TargetRowItem key={t.id} target={t} accountId={accountId} sent={sent} />
       ))}
     </ul>
   );
@@ -90,7 +119,15 @@ export function TargetList({ targets }: { targets: TargetRow[] }) {
  * The open requisitions. Qualified first, because an unqualified posting is
  * recorded for the count but is never the reason to call.
  */
-export function RoleList({ roles }: { roles: RoleRow[] }) {
+export function RoleList({
+  roles,
+  accountId,
+  mentioned,
+}: {
+  roles: RoleRow[];
+  accountId: string;
+  mentioned?: Set<string>;
+}) {
   if (roles.length === 0) {
     return (
       <EmptyState
@@ -108,9 +145,36 @@ export function RoleList({ roles }: { roles: RoleRow[] }) {
             r.qualified ? "" : "opacity-55"
           }`}
         >
+          {/* Mentioned: he has already raised this role with someone there.
+              A plain form, one row, toggled. */}
+          <form action={setMark} className="shrink-0">
+            <input type="hidden" name="accountId" value={accountId} />
+            <input type="hidden" name="kind" value="role" />
+            <input type="hidden" name="ref" value={r.id} />
+            <input type="hidden" name="done" value={mentioned?.has(r.id) ? "0" : "1"} />
+            <button
+              type="submit"
+              role="checkbox"
+              aria-checked={mentioned?.has(r.id) ?? false}
+              aria-label={mentioned?.has(r.id) ? "Mentioned, click to clear" : "Mark as mentioned"}
+              title={mentioned?.has(r.id) ? "You have raised this role. Click to clear" : "Mark that you have raised this role with them"}
+              className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border ${
+                mentioned?.has(r.id)
+                  ? "border-[var(--alac-good)] bg-[var(--alac-good)] text-[var(--alac-ground)]"
+                  : "border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
+              }`}
+            >
+              {mentioned?.has(r.id) ? <Check size={16} strokeWidth={1.5} /> : null}
+            </button>
+          </form>
           <span className="readout w-[76px] shrink-0 text-[12px] text-[var(--alac-text-3)]">
-            {formatDate(r.posted_at) ?? "undated"}
+            {formatDate(r.first_seen ?? r.posted_at) ?? "undated"}
           </span>
+          {r.relevance != null ? (
+            <span className="readout w-6 shrink-0 text-right text-[12px] text-[var(--alac-accent)]" title="Relevance out of 100">
+              {r.relevance}
+            </span>
+          ) : null}
           <span className="min-w-[180px] flex-1">
             {r.url ? (
               <a href={r.url} target="_blank" rel="noreferrer" className="link text-[13.5px]">
@@ -122,6 +186,9 @@ export function RoleList({ roles }: { roles: RoleRow[] }) {
           </span>
           {r.location ? (
             <span className="shrink-0 text-[12px] text-[var(--alac-text-3)]">{r.location}</span>
+          ) : null}
+          {r.salary_text ? (
+            <span className="shrink-0 text-[12px] text-[var(--alac-text-2)]">{r.salary_text}</span>
           ) : null}
           {!r.qualified ? (
             <span className="chip min-h-[22px] px-2 text-[10px]" title="Recorded, but not a role ALAC would be engaged on">

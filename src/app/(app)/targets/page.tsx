@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getOrgId, marketMap, marketCounts, type BandRow } from "@/lib/server/queries/desk";
-import { Card, EmptyState, PageHeader, Stat } from "@/components/ui/primitives";
+import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
 import { QuickLook } from "@/components/ui/quick-look";
 import { NextMove, LifecycleChip } from "@/components/ui/desk";
 import { DESK, ROLLOVER_RULES } from "@/config/desk.mjs";
+import { Row } from "@/components/ui/clickable";
 
 export const dynamic = "force-dynamic";
 
@@ -164,6 +165,7 @@ export default async function TargetsPage({
  */
 function AccountCard({ row, rank }: { row: BandRow; rank: number }) {
   return (
+    <Row as="div" href={`/queue/${row.id}`} className="block">
     <Card interactive className="px-5 py-4">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
         <span className="readout w-7 shrink-0 text-right text-[15px] text-[var(--alac-text-3)]">
@@ -175,6 +177,9 @@ function AccountCard({ row, rank }: { row: BandRow; rank: number }) {
         >
           {row.company_name}
         </Link>
+        {row.domain ? (
+          <span className="text-[12.5px] text-[var(--alac-text-3)]">{row.domain}</span>
+        ) : null}
 
         <span className="flex shrink-0 items-center gap-2">
           <LifecycleChip row={row} />
@@ -246,8 +251,18 @@ function AccountCard({ row, rank }: { row: BandRow; rank: number }) {
           }
           dim={!row.top_contact}
         />
+        {row.last_contacted_at ? (
+          <Fact
+            label="Messaged"
+            value={`${row.last_contacted_name ?? "someone"}, ${formatDate(row.last_contacted_at) ?? ""}`}
+          />
+        ) : null}
+        {row.notes_count > 0 ? (
+          <Fact label="Notes" value={`${row.notes_count}, latest: ${row.last_note ?? ""}`} />
+        ) : null}
       </div>
     </Card>
+    </Row>
   );
 }
 

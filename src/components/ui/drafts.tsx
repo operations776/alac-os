@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { EmptyState } from "@/components/ui/primitives";
+import { markSent } from "@/app/(app)/queue/[id]/tracker";
 
 // The drafted first message.
 //
@@ -20,6 +21,8 @@ export type Draft = {
   facts_used: string[];
   sources: string[];
   drafted_at: string;
+  sent_at: string | null;
+  custom: boolean;
 };
 
 export function DraftList({ drafts }: { drafts: Draft[] }) {
@@ -53,8 +56,13 @@ function DraftCard({ draft }: { draft: Draft }) {
     <div className="well px-4 py-3.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <span className="text-[13.5px] font-medium">To {draft.person_name}</span>
+        {draft.sent_at ? (
+          <span className="placard inline-flex items-center gap-1.5 rounded-[var(--alac-radius-sm)] border border-[color-mix(in_oklab,var(--alac-good)_40%,transparent)] bg-[var(--alac-good-soft)] px-2 py-1 text-[10px] text-[var(--alac-good)]">
+            <Check size={16} strokeWidth={1.5} /> Sent {new Date(draft.sent_at).toLocaleDateString()}
+          </span>
+        ) : null}
         <span className="readout ml-auto text-[12.5px] text-[var(--alac-text-3)]">
-          {draft.channel === "linkedin" ? "LinkedIn" : "Email"}
+          {draft.channel === "linkedin" ? "LinkedIn" : "Email"}{draft.custom ? ", written by you" : ""}
         </span>
       </div>
 
@@ -67,6 +75,14 @@ function DraftCard({ draft }: { draft: Draft }) {
           {copied ? <Check size={16} strokeWidth={1.5} /> : <Copy size={16} strokeWidth={1.5} />}
           {copied ? "Copied" : "Copy message"}
         </button>
+        {!draft.sent_at ? (
+          <form action={markSent}>
+            <input type="hidden" name="draftId" value={draft.id} />
+            <button type="submit" className="btn btn-primary" title="Records that you sent this yourself. Nothing is sent from here.">
+              Mark as sent
+            </button>
+          </form>
+        ) : null}
         {draft.sources.slice(0, 3).map((url, i) => (
           <a
             key={url}

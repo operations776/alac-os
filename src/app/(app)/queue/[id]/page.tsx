@@ -4,7 +4,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import {
   getOrgId, accountById, signalsForAccount, peopleForAccount, PRIORITY_LABEL,
   targetsForAccount, rolesForAccount, accountPackage, briefForAccount,
-  draftsForAccount,
+  draftsForAccount, notesForAccount, marksForAccount,
 } from "@/lib/server/queries/desk";
 import {
   Badge, Card, CardHeader, EmptyState, GaugeRow, NoticeLine,
@@ -14,32 +14,45 @@ import {
   ExecutionStages, HEAT_COMPONENTS, HeatDelta, MotionChip, PrepChip,
   PriorityChip, NextMove, LifecycleChip,
 } from "@/components/ui/desk";
-import { TargetList, RoleList, Brief } from "@/components/ui/targets";
+import { TargetList, RoleList, Brief, type SentMap } from "@/components/ui/targets";
 import { DraftList } from "@/components/ui/drafts";
+import { NoteForm, MessageButton } from "@/components/ui/tracker";
+import { setMark } from "./tracker";
 
 export const dynamic = "force-dynamic";
 
-// One company: what changed, what they are hiring for, who to contact.
-//
-// The screen evaluates the handover checklist rather than restating it. The
-// Sales Navigator link the workbook tracks is deliberately not shown: it is a
-// saved search in another tool, and the people it would find are already on
-// this page with names and addresses attached.
-function qcChecklist(a: {
-  battlecard_url: string | null;
-  recommended_motion: string;
-  next_action: string | null;
-  top_contact: string | null;
-  has_draft: boolean;
-}) {
-  // Each open item says what closes it, so the list is a set of jobs rather
-  // than a set of verdicts.
+// One company: what changed, what they are hiring for, who to contact, and
+// what has been done about it. The second half is the tracker: notes, marks,
+// and the messages he wrote and sent. The desk finds; he records.
+
+function qcChecklist(
+  a: {
+    battlecard_url: string | null;
+    recommended_motion: string;
+    next_action: string | null;
+    top_contact: string | null;
+    has_draft: boolean;
+    contacted_count: number;
+  },
+  marks: Set<string>,
+) {
+  // Each item is auto-detected where the desk can see it, and can be marked
+  // done by hand where it cannot. A hand mark says what closes it.
+  const item = (key: string, auto: boolean, label: string, fix: string) => ({
+    key,
+    auto,
+    manual: marks.has(`check:${key}`),
+    ok: auto || marks.has(`check:${key}`),
+    label,
+    fix,
+  });
   return [
-    { ok: Boolean(a.top_contact), label: "A contact is named", fix: "Source people for this company, or match the warm network" },
-    { ok: a.has_draft, label: "The first message is drafted", fix: "Run the draft for this company; it appears below as The first message" },
-    { ok: a.recommended_motion !== "TBD", label: "Approach is decided", fix: "Set the approach in the workbook queue: new business, live lead, or lead with a candidate" },
-    { ok: Boolean(a.battlecard_url), label: "Research brief is written", fix: "Write the brief and paste its link into the workbook" },
-    { ok: Boolean(a.next_action), label: "Next action is written down", fix: "One line in the workbook: who, what, when" },
+    item("contact", Boolean(a.top_contact), "A contact is named", "Source people, or match the warm network, or mark done if you know who"),
+    item("message", a.has_draft, "The first message is written", "Use Message on a person below, or run the draft"),
+    item("sent", a.contacted_count > 0, "Somebody has been messaged", "Save a message and mark it sent"),
+    item("approach", a.recommended_motion !== "TBD", "Approach is decided", "New business, live lead, or lead with a candidate"),
+    item("brief", Boolean(a.battlecard_url), "Research brief is written", "Write the brief, or mark done if it lives elsewhere"),
+    item("next", Boolean(a.next_action), "Next action is written down", "Add a note below: who, what, when"),
   ];
 }
 
@@ -55,7 +68,7 @@ export default async function QueueAccountPage({
   const account = await accountById(orgId, id);
   if (!account) notFound();
 
-  const [signals, people, targets, roles, pkg, brief, drafts] = await Promise.all([
+  const [signals, people, targets, roles, pkg, brief, drafts, notes, marks] = await Promise.all([
     signalsForAccount(orgId, account.id),
     peopleForAccount(orgId, account.id),
     targetsForAccount(orgId, account.id),
@@ -63,10 +76,19 @@ export default async function QueueAccountPage({
     accountPackage(orgId, account.id),
     briefForAccount(orgId, account.id),
     draftsForAccount(orgId, account.id),
+    notesForAccount(orgId, account.id),
+    marksForAccount(orgId, account.id),
   ]);
 
-  const checks = qcChecklist(account);
+  const checks = qcChecklist(account, marks);
   const outstanding = checks.filter((c) => !c.ok);
+  const sent: SentMap = new Map(
+    drafts.map((d) => [d.person_name, { body: d.body, sent_at: d.sent_at, channel: d.channel }]),
+  );
+  const mentioned = new Set(
+    [...marks].filter((m) => m.startsWith("role:")).map((m) => m.slice(5)),
+  );
+  const site = account.domain ? `https://${account.domain.replace(/^https?:\/\//, "")}` : null;
 
   return (
     <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
@@ -76,7 +98,6 @@ export default async function QueueAccountPage({
 
       <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="min-w-0 flex-1">
-          
           <h1 className="display mt-1.5 text-[26px] leading-[1.2] sm:text-[32px]">
             {account.company_name}
           </h1>
@@ -100,24 +121,36 @@ export default async function QueueAccountPage({
               sourcewhale={account.sourcewhale_stage}
             />
           </div>
-          {account.linkedin_url ? (
-            <a
-              href={account.linkedin_url}
-              target="_blank"
-              rel="noreferrer"
-              className="link mt-3 inline-flex items-center gap-1.5 text-[13px]"
-            >
-              Company LinkedIn <ExternalLink size={16} strokeWidth={1.5} />
-            </a>
-          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+            {site ? (
+              <a href={site} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1.5">
+                {account.domain} <ExternalLink size={16} strokeWidth={1.5} />
+              </a>
+            ) : (
+              <span className="text-[var(--alac-text-3)]">No website on file</span>
+            )}
+            {account.hq ? <span className="text-[var(--alac-text-3)]">{account.hq}</span> : null}
+            {account.linkedin_url ? (
+              <a
+                href={account.linkedin_url}
+                target="_blank"
+                rel="noreferrer"
+                className="link inline-flex items-center gap-1.5"
+              >
+                Company LinkedIn <ExternalLink size={16} strokeWidth={1.5} />
+              </a>
+            ) : null}
+            {account.last_contacted_at ? (
+              <span className="text-[var(--alac-good)]">
+                Messaged {account.last_contacted_name} {formatDate(account.last_contacted_at)}
+                {account.contacted_count > 1 ? `, ${account.contacted_count} people so far` : ""}
+              </span>
+            ) : null}
+          </div>
         </div>
 
-        {/* The TAM score. Source data, so it is presented as a fact rather than
-            as something this app produced. */}
         <div className="w-[196px] rounded-[var(--alac-radius-lg)] bg-[var(--alac-surface)] px-5 pb-5 pt-4 shadow-[var(--alac-elev-1)]">
-          <div className="placard text-[12px] text-[var(--alac-text-2)]">
-            Fit score
-          </div>
+          <div className="placard text-[12px] text-[var(--alac-text-2)]">Fit score</div>
           <div className="mt-2 flex items-baseline gap-1.5">
             <span className="readout text-[46px] leading-none text-[var(--alac-text)]">
               {account.final_score != null ? Math.round(Number(account.final_score)) : "--"}
@@ -133,32 +166,27 @@ export default async function QueueAccountPage({
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_336px]">
         <div className="flex flex-col gap-5">
-          {/* The handover. What Adrian is being asked to decide. */}
+          {/* The handover: the next move, and the checklist as a set of jobs. */}
           <Card>
             <CardHeader
               title="Ready to work?"
-              sub="Everything you need to make the call in five minutes"
+              sub="The next move, and what is still open. Tick anything you have done outside this page"
             />
             <div className="flex flex-col gap-4 px-5 pb-5">
               <div className="rounded-[var(--alac-radius)] bg-[var(--alac-surface-2)] px-4 py-3.5">
                 <div className="placard mb-2 text-[12px] text-[var(--alac-text-2)]">Next move</div>
                 <NextMove row={account} />
                 {account.work_reason ? (
-                  <p className="mt-2 text-[12.5px] leading-snug text-[var(--alac-text-3)]">Why it is on the list: {account.work_reason}</p>
+                  <p className="mt-2 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
+                    Why it is on the list: {account.work_reason}
+                  </p>
                 ) : null}
-              </div>
-              <div className="grid gap-3">
-                <ArtefactCard
-                  label="Research brief"
-                  href={account.battlecard_url}
-                  missing="Not written yet."
-                />
               </div>
 
               {account.next_action ? (
                 <div className="rounded-[var(--alac-radius)] bg-[var(--alac-accent-soft)] px-4 py-3.5">
                   <div className="placard mb-1.5 text-[12px] text-[var(--alac-accent-light)]">
-                    Next action
+                    Next action, from the workbook
                   </div>
                   <p className="text-[14px] leading-[1.6] text-[var(--alac-accent-light)]">
                     {account.next_action}
@@ -166,22 +194,36 @@ export default async function QueueAccountPage({
                 </div>
               ) : null}
 
-              {/* The checklist, evaluated. This is the whole handover contract,
-                  so it is shown as a state rather than as instructions. */}
               <div className="well px-4 py-3.5">
                 <div className="placard mb-2.5 text-[12px] text-[var(--alac-text-2)]">
                   Before you review
                 </div>
                 <ul className="flex flex-col gap-2">
                   {checks.map((c) => (
-                    <li key={c.label} className="flex items-start gap-2.5 text-[13px]">
-                      <span className="mt-[1px] shrink-0">
-                        <Badge tone={c.ok ? "good" : "neutral"} withIcon>
-                          {c.ok ? "Done" : "Open"}
-                        </Badge>
-                      </span>
+                    <li key={c.key} className="flex items-start gap-2.5 text-[13px]">
+                      {/* Auto-detected items cannot be unticked: the desk saw
+                          it. Hand marks can be cleared. */}
+                      <form action={setMark} className="mt-[1px] shrink-0">
+                        <input type="hidden" name="accountId" value={account.id} />
+                        <input type="hidden" name="kind" value="check" />
+                        <input type="hidden" name="ref" value={c.key} />
+                        <input type="hidden" name="done" value={c.manual ? "0" : "1"} />
+                        <button
+                          type="submit"
+                          disabled={c.auto}
+                          title={c.auto ? "Detected automatically" : c.manual ? "Marked done by you. Click to clear" : "Mark done"}
+                          className="disabled:cursor-default"
+                        >
+                          <Badge tone={c.ok ? "good" : "neutral"} withIcon>
+                            {c.ok ? "Done" : "Mark done"}
+                          </Badge>
+                        </button>
+                      </form>
                       <span className={c.ok ? "text-[var(--alac-text-2)]" : "text-[var(--alac-text)]"}>
                         {c.label}
+                        {c.manual && !c.auto ? (
+                          <span className="text-[var(--alac-text-3)]"> (by you)</span>
+                        ) : null}
                         {!c.ok ? (
                           <span className="block text-[12px] leading-snug text-[var(--alac-text-3)]">{c.fix}</span>
                         ) : null}
@@ -192,18 +234,81 @@ export default async function QueueAccountPage({
 
                 {account.prep_status === "READY FOR QC" && outstanding.length > 0 ? (
                   <p className="mt-3 text-[12.5px] leading-relaxed text-[var(--alac-warn)]">
-                    This account is marked READY FOR QC with {outstanding.length} item
-                    {outstanding.length === 1 ? "" : "s"} still open. The instructions require all of
-                    them to be true before handover, so either the missing work is done or the status
-                    goes back to IN RESEARCH.
+                    Marked ready for review with {outstanding.length} item
+                    {outstanding.length === 1 ? "" : "s"} still open.
                   </p>
                 ) : null}
               </div>
             </div>
           </Card>
 
-          {/* The brief. Only rendered when the reasoning pass produced
-              something that passed the grounding check. */}
+          {/* The tracker: what he did. */}
+          <Card>
+            <CardHeader
+              title="Notes"
+              sub={notes.length > 0 ? `${notes.length} so far, newest first` : "Who you spoke to, what they said, what happens next"}
+            />
+            <div className="flex flex-col gap-4 px-5 pb-5">
+              <NoteForm accountId={account.id} />
+              {notes.length > 0 ? (
+                <ul className="flex flex-col gap-2.5">
+                  {notes.map((n) => (
+                    <li key={n.id} className="well px-4 py-3">
+                      <p className="whitespace-pre-wrap text-[13.5px] leading-[1.6]">{n.body}</p>
+                      <div className="readout mt-1.5 text-[11.5px] text-[var(--alac-text-3)]">
+                        {new Date(n.created_at).toLocaleString()}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Messages"
+              sub={
+                drafts.length > 0
+                  ? `${drafts.filter((d) => d.sent_at).length} sent, ${drafts.filter((d) => !d.sent_at).length} drafted. Sent by you, never from here`
+                  : "Nothing written yet. Use Message on any person below"
+              }
+            />
+            <DraftList drafts={drafts} />
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Who to contact"
+              sub={
+                pkg.targets > 0
+                  ? `${pkg.targets} sourced, ${pkg.warm_targets} already first degree, ${pkg.verified_emails} with a verified address`
+                  : people.length > 0
+                    ? `${people.length} from your own network`
+                    : undefined
+              }
+            />
+            <TargetList targets={targets} accountId={account.id} sent={sent} />
+            <div className="px-5 pb-4">
+              <MessageButton accountId={account.id} person="Someone else" />
+              <span className="ml-2 text-[12px] text-[var(--alac-text-3)]">
+                For a person not on this list. Change the name in the message when you send it.
+              </span>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Open roles"
+              sub={
+                pkg.total_roles > 0
+                  ? `${pkg.qualified_roles} relevant of ${pkg.total_roles} found, most relevant first. Tick the ones you have raised`
+                  : undefined
+              }
+            />
+            <RoleList roles={roles} accountId={account.id} mentioned={mentioned} />
+          </Card>
+
           <Card>
             <CardHeader
               title="The brief"
@@ -212,56 +317,15 @@ export default async function QueueAccountPage({
             <Brief brief={brief} />
           </Card>
 
-          {/* The drafted message. Written from the research, sent by a
-              human. There is no send button anywhere on this screen. */}
           <Card>
             <CardHeader
-              title="The first message"
-              sub={
-                drafts.length > 0
-                  ? "Researched, not templated. Copy it and send it yourself"
-                  : "Nothing drafted yet"
-              }
-            />
-            <DraftList drafts={drafts} />
-          </Card>
-
-          {/* Who to contact. The question the desk is actually asking. */}
-          <Card>
-            <CardHeader
-              title="Who to contact"
-              sub={
-                pkg.targets > 0
-                  ? `${pkg.targets} sourced, ${pkg.warm_targets} already first degree, ${pkg.verified_emails} with a verified address`
-                  : undefined
-              }
-            />
-            <TargetList targets={targets} />
-          </Card>
-
-          {/* What they are hiring for. */}
-          <Card>
-            <CardHeader
-              title="Open roles"
-              sub={
-                pkg.total_roles > 0
-                  ? `${pkg.qualified_roles} ALAC qualified of ${pkg.total_roles} fetched`
-                  : undefined
-              }
-            />
-            <RoleList roles={roles} />
-          </Card>
-
-          {/* Signals. The reason to act now. */}
-          <Card>
-            <CardHeader
-              title="Signal heat"
-              sub={signals.length > 0 ? `${signals.length} scored` : undefined}
+              title="What changed"
+              sub={signals.length > 0 ? `${signals.length} on record, newest first` : undefined}
             />
             {signals.length === 0 ? (
               <EmptyState
-                title="No scored signal"
-                body="Nothing in the signal log is linked to this company. Without a dated signal there is no timing argument, only the standing TAM qualification."
+                title="Nothing recorded"
+                body="No signal is linked to this company yet. The next refresh pulls the feed for it."
               />
             ) : (
               <div className="flex flex-col gap-4 px-5 pb-5">
@@ -282,12 +346,7 @@ export default async function QueueAccountPage({
                           {formatDate(s.signal_date)}
                         </span>
                       </div>
-                      <p className="prose-measure mt-2 text-[13.5px] leading-[1.6]">
-                        {s.what_happened}
-                      </p>
-                      {/* What actually changed, in full. The one line summary
-                          says a round happened; this says how much, from whom,
-                          and what it means for hiring. */}
+                      <p className="prose-measure mt-2 text-[13.5px] leading-[1.6]">{s.what_happened}</p>
                       {s.detail ? (
                         <p className="prose-measure mt-2 text-[13px] leading-[1.65] text-[var(--alac-text-2)]">
                           {s.detail}
@@ -318,32 +377,27 @@ export default async function QueueAccountPage({
 
         <div className="flex flex-col gap-5">
           <Card>
-            <CardHeader title="Outreach" sub="LinkedIn first, then direct outreach" />
+            <CardHeader title="Outreach tools" sub="LinkedIn first, then email" />
             <dl className="flex flex-col gap-2.5 px-5 pb-5 text-[13px]">
               <Row label="LinkedIn" value={account.heyreach_stage} />
               <Row label="First loaded" value={formatDate(account.heyreach_date) ?? "not recorded"} />
-              <Row label="Uploaded" value={account.heyreach_uploaded ? "Yes" : "No"} />
-              <Row label="Direct outreach" value={account.sourcewhale_stage} />
+              <Row label="Email sequence" value={account.sourcewhale_stage} />
             </dl>
             <div className="px-5 pb-5">
               <NoticeLine>
-                These are stage markers only. The execution detail lives in HeyReach and SourceWhale,
-                and the sequence rule is that LinkedIn warming happens before the BD sequence.
+                Stage markers from the workbook. SourceWhale detail arrives here once its API key is
+                connected; until then, record what you sent with the Message buttons.
               </NoticeLine>
             </div>
           </Card>
 
           <Card>
             <CardHeader title="People you already know" sub={`${people.length} matched`} />
-            {/* The warm intro. His strongest openings name a real person and
-                what they said, and that only works when somebody is actually
-                there to ask. The app cannot know what was said, so it points
-                at the door rather than writing the line itself. */}
             {people.length >= 2 ? (
               <div className="px-5 pb-1">
                 <NoticeLine>
-                  You know {people.length} people here. An introduction from one of them opens
-                  better than anything cold. Ask the closest one first.
+                  You know {people.length} people here. An introduction from one of them opens better
+                  than anything cold. Ask the closest one first.
                 </NoticeLine>
               </div>
             ) : null}
@@ -354,91 +408,52 @@ export default async function QueueAccountPage({
               />
             ) : (
               <ul className="flex flex-col gap-1 px-3 pb-3">
-                {people.map((p, i) => (
-                  <li key={p.id} className="row-hover rounded-[var(--alac-radius)] px-3 py-2.5">
-                    {i === 0 && people.length > 1 ? (
-                      <div className="placard mb-1 text-[10px] text-[var(--alac-accent)]">Ask first</div>
-                    ) : null}
-                    <div className="flex items-center gap-3">
-                      {/* The name opens the profile. Every one of the 360
-                          matched contacts has a LinkedIn URL, so this is a
-                          link in practice and not just in theory. */}
-                      {p.linkedin_url ? (
-                        <a
-                          href={p.linkedin_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="link inline-flex min-w-0 items-center gap-1.5 text-[13.5px] font-medium"
-                        >
-                          <span className="truncate">{p.full_name}</span>
-                          <ExternalLink size={16} strokeWidth={1.5} />
-                        </a>
-                      ) : (
-                        <span className="truncate text-[13.5px] font-medium">{p.full_name}</span>
-                      )}
-                      {p.is_decision_maker ? (
-                        <span className="ml-auto shrink-0">
-                          <Badge tone="good" withIcon>Decision maker</Badge>
-                        </span>
+                {people.map((p, i) => {
+                  const m = sent.get(p.full_name);
+                  return (
+                    <li key={p.id} className="row-hover rounded-[var(--alac-radius)] px-3 py-2.5">
+                      {i === 0 && people.length > 1 ? (
+                        <div className="placard mb-1 text-[10px] text-[var(--alac-accent)]">Ask first</div>
                       ) : null}
-                    </div>
-                    <div className="mt-1 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
-                      {p.title ?? "Title unknown"}
-                    </div>
-                  </li>
-                ))}
+                      <div className="flex items-center gap-2">
+                        {p.linkedin_url ? (
+                          <a
+                            href={p.linkedin_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="link inline-flex min-w-0 items-center gap-1.5 text-[13.5px] font-medium"
+                          >
+                            <span className="truncate">{p.full_name}</span>
+                            <ExternalLink size={16} strokeWidth={1.5} />
+                          </a>
+                        ) : (
+                          <span className="truncate text-[13.5px] font-medium">{p.full_name}</span>
+                        )}
+                        <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                          {p.is_decision_maker ? (
+                            <Badge tone="good" withIcon>Decision maker</Badge>
+                          ) : null}
+                          <MessageButton
+                            accountId={account.id}
+                            person={p.full_name}
+                            channel={m?.channel ?? "linkedin"}
+                            body={m?.body}
+                            sentAt={m?.sent_at}
+                            compact
+                          />
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
+                        {p.title ?? "Title unknown"}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ArtefactCard({
-  label,
-  href,
-  missing,
-}: {
-  label: string;
-  href: string | null;
-  missing: string;
-}) {
-  const isUrl = href != null && /^https?:\/\//i.test(href);
-  return (
-    <div
-      className={`rounded-[var(--alac-radius)] px-4 py-3.5 ${
-        href ? "bg-[var(--alac-surface-2)]" : "bg-[var(--alac-ground)]"
-      }`}
-    >
-      <div
-        className={`placard text-[12px] ${
-          href ? "text-[var(--alac-text-2)]" : "text-[var(--alac-text-2)]"
-        }`}
-      >
-        {label}
-      </div>
-      {isUrl ? (
-        <a
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-          className="link mt-1.5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-[var(--alac-text-2)]"
-        >
-          Open <ExternalLink size={16} strokeWidth={1.5} />
-        </a>
-      ) : href ? (
-        // The workbook marks some of these present with a literal placeholder
-        // rather than a URL. Saying so is more useful than a dead link.
-        <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--alac-text-2)]">
-          Marked present in the workbook as &ldquo;{href}&rdquo;, with no URL recorded.
-        </p>
-      ) : (
-        <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--alac-text-3)]">
-          {missing}
-        </p>
-      )}
     </div>
   );
 }

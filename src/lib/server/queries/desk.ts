@@ -687,6 +687,7 @@ export async function commandBoard(orgId: string, period: Period) {
  */
 export type DeskRow = QueueRow & {
   domain: string | null;
+  hq: string | null;
   work_band: string | null;
   work_reason: string | null;
   work_score: number | null;
@@ -703,7 +704,31 @@ export type DeskRow = QueueRow & {
   top_contact: string | null;
   top_contact_title: string | null;
   has_draft: boolean;
+  last_contacted_at: string | null;
+  contacted_count: number;
+  last_contacted_name: string | null;
+  notes_count: number;
+  last_note: string | null;
 };
+
+/** The operator's own notes on a company, newest first. */
+export async function notesForAccount(orgId: string, accountId: string) {
+  return (await sql`
+    select id, body, created_at from account_notes
+     where org_id = ${orgId} and account_id = ${accountId}
+     order by created_at desc
+     limit 100
+  `) as { id: string; body: string; created_at: string }[];
+}
+
+/** Marks by hand: checklist items done, roles already mentioned. */
+export async function marksForAccount(orgId: string, accountId: string) {
+  const rows = (await sql`
+    select kind, ref, done from desk_marks
+     where org_id = ${orgId} and account_id = ${accountId} and done
+  `) as { kind: string; ref: string; done: boolean }[];
+  return new Set(rows.map((r) => `${r.kind}:${r.ref}`));
+}
 
 export type BandRow = DeskRow;
 
@@ -768,11 +793,11 @@ export async function manualMetrics(orgId: string) {
 export async function draftsForAccount(orgId: string, accountId: string) {
   return (await sql`
     select id, person_name, channel, body, opening_line, why_this_angle,
-           facts_used, sources, model, drafted_at, approved
+           facts_used, sources, model, drafted_at, approved, sent_at, custom
       from outreach_drafts
      where org_id = ${orgId} and account_id = ${accountId}
-     order by drafted_at desc
-     limit 5
+     order by sent_at desc nulls last, drafted_at desc
+     limit 25
   `) as {
     id: string;
     person_name: string;
@@ -785,6 +810,8 @@ export async function draftsForAccount(orgId: string, accountId: string) {
     model: string | null;
     drafted_at: string;
     approved: boolean;
+    sent_at: string | null;
+    custom: boolean;
   }[];
 }
 

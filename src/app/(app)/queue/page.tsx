@@ -7,6 +7,7 @@ import {
 import {
   ExecutionStages, LinkCell, MotionChip, PrepChip, PriorityChip, ScoreCell,
 } from "@/components/ui/desk";
+import { Row } from "@/components/ui/clickable";
 
 export const dynamic = "force-dynamic";
 
@@ -103,11 +104,14 @@ export default async function QueuePage({
             : "One company, one row, one current state. Record ID, priority and final score come from the Master TAM and are read only here."
         }
         right={
-          counts.ready_for_qc > 0 ? (
-            <Link href="/queue?prep=READY+FOR+QC" className="btn btn-primary">
-              {counts.ready_for_qc} need review
-            </Link>
-          ) : null
+          <span className="flex items-center gap-2">
+            {counts.ready_for_qc > 0 ? (
+              <Link href="/queue?prep=READY+FOR+QC" className="btn btn-secondary">
+                {counts.ready_for_qc} need review
+              </Link>
+            ) : null}
+            <Link href="/queue/new" className="btn btn-primary">Add a company</Link>
+          </span>
         }
       />
 
@@ -173,7 +177,7 @@ export default async function QueuePage({
               </thead>
               <tbody>
                 {rows.map((a) => (
-                  <tr key={a.id} className="row-hover border-b border-[var(--alac-line)] last:border-0">
+                  <Row key={a.id} href={`/queue/${a.id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
                     <td className="px-4 py-2.5 text-right align-top">
                       <ScoreCell score={a.final_score} />
                     </td>
@@ -201,7 +205,7 @@ export default async function QueuePage({
                     <td className="px-4 py-2.5 align-top">
                       <ExecutionStages heyreach={a.heyreach_stage} sourcewhale={a.sourcewhale_stage} />
                     </td>
-                  </tr>
+                  </Row>
                 ))}
               </tbody>
             </table>

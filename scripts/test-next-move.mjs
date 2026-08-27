@@ -74,6 +74,13 @@ test("in sequence means wait, whatever else is true", () => {
   assert.equal(m.kind, "wait");
 });
 
+test("a message sent this week means wait, then one follow up", () => {
+  const a = { ...base, top_contact: "Jane Doe", targets: 1, last_contacted_at: "2026-08-25", last_contacted_name: "Jane Doe" };
+  assert.equal(nextMove(a, AS_OF).move, "Wait for Jane Doe");
+  assert.equal(nextMove({ ...a, last_contacted_at: "2026-08-15" }, AS_OF).move, "Follow up with Jane Doe");
+  assert.equal(nextMove({ ...a, last_contacted_at: "2026-07-01", fresh_roles: 1 }, AS_OF).kind, "call");
+});
+
 test("the same input always gives the same move", () => {
   const a = { ...base, fresh_roles: 1, targets: 3, top_contact: "Jane Doe" };
   assert.deepEqual(nextMove(a, AS_OF), nextMove(a, AS_OF));
