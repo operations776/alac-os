@@ -163,7 +163,7 @@ const run = async () => {
     const values = slice.map((m) => {
       params.push(m.id, m.from, m.to, m.why);
       const n = params.length;
-      return `($1, ${n - 3}::uuid, ${n - 2}::text, ${n - 1}::text, ${n}::text)`;
+      return `($1, $${n - 3}::uuid, $${n - 2}::text, $${n - 1}::text, $${n}::text)`;
     });
     await client.query(
       `insert into band_moves (org_id, account_id, from_band, to_band, reason) values ${values.join(",")}`,

@@ -331,7 +331,8 @@ export async function signalHeat(orgId: string, limit = 100) {
       from heat_signals s
       left join tam_accounts a on a.id = s.account_id
      where s.org_id = ${orgId}
-     order by s.signal_date desc nulls last, s.heat_score desc nulls last
+     order by (s.signal_date > current_date), s.signal_date desc nulls last,
+              s.heat_score desc nulls last
      limit ${limit}
   `) as HeatRow[];
 }
@@ -654,7 +655,7 @@ export async function commandBoard(orgId: string, period: Period) {
                s.category, s.source::text as source, a.work_band
           from heat_signals s
           left join tam_accounts a on a.id = s.account_id
-         where s.org_id = ${orgId}
+         where s.org_id = ${orgId} and s.signal_date <= current_date
          order by s.signal_date desc nulls last, s.heat_score desc nulls last
          limit 8
       ) x) as heat,

@@ -71,9 +71,16 @@ function urgency(signal) {
   if (!base) return 0;
 
   const days = signal.signal_date
-    ? Math.max(0, (Date.now() - new Date(signal.signal_date).getTime()) / 86_400_000)
+    ? (Date.now() - new Date(signal.signal_date).getTime()) / 86_400_000
     : 365;
-  const recency = days <= 30 ? 1 : days <= 90 ? 0.85 : days <= 180 ? 0.6 : days <= 365 ? 0.35 : 0.15;
+
+  // A date in the future is an announcement about a plan, not news: "expanding
+  // to Poland by 2034". Math.max(0, days) used to clamp those to zero days old
+  // and hand them full recency, so a 2034 plan outranked a round that closed
+  // last week. The further out the plan, the less it says about hiring now.
+  const recency = days < 0
+    ? (days > -90 ? 0.5 : days > -365 ? 0.25 : 0.1)
+    : days <= 30 ? 1 : days <= 90 ? 0.85 : days <= 180 ? 0.6 : days <= 365 ? 0.35 : 0.15;
 
   const conf = signal.confidence ?? 0.7;
 

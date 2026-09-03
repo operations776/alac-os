@@ -5,6 +5,7 @@ import { getOrgId } from "@/lib/server/queries/desk";
 import {
   Badge, Blank, Card, EmptyState, PageHeader, Th, formatDate,
 } from "@/components/ui/primitives";
+import { AddToNetwork } from "./import";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,10 @@ export default async function PeoplePage() {
           </>
         }
       />
+
+      <div className="mb-5">
+        <AddToNetwork />
+      </div>
 
       <Card className="overflow-hidden">
         {rows.length === 0 ? (

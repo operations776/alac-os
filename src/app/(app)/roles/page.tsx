@@ -130,13 +130,15 @@ export default async function RolesPage({
                   ) : r.work_band === "next" ? (
                     <span className="chip">Up next</span>
                   ) : null}
-                  <span className="readout ml-auto text-[12.5px] text-[var(--alac-text-3)]">
-                    {ago(r.first_seen)}
+                  <span className="ml-auto flex shrink-0 items-baseline gap-3">
+                    <span className="readout text-[12.5px] text-[var(--alac-text-3)]">
+                      {ago(r.first_seen)}
+                    </span>
+                    {r.relevance != null ? (
+                      <span className="readout text-[12.5px] text-[var(--alac-accent)]">{r.relevance}</span>
+                    ) : null}
+                    <WhyRole role={r} />
                   </span>
-                  {r.relevance != null ? (
-                    <span className="readout text-[12.5px] text-[var(--alac-accent)]">{r.relevance}</span>
-                  ) : null}
-                  <WhyRole role={r} />
                 </div>
 
                 <p className="mt-1.5 text-[15px] font-medium">{r.title}</p>
