@@ -78,16 +78,17 @@ export default async function TargetsPage({
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Work now" value={counts.now ?? 0} hint="this week" />
-        <Stat label="Up next" value={counts.next ?? 0} />
-        <Stat label="Backlog" value={counts.backlog ?? 0} />
+        <Stat label="Work now" value={counts.now ?? 0} hint="being contacted" href="/queue?band=now" />
+        <Stat label="Up next" value={counts.next ?? 0} href="/queue?band=next" />
+        <Stat label="Backlog" value={counts.backlog ?? 0} href="/queue?band=backlog" />
         {/* Contacts sourced, not websites known. Every banded company now has
             a website, so that count only ever read 960 of 960 and told nobody
             anything. What is actually still missing is people. */}
         <Stat
-          label="Contacts sourced"
-          value={counts.with_targets ?? 0}
-          hint={`of ${counts.mapped ?? 0} companies`}
+          label="Pinned by you"
+          value={counts.pinned ?? 0}
+          hint="owner override"
+          href="/queue?pinned=1"
         />
       </div>
 

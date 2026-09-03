@@ -68,9 +68,9 @@ export default async function RolesPage({
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Posted today" value={counts.today ?? 0} hint="nobody has called yet" />
-        <Stat label="This week" value={counts.week ?? 0} />
-        <Stat label="Companies hiring" value={counts.companies ?? 0} hint="this week" />
+        <Stat label="Posted today" value={counts.today ?? 0} hint="nobody has called yet" href="/roles?range=today" />
+        <Stat label="This week" value={counts.week ?? 0} href="/roles" />
+        <Stat label="Companies hiring" value={counts.companies ?? 0} hint="this week" href="/queue?roles=1" />
         <Stat label="Relevant roles open" value={counts.total ?? 0} hint={`pulled ${formatDate(counts.pulled_at ?? null) ?? "never"}`} />
       </div>
 

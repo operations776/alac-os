@@ -22,14 +22,18 @@
   color-scheme: dark;
 
   /* ---- Ground and surfaces --------------------------------------------
-     The site's own scale. #05070a is the page ground behind the hero, and
-     each step up is a navy that stays blue rather than drifting to grey. */
-  --alac-ground: #05070a;
-  --alac-surface: #0b1020;
-  --alac-surface-2: #111a3a;
-  --alac-surface-3: #1a2563;
-  --alac-line: #1e2a55;
-  --alac-line-strong: #2a3a98;
+     Matched to the Revenue Command Center reference. The ground is a single
+     near black navy and every surface above it is a translucent white wash
+     rather than a second opaque colour, which is what keeps the panels
+     reading as glass over one ground instead of a stack of greys. */
+  --alac-ground: #080c14;
+  --alac-surface: #101622;
+  --alac-surface-2: #ffffff0a;
+  --alac-surface-3: #ffffff12;
+  /* The hairline is a cool grey at 14% so it disappears at rest and defines
+     an edge only where two surfaces meet. */
+  --alac-line: #97a6c124;
+  --alac-line-strong: #97a6c140;
 
   /* ---- Brand navy ------------------------------------------------------ */
   --alac-navy: #1a2563;
@@ -37,22 +41,33 @@
   --alac-navy-mid: #234d8c;
   --alac-navy-hover: #2a3a98;
 
-  /* ---- Periwinkle. The accent, and the colour of every heading on the
-     marketing site. #8ba8f5 is the hero heading, #c4d3ff the lighter step. */
-  --alac-accent: #8ba8f5;
-  --alac-accent-bright: #6b8aff;
-  --alac-accent-light: #c4d3ff;
-  --alac-accent-pale: #e8efff;
-  /* A periwinkle wash for selected rows and tonal fills. */
-  --alac-accent-soft: #16203f;
+  /* ---- Violet. The accent of the Revenue Command Center: #9b83ff carries
+     every primary action, selected state and measured quantity. */
+  --alac-accent: #9b83ff;
+  --alac-accent-bright: #8f7bec;
+  --alac-accent-light: #c3b4ff;
+  --alac-accent-pale: #e8e2ff;
+  /* A violet wash for selected rows and tonal fills, at the same 7% weight
+     the reference uses for every tonal chip. */
+  --alac-accent-soft: #9b83ff14;
+
+  /* ---- The semantic set, section 5 of the brief. Colour carries meaning
+     and nothing else: purple is talent, cyan is intelligence, blue is a
+     neutral action. Green, amber and red keep their status jobs below. */
+  --alac-purple: #9b83ff;
+  --alac-purple-soft: #9b83ff14;
+  --alac-cyan: #56c8e8;
+  --alac-cyan-soft: #56c8e814;
+  --alac-blue: #6ca7ff;
+  --alac-blue-soft: #6ca7ff17;
 
   /* ---- Text ------------------------------------------------------------
      Every value clears WCAG AA against --alac-ground, --alac-surface and
      --alac-surface-2. --alac-surface-2 is the tightest of the three, so it
      sets the floor. */
-  --alac-text: #ffffff;
-  --alac-text-2: #c7d0e4;
-  --alac-text-3: #93a1c0;
+  --alac-text: #e8edf6;
+  --alac-text-2: #8994a8;
+  --alac-text-3: #59667b;
 
   /* ---- Status.
      Red is split in two, and the split is not cosmetic. The brand red
@@ -64,27 +79,27 @@
 
      Green and amber are chosen at the matching weight so a row of statuses
      reads as one family rather than three borrowed palettes. */
-  --alac-red: #b8292f;
-  --alac-red-deep: #991f24;
-  --alac-red-text: #e5686d;
-  --alac-red-soft: #2a1114;
-  --alac-good: #3ecf8e;
-  --alac-good-soft: #0d2620;
-  --alac-warn: #e5a94a;
-  --alac-warn-soft: #2a2010;
+  --alac-red: #f17575;
+  --alac-red-deep: #d05a5a;
+  --alac-red-text: #f17575;
+  --alac-red-soft: #f1757514;
+  --alac-good: #4cd1a1;
+  --alac-good-soft: #4cd1a114;
+  --alac-warn: #f4b860;
+  --alac-warn-soft: #f4b86012;
 
   /* ---- Shape. The site is square: its buttons are rectangles and its cards
      have a 6px radius at most. There is no pill anywhere on it, so there is
      none here either. */
-  --alac-radius: 6px;
-  --alac-radius-sm: 3px;
-  --alac-radius-lg: 10px;
+  --alac-radius: 9px;
+  --alac-radius-sm: 5px;
+  --alac-radius-lg: 12px;
 
   /* ---- Elevation. On a near black ground a shadow does almost nothing, so
      depth is a lighter surface plus a hairline. The shadows below only lift
      something that is genuinely floating. */
   --alac-elev-1: 0 1px 2px 0 rgb(0 0 0 / 0.4);
-  --alac-elev-2: 0 4px 16px -2px rgb(0 0 0 / 0.5);
+  --alac-elev-2: 0 15px 50px rgb(0 0 0 / 0.35);
 
   --alac-ease: cubic-bezier(0.2, 0, 0, 1);
 }
@@ -100,6 +115,9 @@
   --color-alac-navy-mid: var(--alac-navy-mid);
   --color-alac-navy-hover: var(--alac-navy-hover);
   --color-alac-accent: var(--alac-accent);
+  --color-alac-purple: var(--alac-purple);
+  --color-alac-cyan: var(--alac-cyan);
+  --color-alac-blue: var(--alac-blue);
   --color-alac-accent-bright: var(--alac-accent-bright);
   --color-alac-accent-light: var(--alac-accent-light);
   --color-alac-accent-soft: var(--alac-accent-soft);

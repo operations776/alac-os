@@ -128,9 +128,13 @@ export async function deskCounts(orgId: string) {
       count(*) filter (where priority = 'priority_2')::int          as priority_2,
       count(*) filter (where priority = 'priority_3')::int          as priority_3,
       count(*) filter (where priority = 'unscored')::int            as unscored,
+      count(*) filter (where pin_active)::int                       as pinned,
+      count(*) filter (where fresh_roles > 0)::int                  as with_fresh_roles,
+      count(*) filter (where last_contacted_at is not null)::int    as contacted,
+      count(*) filter (where top_contact is null)::int              as no_contact,
       count(*) filter (where heyreach_stage <> 'NOT LOADED')::int   as heyreach_live,
       count(*) filter (where sourcewhale_stage <> 'NOT LOADED')::int as sourcewhale_live
-    from tam_accounts
+    from account_desk
     where org_id = ${orgId}
   `) as Record<string, number>[];
   return rows[0];
@@ -148,6 +152,12 @@ export async function searchQueue(
     prep?: string;
     motion?: string;
     nextWeek?: boolean;
+    band?: string;
+    pinned?: boolean;
+    hasRoles?: boolean;
+    hasSignal?: boolean;
+    noContact?: boolean;
+    contacted?: boolean;
     page?: number;
     perPage?: number;
   },
@@ -161,37 +171,54 @@ export async function searchQueue(
   const prep = opts.prep ?? "";
   const motion = opts.motion ?? "";
   const onlyNextWeek = opts.nextWeek ? 1 : 0;
+  // Each of these backs a clickable number somewhere on the desk. Section 7:
+  // every summary figure opens the exact records that produced it.
+  const band = opts.band ?? "";
+  const pinned = opts.pinned ? 1 : 0;
+  const hasRoles = opts.hasRoles ? 1 : 0;
+  const hasSignal = opts.hasSignal ? 1 : 0;
+  const noContact = opts.noContact ? 1 : 0;
+  const contacted = opts.contacted ? 1 : 0;
 
   // Each filter is an "or the filter is absent" clause, so one statement
   // serves every combination and no SQL is ever concatenated. The predicate is
   // repeated in the count query below because the driver cannot compose
   // fragments; the two must be kept identical.
   const rows = (await sql`
-    select a.id, a.record_id, a.priority, a.final_score, a.company_name,
-           a.linkedin_url, a.next_week, a.sales_nav_url, a.battlecard_url,
-           a.recommended_motion, a.prep_status, a.next_action,
-           a.heyreach_stage, a.heyreach_date, a.heyreach_uploaded,
-           a.sourcewhale_stage
-      from tam_accounts a
+    select a.*
+      from account_desk a
      where a.org_id = ${orgId}
        and (${q} = '' or lower(a.company_name) like ${pattern} or lower(a.record_id) like ${pattern})
        and (${priority} = '' or a.priority::text = ${priority})
        and (${prep} = '' or a.prep_status::text = ${prep})
        and (${motion} = '' or a.recommended_motion::text = ${motion})
        and (${onlyNextWeek} = 0 or a.next_week)
-     order by a.priority nulls last, a.final_score desc nulls last, a.company_name
+       and (${band} = '' or a.effective_band = ${band})
+       and (${pinned} = 0 or a.pin_active)
+       and (${hasRoles} = 0 or a.fresh_roles > 0)
+       and (${hasSignal} = 0 or a.signal_date is not null)
+       and (${noContact} = 0 or a.top_contact is null)
+       and (${contacted} = 0 or a.last_contacted_at is not null)
+     order by a.pin_active desc, a.pinned_rank asc nulls last,
+              a.priority nulls last, a.final_score desc nulls last, a.company_name
      limit ${perPage} offset ${offset}
-  `) as QueueRow[];
+  `) as DeskRow[];
 
   const totalRows = (await sql`
     select count(*)::int as n
-      from tam_accounts a
+      from account_desk a
      where a.org_id = ${orgId}
        and (${q} = '' or lower(a.company_name) like ${pattern} or lower(a.record_id) like ${pattern})
        and (${priority} = '' or a.priority::text = ${priority})
        and (${prep} = '' or a.prep_status::text = ${prep})
        and (${motion} = '' or a.recommended_motion::text = ${motion})
        and (${onlyNextWeek} = 0 or a.next_week)
+       and (${band} = '' or a.effective_band = ${band})
+       and (${pinned} = 0 or a.pin_active)
+       and (${hasRoles} = 0 or a.fresh_roles > 0)
+       and (${hasSignal} = 0 or a.signal_date is not null)
+       and (${noContact} = 0 or a.top_contact is null)
+       and (${contacted} = 0 or a.last_contacted_at is not null)
   `) as { n: number }[];
 
   return { rows, total: totalRows[0].n, perPage, page };
@@ -595,14 +622,18 @@ export async function commandBoard(orgId: string, period: Period) {
 
       (select coalesce(json_agg(x), '[]'::json) from (
         select * from account_desk
-         where org_id = ${orgId} and work_band = 'now'
-         order by work_score desc nulls last, company_name
+         where org_id = ${orgId} and effective_band = 'now'
+           and prep_status <> 'HOLD'
+         order by pin_active desc, pinned_rank asc nulls last,
+                  work_score desc nulls last, company_name
       ) x) as now,
 
       (select coalesce(json_agg(x), '[]'::json) from (
         select * from account_desk
-         where org_id = ${orgId} and work_band = 'next'
-         order by work_score desc nulls last, company_name
+         where org_id = ${orgId} and effective_band = 'next'
+           and prep_status <> 'HOLD'
+         order by pin_active desc, pinned_rank asc nulls last,
+                  work_score desc nulls last, company_name
       ) x) as next,
 
       (select coalesce(json_agg(x), '[]'::json) from (
@@ -709,6 +740,12 @@ export type DeskRow = QueueRow & {
   last_contacted_name: string | null;
   notes_count: number;
   last_note: string | null;
+  pinned_band: string | null;
+  pinned_rank: number | null;
+  pin_reason: string | null;
+  pin_expires: string | null;
+  pin_active: boolean;
+  effective_band: string | null;
 };
 
 /** The operator's own notes on a company, newest first. */
@@ -771,10 +808,14 @@ export type BandRow = DeskRow;
  * list would just be the spreadsheet again.
  */
 export async function marketMap(orgId: string, band: string, limit = 25, offset = 0) {
+  // The effective band, so a pinned company appears where the owner put it
+  // rather than where the ranking put it. Pins sort first, by their manual
+  // rank when one was given.
   return (await sql`
     select * from account_desk
-     where org_id = ${orgId} and work_band = ${band}
-     order by work_score desc nulls last, company_name
+     where org_id = ${orgId} and effective_band = ${band}
+     order by pin_active desc, pinned_rank asc nulls last,
+              work_score desc nulls last, company_name
      limit ${limit} offset ${offset}
   `) as DeskRow[];
 }
@@ -783,15 +824,16 @@ export async function marketMap(orgId: string, band: string, limit = 25, offset 
 export async function marketCounts(orgId: string) {
   const rows = (await sql`
     select
-      count(*) filter (where work_band = 'now')::int      as now,
-      count(*) filter (where work_band = 'next')::int     as next,
-      count(*) filter (where work_band = 'backlog')::int  as backlog,
-      count(*) filter (where work_band is not null)::int  as mapped,
+      count(*) filter (where effective_band = 'now')::int      as now,
+      count(*) filter (where effective_band = 'next')::int     as next,
+      count(*) filter (where effective_band = 'backlog')::int  as backlog,
+      count(*) filter (where effective_band is not null)::int  as mapped,
+      count(*) filter (where pin_active)::int                  as pinned,
       count(*) filter (where domain is not null)::int     as with_domain,
-      count(*) filter (where exists (select 1 from account_targets t where t.account_id = tam_accounts.id))::int as with_targets,
+      count(*) filter (where exists (select 1 from account_targets t where t.account_id = account_desk.id))::int as with_targets,
       max(banded_at)                                      as last_mapped
-      from tam_accounts where org_id = ${orgId}
-  `) as { now: number; next: number; backlog: number; mapped: number; with_domain: number; with_targets: number; last_mapped: string | null }[];
+      from account_desk where org_id = ${orgId}
+  `) as { now: number; next: number; backlog: number; mapped: number; pinned: number; with_domain: number; with_targets: number; last_mapped: string | null }[];
   return rows[0];
 }
 

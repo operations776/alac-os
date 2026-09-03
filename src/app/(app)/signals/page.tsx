@@ -70,8 +70,8 @@ export default async function SignalsPage() {
       />
 
       <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Things that changed" value={stats.total} />
-        <Stat label="More urgent than rank" value={stats.hotter_than_tam} hint="worth moving on now" />
+        <Stat label="Things that changed" value={stats.total} href="/queue?signal=1" />
+        <Stat label="More urgent than rank" value={stats.hotter_than_tam} hint="worth moving on now" href="/queue?signal=1" />
         <Stat label="Highest urgency" value={stats.top_heat ?? "--"} />
         <Stat
           label="Not on the list yet"

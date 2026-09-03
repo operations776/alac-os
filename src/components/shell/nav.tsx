@@ -10,6 +10,7 @@ import {
   LogOut,
   Users,
   Briefcase,
+  UserSearch,
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import { Logo } from "./logo";
@@ -34,6 +35,7 @@ const NAV = [
   { href: "/targets", label: "Who to target", Icon: Target, exact: false },
   { href: "/queue", label: "All companies", Icon: ListChecks, exact: false },
   { href: "/signals", label: "What changed", Icon: Flame, exact: false },
+  { href: "/talent", label: "Talent", Icon: UserSearch, exact: false },
   { href: "/roles", label: "Open roles", Icon: Briefcase, exact: false },
   { href: "/people", label: "Your network", Icon: Users, exact: false },
 ];

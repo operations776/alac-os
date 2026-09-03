@@ -17,6 +17,7 @@ import {
 import { TargetList, RoleList, Brief, type SentMap } from "@/components/ui/targets";
 import { DraftList } from "@/components/ui/drafts";
 import { NoteForm, MessageButton } from "@/components/ui/tracker";
+import { PinControl } from "@/components/ui/pin";
 import { setMark } from "./tracker";
 
 export const dynamic = "force-dynamic";
@@ -107,9 +108,19 @@ export default async function QueueAccountPage({
             <PriorityChip priority={account.priority} />
             <MotionChip motion={account.recommended_motion} />
             <PrepChip status={account.prep_status} />
-            {account.work_band ? (
+            <PinControl
+              accountId={account.id}
+              systemBand={account.work_band}
+              systemRank={account.work_score}
+              pinnedBand={account.pinned_band}
+              pinnedRank={account.pinned_rank}
+              pinReason={account.pin_reason}
+              pinExpires={account.pin_expires}
+              pinActive={account.pin_active}
+            />
+            {account.effective_band ? (
               <span className="chip">
-                {account.work_band === "now" ? "Work now" : account.work_band === "next" ? "Up next" : "Backlog"}
+                {account.effective_band === "now" ? "Work now" : account.effective_band === "next" ? "Up next" : "Backlog"}
               </span>
             ) : null}
             {account.next_week ? (

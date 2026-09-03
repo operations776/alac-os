@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -298,11 +299,16 @@ export function Stat({
   value,
   hint,
   tone,
+  href,
 }: {
   label: string;
   value: string | number;
   hint?: string;
   tone?: "good" | "warn" | "bad" | "readout";
+  /** Where the number's own records live. Section 7: every summary figure
+   *  opens the exact rows that produced it. A tile without one is a number
+   *  nobody can check, which the brief calls a dead metric. */
+  href?: string;
 }) {
   const color =
     tone === "good"
@@ -312,18 +318,29 @@ export function Stat({
         : tone === "bad"
           ? "var(--alac-red)"
           : "var(--alac-accent)";
-  return (
-    <div className="panel px-5 py-4">
+  const inner = (
+    <>
       <div className="placard text-[12px] text-[var(--alac-text-2)]">{label}</div>
       <div className="readout mt-2 text-[30px] leading-none" style={{ color }}>
         {value}
       </div>
       {hint ? (
-        <div className="mt-2 text-[12px] leading-snug text-[var(--alac-text-3)]">
-          {hint}
-        </div>
+        <div className="mt-2 text-[12px] leading-snug text-[var(--alac-text-3)]">{hint}</div>
       ) : null}
-    </div>
+    </>
+  );
+
+  if (!href) return <div className="panel px-5 py-4">{inner}</div>;
+
+  return (
+    <Link
+      href={href}
+      className="panel block px-5 py-4 transition-colors hover:border-[var(--alac-accent)] focus-visible:border-[var(--alac-accent)]"
+      title={`Open the ${String(value)} records behind this`}
+    >
+      {inner}
+      <span className="mt-2 block text-[11.5px] text-[var(--alac-accent)]">See them</span>
+    </Link>
   );
 }
 

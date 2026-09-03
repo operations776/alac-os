@@ -13,7 +13,7 @@
     "migrate": "node scripts/migrate.mjs",
     "create:user": "node scripts/create-user.mjs",
     "import:desk": "node scripts/import-command-center.mjs",
-    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs && node scripts/test-outreach.mjs && node scripts/test-predictleads.mjs && node scripts/test-next-move.mjs",
+    "test:unit": "node scripts/test-xlsx.mjs && node scripts/test-heat.mjs && node scripts/test-outreach.mjs && node scripts/test-predictleads.mjs && node scripts/test-next-move.mjs && node scripts/test-match.mjs",
     "enrich": "node scripts/enrich-account.mjs",
     "map": "node scripts/map-market.mjs",
     "export": "node scripts/export-accounts.mjs",
@@ -23,7 +23,8 @@
     "draft": "node scripts/draft-outreach.mjs",
     "signals": "node scripts/signals-predictleads.mjs",
     "jobs": "node scripts/jobs-pull.mjs",
-    "refresh": "node scripts/signals-predictleads.mjs --apply && node scripts/jobs-pull.mjs --apply && node scripts/map-market.mjs"
+    "refresh": "node scripts/signals-predictleads.mjs --apply && node scripts/jobs-pull.mjs --apply && node scripts/map-market.mjs",
+    "rescore": "node scripts/rescore-roles.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

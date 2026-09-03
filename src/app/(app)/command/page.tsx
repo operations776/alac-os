@@ -91,14 +91,15 @@ export default async function CommandPage({
       />
 
       <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Roles posted since yesterday" value={roleCounts.today} hint="at companies you are working" tone={roleCounts.today > 0 ? "good" : undefined} />
-        <Stat label="Companies with a reason to call" value={calls} hint={`of ${now.length} in Work now`} />
-        <Stat label="Things that changed" value={heatStats.total} hint={`${heatStats.hotter_than_tam} hotter than their rank`} />
+        <Stat label="Roles posted since yesterday" value={roleCounts.today} hint="at companies you are working" tone={roleCounts.today > 0 ? "good" : undefined} href="/roles?range=today" />
+        <Stat label="Companies with a reason to call" value={calls} hint={`of ${now.length} in Work now`} href="/queue?band=now&roles=1" />
+        <Stat label="Things that changed" value={heatStats.total} hint={`${heatStats.hotter_than_tam} hotter than their rank`} href="/signals" />
         <Stat
           label="Needs your review"
           value={counts.ready_for_qc}
           hint="waiting on you"
           tone={counts.ready_for_qc > 0 ? "good" : undefined}
+          href="/queue?prep=READY+FOR+QC"
         />
       </div>
 

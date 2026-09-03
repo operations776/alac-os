@@ -143,6 +143,12 @@ fetchers are written to fill it.
 | ALAC-81 | The tracker: notes per company, hand marks on the checklist, mentioned roles, messages written and marked sent, whole rows clickable, Results hidden | done |
 | ALAC-82 | Add a company not in the TAM from the app, with website, LinkedIn and location; lands in Up next and is ranked on the next refresh | done |
 | ALAC-83 | Band moves recorded with reasons; worked companies never demoted; monthly backlog signal sweep | done |
+| ALAC-84 | Owner override: pin to a band with exact rank, reason and expiry; manual and system rank always shown together | done |
+| ALAC-85 | Clickable KPIs: every summary number opens the exact filtered records | done |
+| ALAC-86 | Inline edit of approach, progress and this-week from All Companies; Hold suppresses the working list | done |
+| ALAC-87 | Role scoring inverted to difficulty x time open, per section 17.1 | done |
+| ALAC-88 | MPC Demand Radar: analyze a candidate, search the corpus in natural language, four buckets, never stop at zero | done |
+| ALAC-89 | UI retuned to the Revenue Command Center reference: violet accent, translucent panels, semantic colour set | done |
 | ALAC-59 | Surface the duplicate company in the source workbook (one company under two Record IDs) as a data quality panel | todo |
 | ALAC-60 | Full SourceWhale ingestion once the export schema is confirmed, replacing the provisional counters | todo |
 

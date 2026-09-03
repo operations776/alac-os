@@ -4,10 +4,11 @@ import { getOrgId, searchQueue, deskCounts } from "@/lib/server/queries/desk";
 import {
   Button, Card, EmptyState, PageHeader, Th,
 } from "@/components/ui/primitives";
-import {
-  ExecutionStages, LinkCell, MotionChip, PrepChip, PriorityChip, ScoreCell,
-} from "@/components/ui/desk";
+import { ExecutionStages, PriorityChip, ScoreCell } from "@/components/ui/desk";
 import { Row } from "@/components/ui/clickable";
+import { InlineSelect } from "@/components/ui/inline";
+import { PinBadge } from "@/components/ui/pin-badge";
+import type { DeskRow } from "@/lib/server/queries/desk";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,8 @@ export default async function QueuePage({
 }: {
   searchParams: Promise<{
     q?: string; priority?: string; prep?: string; motion?: string;
-    next?: string; page?: string;
+    next?: string; page?: string; band?: string; pinned?: string;
+    roles?: string; signal?: string; nocontact?: string; contacted?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -69,22 +71,49 @@ export default async function QueuePage({
   const prep = params.prep ?? "";
   const motion = params.motion ?? "";
   const onlyNext = params.next === "1";
+  // Each of these arrives from a clicked number somewhere else on the desk.
+  const band = params.band ?? "";
+  const pinned = params.pinned === "1";
+  const hasRoles = params.roles === "1";
+  const hasSignal = params.signal === "1";
+  const noContact = params.nocontact === "1";
+  const contacted = params.contacted === "1";
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
   const [{ rows, total, perPage }, counts] = await Promise.all([
-    searchQueue(orgId, { q, priority, prep, motion, nextWeek: onlyNext, page, perPage: 50 }),
+    searchQueue(orgId, {
+      q, priority, prep, motion, nextWeek: onlyNext, band, pinned,
+      hasRoles, hasSignal, noContact, contacted, page, perPage: 50,
+    }),
     deskCounts(orgId),
   ]);
 
   const pages = Math.ceil(total / perPage);
   const first = total === 0 ? 0 : (page - 1) * perPage + 1;
   const last = Math.min(page * perPage, total);
-  const filtered = Boolean(q || priority || prep || motion || onlyNext);
+  const filtered = Boolean(
+    q || priority || prep || motion || onlyNext || band || pinned ||
+    hasRoles || hasSignal || noContact || contacted,
+  );
+  // What the filter is called, so a filtered view says why it is filtered.
+  const filterName =
+    band === "now" ? "Work now"
+    : band === "next" ? "Up next"
+    : band === "backlog" ? "Backlog"
+    : pinned ? "Pinned by you"
+    : hasRoles ? "New roles this week"
+    : hasSignal ? "Something changed"
+    : noContact ? "No contact yet"
+    : contacted ? "Messaged"
+    : null;
 
   const href = (next: Record<string, string | number | undefined>) => {
     const sp = new URLSearchParams();
     const merged = {
-      q, priority, prep, motion, next: onlyNext ? "1" : "", page, ...next,
+      q, priority, prep, motion, next: onlyNext ? "1" : "", band,
+      pinned: pinned ? "1" : "", roles: hasRoles ? "1" : "",
+      signal: hasSignal ? "1" : "", nocontact: noContact ? "1" : "",
+      contacted: contacted ? "1" : "", page, ...next,
     } as Record<string, string | number | undefined>;
     for (const [k, v] of Object.entries(merged)) {
       if (v !== undefined && v !== "" && !(k === "page" && v === 1)) sp.set(k, String(v));
@@ -100,8 +129,8 @@ export default async function QueuePage({
         title={`${total.toLocaleString()} ${total === 1 ? "company" : "companies"}`}
         lede={
           filtered
-            ? "Filtered view. Clear the filters to see the whole queue."
-            : "One company, one row, one current state. Record ID, priority and final score come from the Master TAM and are read only here."
+            ? `${filterName ? `${filterName}. ` : ""}Filtered view. Clear the filters to see the whole queue.`
+            : "One company, one row, one current state. Priority and fit score come from the Master TAM. Everything else on this page is editable in place."
         }
         right={
           <span className="flex items-center gap-2">
@@ -168,15 +197,15 @@ export default async function QueuePage({
                   <Th align="right">Fit</Th>
                   <Th>Company</Th>
                   <Th>Priority</Th>
+                  <Th>Band</Th>
                   <Th>This week</Th>
                   <Th>Approach</Th>
                   <Th>Progress</Th>
-                  <Th>Brief</Th>
                   <Th>Outreach</Th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((a) => (
+                {(rows as DeskRow[]).map((a) => (
                   <Row key={a.id} href={`/queue/${a.id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
                     <td className="px-4 py-2.5 text-right align-top">
                       <ScoreCell score={a.final_score} />
@@ -191,17 +220,22 @@ export default async function QueuePage({
                     </td>
                     <td className="px-4 py-2.5 align-top"><PriorityChip priority={a.priority} /></td>
                     <td className="px-4 py-2.5 align-top">
-                      {a.next_week ? (
-                        <span className="chip min-h-[24px] bg-[var(--alac-accent-soft)] px-2.5 text-[11px] text-[var(--alac-accent-light)]">
-                          YES
-                        </span>
-                      ) : (
-                        <span className="text-[12.5px] text-[var(--alac-text-3)]">no</span>
-                      )}
+                      <PinBadge row={a} />
                     </td>
-                    <td className="px-4 py-2.5 align-top"><MotionChip motion={a.recommended_motion} /></td>
-                    <td className="px-4 py-2.5 align-top"><PrepChip status={a.prep_status} /></td>
-                    <td className="px-4 py-2.5 align-top"><LinkCell href={a.battlecard_url} label="Card" /></td>
+                    <td className="px-4 py-2.5 align-top">
+                      <InlineSelect
+                        accountId={a.id}
+                        field="next_week"
+                        value={a.next_week ? "1" : "0"}
+                        options={[{ value: "0", label: "no" }, { value: "1", label: "this week" }]}
+                      />
+                    </td>
+                    <td className="px-4 py-2.5 align-top">
+                      <InlineSelect accountId={a.id} field="motion" value={a.recommended_motion} options={MOTIONS.slice(1)} />
+                    </td>
+                    <td className="px-4 py-2.5 align-top">
+                      <InlineSelect accountId={a.id} field="prep" value={a.prep_status} options={PREP.slice(1)} />
+                    </td>
                     <td className="px-4 py-2.5 align-top">
                       <ExecutionStages heyreach={a.heyreach_stage} sourcewhale={a.sourcewhale_stage} />
                     </td>

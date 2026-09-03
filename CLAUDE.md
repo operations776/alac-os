@@ -49,6 +49,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 - **An import that only adds.** The workbook is the source of truth, so the import mirrors it: it prunes anything it did not see this run. Without that, a company dropped from the queue lives on, and a change to a row's key leaves the old row behind as a duplicate company.
 - **Writing a payload parser from the docs alone.** PredictLeads returns `posted_at` as null on every job and dates events by `effective_date` with `found_at` as the fallback. The client was written against live responses, not the examples. Read the live payload before trusting an example.
 - **A regex through a shell heredoc.** `\b` became a literal backspace and `qualifyRole` rejected all 4,122 titles without throwing. Anything that filters silently gets a unit test (`test-predictleads.mjs`), and regexes are written with the Write tool, never through bash.
+- **A leading word boundary in an alternation.** `/chief|cto|.../` anchors only the first branch, so `cto` matched inside `director` and every director was classified an executive. Every alternative carries its own boundaries: `/(chief|cto|...)/`. Caught by `test-match.mjs`, never by the screen.
 - **Ranking before pulling.** The bands are computed from signal and role counts, so `map-market` after `signals` and `jobs`, never before. `npm run refresh` fixes the order.
 
 ## Commands
@@ -66,6 +67,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 | `npm run signals -- --apply` | Pull and score PredictLeads events for Work now and Up next. Plan only without `--apply` |
 | `npm run jobs -- --apply` | Pull open roles for the same 50, qualify, score relevance. `--today` lists what appeared in 24 hours |
 | `npm run map` | Re-rank the market into Work now, Up next, Backlog. Free |
+| `npm run rescore` | Recompute role relevance for every stored role. Free, no network |
 | `npm run test:unit` | xlsx, heat, outreach, PredictLeads and next-move checks. Fast, no database, no network |
 | `npm run test:e2e` | Playwright. **Daniyal runs this, not Claude.** Write the specs, hand him the verification step. |
 
