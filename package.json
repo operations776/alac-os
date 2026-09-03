@@ -24,7 +24,8 @@
     "signals": "node scripts/signals-predictleads.mjs",
     "jobs": "node scripts/jobs-pull.mjs",
     "refresh": "node scripts/signals-predictleads.mjs --apply && node scripts/jobs-pull.mjs --apply && node scripts/map-market.mjs",
-    "rescore": "node scripts/rescore-roles.mjs"
+    "rescore": "node scripts/rescore-roles.mjs",
+    "seed:candidates": "node scripts/seed-candidates.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

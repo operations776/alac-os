@@ -6,7 +6,7 @@
 // Client data never enters this repo.
 
 import assert from "node:assert/strict";
-import { matchRole, bucketResults, parseQuery, tokens, levelOf } from "../src/lib/scoring/match.mjs";
+import { matchRole, bucketResults, parseQuery, tokens, levelOf, functionOf } from "../src/lib/scoring/match.mjs";
 import { roleScore, difficulty, aging } from "../src/lib/scoring/roles.mjs";
 
 let run = 0;
@@ -86,6 +86,39 @@ test("a same-level same-domain role scores as an exact match", () => {
   const m = matchRole(bd, { title: "Director, Business Development, Navy Programs", location: "Arlington, Virginia", relevance: 70 });
   assert.ok(m.score >= 65, `expected exact, got ${m.score}`);
   assert.ok(m.why.length > 0);
+});
+
+test("a shared customer is not a shared job", () => {
+  // The false match this gate exists for: an undersea autonomy engineer and a
+  // USMC business development lead share navy, maritime and marine corps, and
+  // on token overlap alone that scored 85%.
+  const eng = {
+    title: "Lead Engineer, Undersea Autonomy",
+    summary: "Autonomy for uncrewed undersea vehicles, Navy programmes",
+    domains: "undersea, maritime, autonomy, submarine",
+    geography: "San Diego, California",
+  };
+  eng.tokens = tokens(`${eng.title} ${eng.summary} ${eng.domains}`);
+
+  const bd = matchRole(eng, { title: "Business Development Lead, USMC", location: "San Diego, California", relevance: 60 });
+  const real = matchRole(eng, { title: "Lead Autonomy Engineer, Maritime Systems", location: "San Diego, California", relevance: 70 });
+
+  assert.ok(bd.score < 65, `a different function must not read as exact, got ${bd.score}`);
+  assert.ok(real.score > bd.score + 20, `${real.score} should clearly beat ${bd.score}`);
+  assert.ok(
+    bd.why.some((w) => /different function/i.test(w)),
+    "the row must say why it is weak: " + bd.why.join("|"),
+  );
+});
+
+test("functions are read from the title, not the summary", () => {
+  // A summary lists every customer and programme somebody has touched, so it
+  // cannot decide what they do for a living.
+  assert.equal(functionOf("Director of Business Development"), "commercial");
+  assert.equal(functionOf("Principal GNC Engineer"), "engineering");
+  assert.equal(functionOf("Director of Program Management"), "programs");
+  assert.equal(functionOf("Head of Talent"), "talent");
+  assert.equal(functionOf("Regional Vice President"), null);
 });
 
 test("a different function scores low even at the same level", () => {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 /**
@@ -38,6 +39,15 @@ export function Dialog({
   // Where focus was before the dialog opened, so it can be put back. Losing it
   // dumps a keyboard user at the top of the document.
   const returnTo = useRef<HTMLElement | null>(null);
+  // document.body does not exist during the server render, so the portal has
+  // to wait for the client. useSyncExternalStore is the sanctioned way to ask
+  // "am I on the client": it returns the server snapshot during SSR and the
+  // client one after hydration, with no state set inside an effect.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -71,11 +81,19 @@ export function Dialog({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const titleId = `dlg-${title.replace(/\W+/g, "-").toLowerCase()}`;
 
-  return (
+  // Rendered into the document body rather than in place.
+  //
+  // z-index alone is not enough: a transform, filter or opacity on any
+  // ancestor creates a stacking context, and the dialog can then never rise
+  // above a sibling of that ancestor however high its z-index. The rise-in
+  // animation on a list of cards does exactly that, so a dialog opened from
+  // one card painted underneath the next card. A portal takes it out of that
+  // subtree entirely, which is the only fix that holds wherever it is used.
+  return createPortal(
     <div
       className="overlay"
       // A click on the backdrop closes. The check is that the click STARTED
@@ -121,6 +139,7 @@ export function Dialog({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

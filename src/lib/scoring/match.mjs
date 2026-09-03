@@ -74,17 +74,60 @@ export function levelOf(text = "") {
  * distance rather than a match: one step either way is still a real
  * conversation, two steps is not.
  */
+/**
+ * The job somebody actually does, as opposed to the market they do it in.
+ *
+ * This exists because customer words are not function words. An undersea
+ * autonomy engineer and a USMC business development lead share "navy",
+ * "marine corps" and "maritime", and on token overlap alone that scored 85%:
+ * a false match, and the kind that destroys trust in the whole screen. So
+ * function is checked separately and a mismatch caps the score, whatever the
+ * domain words say.
+ */
+const FUNCTIONS = [
+  { key: "commercial", re: /\b(business development|bd|sales|capture|growth|revenue|account executive|partnerships)\b/i },
+  { key: "engineering", re: /\b(engineer|engineering|scientist|architect|developer|software|hardware|avionics|gnc|autonomy|propulsion|structures|firmware|embedded)\b/i },
+  { key: "programs", re: /\b(program manager|programme|program management|project manager|pmo|earned value)\b/i },
+  { key: "manufacturing", re: /\b(manufacturing|production|assembly|machinist|fabrication|supply chain|quality|industrial)\b/i },
+  { key: "talent", re: /\b(recruit|talent|people|human resources|hr)\b/i },
+  { key: "finance", re: /\b(finance|accounting|controller|fp&a|treasury)\b/i },
+  { key: "legal", re: /\b(legal|counsel|contracts|compliance|itar|export)\b/i },
+];
+
+export function functionOf(text = "") {
+  const t = String(text);
+  for (const f of FUNCTIONS) if (f.re.test(t)) return f.key;
+  return null;
+}
+
 export function matchRole(candidate, role) {
   const why = [];
   const cTok = candidate.tokens ?? tokens(`${candidate.title ?? ""} ${candidate.summary ?? ""} ${candidate.domains ?? ""}`);
   const rTok = tokens(`${role.title ?? ""} ${role.occupation ?? ""} ${role.job_function ?? ""}`);
 
+  // Function first, from the titles alone. A summary mentions every customer
+  // and programme somebody has touched, so it cannot decide what they do.
+  const cFn = functionOf(candidate.title ?? "");
+  const rFn = functionOf(`${role.title ?? ""} ${role.occupation ?? ""}`);
+  const sameFunction = cFn && rFn ? cFn === rFn : null;
+
   let overlap = 0;
   for (const w of rTok) if (cTok.has(w)) overlap += 1;
   const denom = Math.max(3, Math.min(rTok.size, 10));
-  const fn = Math.min(45, Math.round((overlap / denom) * 45));
-  if (fn >= 30) why.push("Same function and domain language");
-  else if (fn >= 15) why.push("Related function");
+  let fn = Math.min(45, Math.round((overlap / denom) * 45));
+
+  if (sameFunction === false) {
+    // Shared market, different job. Kept as a real but weak signal, so it can
+    // still surface as adjacent where the operator may see an angle.
+    fn = Math.min(fn, 12);
+    why.push(`Same market, different function: they are ${cFn}, this is ${rFn}`);
+  } else if (sameFunction === true && fn >= 20) {
+    why.push(`Same function, ${rFn}`);
+  } else if (fn >= 30) {
+    why.push("Same function and domain language");
+  } else if (fn >= 15) {
+    why.push("Related function");
+  }
 
   const cl = levelOf(candidate.title ?? "");
   const rl = levelOf(role.title ?? "");
