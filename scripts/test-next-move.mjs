@@ -7,7 +7,6 @@
 
 import assert from "node:assert/strict";
 import { nextMove, lifecycle } from "../src/lib/scoring/next-move.mjs";
-import { roleScore } from "../src/lib/scoring/roles.mjs";
 import { assignBands, describeMove } from "../src/lib/scoring/bands.mjs";
 
 let run = 0;
@@ -87,12 +86,9 @@ test("the same input always gives the same move", () => {
   assert.deepEqual(nextMove(a, AS_OF), nextMove(a, AS_OF));
 });
 
-test("role relevance is freshness first and capped at 100", () => {
-  const today = roleScore({ title: "Senior Engineer", first_seen: AS_OF, salary_text: "$1" }, AS_OF);
-  const old = roleScore({ title: "Senior Engineer", first_seen: "2026-06-01", salary_text: "$1" }, AS_OF);
-  assert.ok(today > old);
-  assert.ok(roleScore({ title: "Chief Engineer", first_seen: AS_OF, salary_text: "x" }, AS_OF) <= 100);
-});
+// Role scoring moved to difficulty x time open, per section 17.1, and is
+// covered in test-match.mjs. The old assertion here asserted the opposite
+// ordering and would now be a test of a model this app no longer uses.
 
 test("a worked company never drops a band, an unworked one takes its place", () => {
   const rows = [
