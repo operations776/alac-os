@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/primitives";
 import { HEAT_COMPONENTS, HeatDelta } from "@/components/ui/desk";
 import { Row } from "@/components/ui/clickable";
+import { WhySignal } from "@/components/ui/explain";
 
 export const dynamic = "force-dynamic";
 
@@ -242,6 +243,14 @@ export default async function SignalsPage() {
                           {s.heat_score ?? "--"}
                           <span className="text-[13px] text-[var(--alac-text-3)]"> / 100</span>
                         </span>
+                      </div>
+                      <div className="mt-2">
+                        <WhySignal
+                          signal={s}
+                          score={s.heat_score}
+                          terms={parts.map((p) => ({ term: p.label, points: p.value, input: `out of ${p.max}` }))}
+                          label="Why this score"
+                        />
                       </div>
 
                       <div className="mt-3.5 flex flex-col gap-2.5">

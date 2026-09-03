@@ -3,6 +3,7 @@ import { getOrgId, marketMap, marketCounts, recentMoves, type BandRow } from "@/
 import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
 import { QuickLook } from "@/components/ui/quick-look";
 import { NextMove, LifecycleChip } from "@/components/ui/desk";
+import { WhyBand, WhyMove } from "@/components/ui/explain";
 import { DESK, ROLLOVER_RULES } from "@/config/desk.mjs";
 import { Row } from "@/components/ui/clickable";
 
@@ -243,6 +244,10 @@ function AccountCard({ row, rank }: { row: BandRow; rank: number }) {
 
       <div className="mt-3 pl-11">
         <NextMove row={row} />
+        <span className="mt-1 inline-flex gap-4">
+          <WhyMove account={row} />
+          <WhyBand account={row} label="Why it is on the list" />
+        </span>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 pl-11 text-[12.5px]">

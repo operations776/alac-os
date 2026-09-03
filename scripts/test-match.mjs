@@ -21,18 +21,28 @@ const AS_OF = "2026-08-27";
 /* ---- the role scorer, section 17.1 ---------------------------------- */
 
 test("difficulty rises with clearance, seniority and specialism", () => {
-  const easy = difficulty("Recruiting Coordinator");
-  const mid = difficulty("Mechanical Engineer");
-  const hard = difficulty("Principal GNC Engineer, TS/SCI");
+  const easy = difficulty("Recruiting Coordinator").value;
+  const mid = difficulty("Mechanical Engineer").value;
+  const hard = difficulty("Principal GNC Engineer, TS/SCI").value;
   assert.ok(easy < mid, `${easy} < ${mid}`);
   assert.ok(mid < hard, `${mid} < ${hard}`);
   assert.ok(hard <= 100 && easy >= 0);
 });
 
+test("every difficulty carries the reasons behind it", () => {
+  // Section 4: no score without a why. A number with no terms cannot be
+  // interrogated, and the panel would render an empty breakdown.
+  const d = difficulty("Principal GNC Engineer, TS/SCI");
+  assert.ok(d.terms.length >= 3, JSON.stringify(d.terms));
+  assert.ok(d.terms.some((t) => /clearance/i.test(t.term)));
+  assert.ok(d.terms.every((t) => t.term && typeof t.points === "number"));
+});
+
 test("time open is the second half of the core, and it compounds", () => {
-  assert.ok(aging("2026-08-26", AS_OF) < aging("2026-07-01", AS_OF));
-  assert.ok(aging("2026-07-01", AS_OF) < aging("2026-01-01", AS_OF));
-  assert.equal(aging(null, AS_OF), 20);
+  assert.ok(aging("2026-08-26", AS_OF).value < aging("2026-07-01", AS_OF).value);
+  assert.ok(aging("2026-07-01", AS_OF).value < aging("2026-01-01", AS_OF).value);
+  assert.equal(aging(null, AS_OF).value, 20);
+  assert.equal(aging("2026-07-01", AS_OF).age, 57);
 });
 
 test("a hard role open a long time beats an easy one posted today", () => {

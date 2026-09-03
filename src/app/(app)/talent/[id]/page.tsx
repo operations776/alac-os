@@ -5,6 +5,7 @@ import { getOrgId } from "@/lib/server/queries/desk";
 import { candidateById, radar, type RadarRole } from "@/lib/server/queries/talent";
 import { Card, CardHeader, EmptyState, NoticeLine, PageHeader, Stat } from "@/components/ui/primitives";
 import { togglePitch } from "../actions";
+import { WhyMatch, WhyRole } from "@/components/ui/explain";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +118,7 @@ export default async function CandidatePage({
           sub="Strong fit to a requisition that is open now"
           roles={exact}
           candidateId={candidate.id}
+          candidateName={candidate.full_name}
           empty="No requisition currently open is a direct fit. The buckets below are the reason this screen does not stop here."
         />
         <Bucket
@@ -124,6 +126,7 @@ export default async function CandidatePage({
           sub="Related roles that may still be commercially useful"
           roles={adjacent}
           candidateId={candidate.id}
+          candidateName={candidate.full_name}
           empty="Nothing adjacent in the current corpus."
         />
 
@@ -192,12 +195,14 @@ function Bucket({
   sub,
   roles,
   candidateId,
+  candidateName,
   empty,
 }: {
   title: string;
   sub: string;
   roles: RadarRole[];
   candidateId: string;
+  candidateName: string;
   empty: string;
 }) {
   return (
@@ -232,10 +237,7 @@ function Bucket({
                   </button>
                 </form>
 
-                <span
-                  className="readout w-8 shrink-0 text-right text-[13px] text-[var(--alac-accent)]"
-                  title={r.match.why.join(", ")}
-                >
+                <span className="readout w-8 shrink-0 text-right text-[13px] text-[var(--alac-accent)]">
                   {r.match.score}%
                 </span>
                 <Link href={`/queue/${r.account_id}`} className="link shrink-0 text-[13.5px] font-medium">
@@ -253,6 +255,17 @@ function Bucket({
                     Posting <ExternalLink size={16} strokeWidth={1.5} />
                   </a>
                 ) : null}
+                <span className="flex shrink-0 items-center gap-3">
+                  <WhyMatch
+                    score={r.match.score}
+                    role={r.title}
+                    candidate={candidateName}
+                    why={r.match.why}
+                    flags={r.match.flags}
+                    label="Why matched"
+                  />
+                  <WhyRole role={r} label="Why the role" />
+                </span>
               </div>
 
               {/* Why it matched, and anything that would stop it. Section 21

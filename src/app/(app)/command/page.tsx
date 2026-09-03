@@ -5,6 +5,7 @@ import {
   getOrgId, commandBoard, coverage, type DeskRow, type QueueRow, type Period,
 } from "@/lib/server/queries/desk";
 import { CoverageBar } from "@/components/ui/coverage";
+import { WhyMove, WhyBand, WhySignal, WhyRole } from "@/components/ui/explain";
 import { DESK } from "@/config/desk.mjs";
 import { Row } from "@/components/ui/clickable";
 import {
@@ -182,7 +183,13 @@ export default async function CommandPage({
                           ) : null}
                         </td>
                         <td className="px-4 py-2.5 align-top"><LifecycleChip row={a} /></td>
-                        <td className="px-4 py-2.5 align-top"><NextMove row={a} /></td>
+                        <td className="px-4 py-2.5 align-top">
+                          <NextMove row={a} />
+                          <span className="mt-1 inline-flex gap-3">
+                            <WhyMove account={a} />
+                            <WhyBand account={a} label="Why here" />
+                          </span>
+                        </td>
                         <td className="readout px-4 py-2.5 text-right align-top text-[14px]">
                           {a.fresh_roles > 0 ? (
                             <span className="text-[var(--alac-good)]">{a.fresh_roles}</span>
@@ -228,9 +235,10 @@ export default async function CommandPage({
               <ul className="flex flex-col gap-0.5 px-3 py-2">
                 {rolesToday.map((r) => (
                   <Row as="li" key={r.id} href={`/queue/${r.account_id}`} className="row-hover flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[var(--alac-radius-sm)] px-3 py-2">
-                    <span className="readout w-7 shrink-0 text-right text-[13px] text-[var(--alac-accent)]" title="Relevance, out of 100">
+                    <span className="readout w-7 shrink-0 text-right text-[13px] text-[var(--alac-accent)]">
                       {r.relevance ?? "--"}
                     </span>
+                    <WhyRole role={r} label="" />
                     <Link href={`/queue/${r.account_id}`} className="link shrink-0 text-[13.5px] font-medium">
                       {r.company_name}
                     </Link>
@@ -307,6 +315,7 @@ export default async function CommandPage({
                         <td className="px-4 py-2.5 text-right align-top">
                           <span className="readout text-[14px] text-[var(--alac-accent)]">{s.heat_score ?? "--"}</span>{" "}
                           <HeatDelta delta={s.heat_vs_tam} />
+                          <span className="mt-1 block"><WhySignal signal={s} score={s.heat_score} /></span>
                         </td>
                         <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                           {s.work_band === "now" ? "Work now" : s.work_band === "next" ? "Up next" : s.work_band === "backlog" ? "Backlog" : "Not ranked"}

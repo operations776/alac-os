@@ -22,6 +22,7 @@ import { DraftList } from "@/components/ui/drafts";
 import { NoteForm, MessageButton } from "@/components/ui/tracker";
 import { PinControl } from "@/components/ui/pin";
 import { OrgMap } from "@/components/ui/org-map";
+import { WhyBand, WhyMove } from "@/components/ui/explain";
 import { setSourceWhale, setDisposition } from "./org";
 import { setMark } from "./tracker";
 
@@ -196,6 +197,9 @@ export default async function QueueAccountPage({
             {account.priority ? PRIORITY_LABEL[account.priority] : "No priority"}. Set in the master
             list, not here.
           </p>
+          <div className="mt-2">
+            <WhyBand account={account} label="Why this rank" />
+          </div>
         </div>
       </header>
 
@@ -209,7 +213,10 @@ export default async function QueueAccountPage({
             />
             <div className="flex flex-col gap-4 px-5 pb-5">
               <div className="rounded-[var(--alac-radius)] bg-[var(--alac-surface-2)] px-4 py-3.5">
-                <div className="placard mb-2 text-[12px] text-[var(--alac-text-2)]">Next move</div>
+                <div className="placard mb-2 flex items-center justify-between text-[12px] text-[var(--alac-text-2)]">
+                  Next move
+                  <WhyMove account={account} />
+                </div>
                 <NextMove row={account} />
                 {account.work_reason ? (
                   <p className="mt-2 text-[12.5px] leading-snug text-[var(--alac-text-3)]">

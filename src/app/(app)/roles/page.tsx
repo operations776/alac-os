@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { getOrgId, freshRoles, freshRoleCounts } from "@/lib/server/queries/desk";
 import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
 import { Row } from "@/components/ui/clickable";
+import { WhyRole } from "@/components/ui/explain";
 
 export const dynamic = "force-dynamic";
 
@@ -133,10 +134,9 @@ export default async function RolesPage({
                     {ago(r.first_seen)}
                   </span>
                   {r.relevance != null ? (
-                    <span className="readout text-[12.5px] text-[var(--alac-accent)]" title="Relevance out of 100: freshness, seniority, discipline, published salary">
-                      {r.relevance}
-                    </span>
+                    <span className="readout text-[12.5px] text-[var(--alac-accent)]">{r.relevance}</span>
                   ) : null}
+                  <WhyRole role={r} />
                 </div>
 
                 <p className="mt-1.5 text-[15px] font-medium">{r.title}</p>

@@ -3,6 +3,7 @@ import { Badge, EmptyState, formatDate } from "./primitives";
 import type { RoleRow, TargetRow } from "@/lib/server/queries/desk";
 import { RevealEmail } from "./reveal-email";
 import { MessageButton } from "./tracker";
+import { WhyRole } from "./explain";
 import { setMark } from "@/app/(app)/queue/[id]/tracker";
 
 /** What was written to whom, keyed on person name. */
@@ -171,10 +172,11 @@ export function RoleList({
             {formatDate(r.first_seen ?? r.posted_at) ?? "undated"}
           </span>
           {r.relevance != null ? (
-            <span className="readout w-6 shrink-0 text-right text-[12px] text-[var(--alac-accent)]" title="Relevance out of 100">
+            <span className="readout w-6 shrink-0 text-right text-[12px] text-[var(--alac-accent)]">
               {r.relevance}
             </span>
           ) : null}
+          <span className="shrink-0"><WhyRole role={{ ...r, title: r.title }} label="" /></span>
           <span className="min-w-[180px] flex-1">
             {r.url ? (
               <a href={r.url} target="_blank" rel="noreferrer" className="link text-[13.5px]">
