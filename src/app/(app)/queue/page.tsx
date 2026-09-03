@@ -4,7 +4,8 @@ import { getOrgId, searchQueue, deskCounts } from "@/lib/server/queries/desk";
 import {
   Button, Card, EmptyState, PageHeader, Th,
 } from "@/components/ui/primitives";
-import { ExecutionStages, PriorityChip, ScoreCell } from "@/components/ui/desk";
+import { PriorityChip, ScoreCell } from "@/components/ui/desk";
+import { SourceWhaleChip } from "@/components/ui/sourcewhale";
 import { Row } from "@/components/ui/clickable";
 import { InlineSelect } from "@/components/ui/inline";
 import { PinBadge } from "@/components/ui/pin-badge";
@@ -35,6 +36,17 @@ const PREP = [
   { value: "HOLD", label: "Hold" },
 ];
 
+// Section 9. Separate from progress on purpose: how far the research got and
+// whether the account should be worked at all are different questions.
+const DISPOSITIONS = [
+  { value: "", label: "Active and on hold" },
+  { value: "Active", label: "Active" },
+  { value: "Hold", label: "On hold" },
+  { value: "Nurture", label: "Nurture" },
+  { value: "Disqualified", label: "Disqualified" },
+  { value: "Archived", label: "Archived" },
+];
+
 const MOTIONS = [
   { value: "", label: "Any approach" },
   { value: "TBD", label: "Not decided" },
@@ -52,6 +64,7 @@ export default async function QueuePage({
     q?: string; priority?: string; prep?: string; motion?: string;
     next?: string; page?: string; band?: string; pinned?: string;
     roles?: string; signal?: string; nocontact?: string; contacted?: string;
+    sw?: string; disposition?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -78,11 +91,13 @@ export default async function QueuePage({
   const hasSignal = params.signal === "1";
   const noContact = params.nocontact === "1";
   const contacted = params.contacted === "1";
+  const sw = params.sw ?? "";
+  const disposition = params.disposition ?? "";
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
   const [{ rows, total, perPage }, counts] = await Promise.all([
     searchQueue(orgId, {
-      q, priority, prep, motion, nextWeek: onlyNext, band, pinned,
+      q, priority, prep, motion, nextWeek: onlyNext, band, pinned, sw, disposition,
       hasRoles, hasSignal, noContact, contacted, page, perPage: 50,
     }),
     deskCounts(orgId),
@@ -93,7 +108,7 @@ export default async function QueuePage({
   const last = Math.min(page * perPage, total);
   const filtered = Boolean(
     q || priority || prep || motion || onlyNext || band || pinned ||
-    hasRoles || hasSignal || noContact || contacted,
+    hasRoles || hasSignal || noContact || contacted || sw || disposition,
   );
   // What the filter is called, so a filtered view says why it is filtered.
   const filterName =
@@ -105,13 +120,15 @@ export default async function QueuePage({
     : hasSignal ? "Something changed"
     : noContact ? "No contact yet"
     : contacted ? "Messaged"
+    : sw ? `SourceWhale: ${sw}`
+    : disposition ? disposition
     : null;
 
   const href = (next: Record<string, string | number | undefined>) => {
     const sp = new URLSearchParams();
     const merged = {
       q, priority, prep, motion, next: onlyNext ? "1" : "", band,
-      pinned: pinned ? "1" : "", roles: hasRoles ? "1" : "",
+      pinned: pinned ? "1" : "", sw, disposition, roles: hasRoles ? "1" : "",
       signal: hasSignal ? "1" : "", nocontact: noContact ? "1" : "",
       contacted: contacted ? "1" : "", page, ...next,
     } as Record<string, string | number | undefined>;
@@ -169,6 +186,9 @@ export default async function QueuePage({
         <select name="motion" defaultValue={motion} aria-label="Filter by approach" className="field w-auto">
           {MOTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
+        <select name="disposition" defaultValue={disposition} aria-label="Filter by disposition" className="field w-auto">
+          {DISPOSITIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
         <label className="chip cursor-pointer select-none">
           <input
             type="checkbox"
@@ -201,7 +221,7 @@ export default async function QueuePage({
                   <Th>This week</Th>
                   <Th>Approach</Th>
                   <Th>Progress</Th>
-                  <Th>Outreach</Th>
+                  <Th>SourceWhale</Th>
                 </tr>
               </thead>
               <tbody>
@@ -237,7 +257,7 @@ export default async function QueuePage({
                       <InlineSelect accountId={a.id} field="prep" value={a.prep_status} options={PREP.slice(1)} />
                     </td>
                     <td className="px-4 py-2.5 align-top">
-                      <ExecutionStages heyreach={a.heyreach_stage} sourcewhale={a.sourcewhale_stage} />
+                      <SourceWhaleChip row={a} />
                     </td>
                   </Row>
                 ))}

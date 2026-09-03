@@ -5,7 +5,10 @@ import {
   getOrgId, accountById, signalsForAccount, peopleForAccount, PRIORITY_LABEL,
   targetsForAccount, rolesForAccount, accountPackage, briefForAccount,
   draftsForAccount, notesForAccount, marksForAccount, movesForAccount,
+  touchesForAccount,
 } from "@/lib/server/queries/desk";
+import { sql } from "@/lib/server/db";
+import { laneOf } from "@/lib/scoring/personas.mjs";
 import {
   Badge, Card, CardHeader, EmptyState, GaugeRow, NoticeLine,
   formatDate,
@@ -18,9 +21,16 @@ import { TargetList, RoleList, Brief, type SentMap } from "@/components/ui/targe
 import { DraftList } from "@/components/ui/drafts";
 import { NoteForm, MessageButton } from "@/components/ui/tracker";
 import { PinControl } from "@/components/ui/pin";
+import { OrgMap } from "@/components/ui/org-map";
+import { setSourceWhale, setDisposition } from "./org";
 import { setMark } from "./tracker";
 
 export const dynamic = "force-dynamic";
+
+const SW_STATES = [
+  "Not Added", "Added", "Active Campaign", "Paused", "Replied",
+  "Positive Reply", "Completed",
+];
 
 // One company: what changed, what they are hiring for, who to contact, and
 // what has been done about it. The second half is the tracker: notes, marks,
@@ -69,7 +79,7 @@ export default async function QueueAccountPage({
   const account = await accountById(orgId, id);
   if (!account) notFound();
 
-  const [signals, people, targets, roles, pkg, brief, drafts, notes, marks, moves] = await Promise.all([
+  const [signals, people, targets, roles, pkg, brief, drafts, notes, marks, moves, touches] = await Promise.all([
     signalsForAccount(orgId, account.id),
     peopleForAccount(orgId, account.id),
     targetsForAccount(orgId, account.id),
@@ -80,7 +90,20 @@ export default async function QueueAccountPage({
     notesForAccount(orgId, account.id),
     marksForAccount(orgId, account.id),
     movesForAccount(orgId, account.id),
+    touchesForAccount(orgId, account.id),
   ]);
+
+  // Everyone known at this company, sorted into the six organizational
+  // levels. The lane is derived from the title rather than stored, so a
+  // re-import of the network keeps the map accurate without a migration.
+  const laneRows = (await sql`
+    select full_name, title from people
+     where org_id = ${orgId} and account_id = ${account.id}
+     union all
+    select full_name, title from account_targets
+     where org_id = ${orgId} and account_id = ${account.id}
+  `) as { full_name: string; title: string | null }[];
+  const lanePeople = laneRows.map((p) => ({ ...p, lane: laneOf(p.title ?? "") as string | null }));
 
   const checks = qcChecklist(account, marks);
   const outstanding = checks.filter((c) => !c.ok);
@@ -259,6 +282,21 @@ export default async function QueueAccountPage({
             </div>
           </Card>
 
+          {/* Who has been approached, at which level. Section 14. */}
+          <Card>
+            <CardHeader
+              title="Organization penetration"
+              sub={`${account.lanes_touched} of six levels approached, ${account.lanes_engaged} in conversation`}
+            />
+            <OrgMap
+              accountId={account.id}
+              touches={touches}
+              people={lanePeople}
+              freshRoles={account.fresh_roles}
+              roleTitles={roles.filter((r) => r.qualified).slice(0, 20).map((r) => r.title)}
+            />
+          </Card>
+
           {/* The tracker: what he did. */}
           <Card>
             <CardHeader
@@ -394,18 +432,73 @@ export default async function QueueAccountPage({
 
         <div className="flex flex-col gap-5">
           <Card>
-            <CardHeader title="Outreach tools" sub="LinkedIn first, then email" />
-            <dl className="flex flex-col gap-2.5 px-5 pb-5 text-[13px]">
-              <Row label="LinkedIn" value={account.heyreach_stage} />
-              <Row label="First loaded" value={formatDate(account.heyreach_date) ?? "not recorded"} />
-              <Row label="Email sequence" value={account.sourcewhale_stage} />
-            </dl>
+            <CardHeader
+              title="SourceWhale"
+              sub="Loaded is not the same as being worked"
+            />
+            <form action={setSourceWhale} className="flex flex-col gap-2.5 px-5 pb-5">
+              <input type="hidden" name="accountId" value={account.id} />
+              <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
+                State
+                <select name="state" defaultValue={account.sw_state} className="field">
+                  {SW_STATES.map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
+                Campaign
+                <input name="campaign" defaultValue={account.sw_campaign ?? ""} maxLength={200} className="field" />
+              </label>
+              <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
+                Contacts active
+                <input name="contacts" type="number" min={0} max={9999} defaultValue={account.sw_contacts ?? ""} className="field" />
+              </label>
+              <button type="submit" className="btn btn-secondary">Save</button>
+              {account.sw_last_activity ? (
+                <span className="text-[12px] text-[var(--alac-text-3)]">
+                  Last activity {formatDate(account.sw_last_activity)}
+                </span>
+              ) : null}
+            </form>
             <div className="px-5 pb-5">
               <NoticeLine>
-                Stage markers from the workbook. SourceWhale detail arrives here once its API key is
-                connected; until then, record what you sent with the Message buttons.
+                Recorded by hand until the API key arrives. The integration writes these same
+                fields, so nothing here is redone.
               </NoticeLine>
             </div>
+          </Card>
+
+          {/* Disposition. Section 15.1: never a hard delete, always a choice
+              about which kind of stop this is. */}
+          <Card>
+            <CardHeader title="Working this account?" sub="Each answer changes what the desk recommends" />
+            <form action={setDisposition} className="flex flex-col gap-2.5 px-5 pb-5">
+              <input type="hidden" name="accountId" value={account.id} />
+              <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
+                Disposition
+                <select name="disposition" defaultValue={account.disposition} className="field">
+                  <option value="Active">Active, recommend it</option>
+                  <option value="Hold">On hold, keep watching, no outreach</option>
+                  <option value="Nurture">Nurture, only on a strong signal</option>
+                  <option value="Disqualified">Disqualified, keep the history</option>
+                  <option value="Archived">Archived, hide but keep searchable</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
+                Reason
+                <input name="reason" defaultValue={account.disposition_reason ?? ""} maxLength={300} className="field" />
+              </label>
+              <button type="submit" className="btn btn-secondary">Save</button>
+            </form>
+          </Card>
+
+          <Card>
+            <CardHeader title="LinkedIn warming" sub="Before the email sequence" />
+            <dl className="flex flex-col gap-2.5 px-5 pb-5 text-[13px]">
+              <Row label="Stage" value={account.heyreach_stage} />
+              <Row label="First loaded" value={formatDate(account.heyreach_date) ?? "not recorded"} />
+            </dl>
           </Card>
 
           <Card>

@@ -153,6 +153,8 @@ export async function searchQueue(
     motion?: string;
     nextWeek?: boolean;
     band?: string;
+    sw?: string;
+    disposition?: string;
     pinned?: boolean;
     hasRoles?: boolean;
     hasSignal?: boolean;
@@ -174,6 +176,10 @@ export async function searchQueue(
   // Each of these backs a clickable number somewhere on the desk. Section 7:
   // every summary figure opens the exact records that produced it.
   const band = opts.band ?? "";
+  const sw = opts.sw ?? "";
+  // Archived and disqualified accounts are out of the default view but stay
+  // fully searchable, section 9.1. An explicit filter is how you reach them.
+  const disposition = opts.disposition ?? "";
   const pinned = opts.pinned ? 1 : 0;
   const hasRoles = opts.hasRoles ? 1 : 0;
   const hasSignal = opts.hasSignal ? 1 : 0;
@@ -199,6 +205,9 @@ export async function searchQueue(
        and (${hasSignal} = 0 or a.signal_date is not null)
        and (${noContact} = 0 or a.top_contact is null)
        and (${contacted} = 0 or a.last_contacted_at is not null)
+       and (${sw} = '' or a.sw_state = ${sw})
+       and (case when ${disposition} = '' then a.disposition not in ('Archived', 'Disqualified')
+                 else a.disposition = ${disposition} end)
      order by a.pin_active desc, a.pinned_rank asc nulls last,
               a.priority nulls last, a.final_score desc nulls last, a.company_name
      limit ${perPage} offset ${offset}
@@ -219,6 +228,9 @@ export async function searchQueue(
        and (${hasSignal} = 0 or a.signal_date is not null)
        and (${noContact} = 0 or a.top_contact is null)
        and (${contacted} = 0 or a.last_contacted_at is not null)
+       and (${sw} = '' or a.sw_state = ${sw})
+       and (case when ${disposition} = '' then a.disposition not in ('Archived', 'Disqualified')
+                 else a.disposition = ${disposition} end)
   `) as { n: number }[];
 
   return { rows, total: totalRows[0].n, perPage, page };
@@ -746,7 +758,47 @@ export type DeskRow = QueueRow & {
   pin_expires: string | null;
   pin_active: boolean;
   effective_band: string | null;
+  disposition: string;
+  disposition_reason: string | null;
+  sw_state: string;
+  sw_campaign: string | null;
+  sw_contacts: number | null;
+  sw_last_activity: string | null;
+  lanes_touched: number;
+  lanes_engaged: number;
 };
+
+/** The six organizational levels for one account, section 14. */
+export async function touchesForAccount(orgId: string, accountId: string) {
+  return (await sql`
+    select lane, status, person, channel, outcome, touched_at::text as touched_at
+      from org_touches
+     where org_id = ${orgId} and account_id = ${accountId}
+  `) as {
+    lane: string; status: string; person: string | null;
+    channel: string | null; outcome: string | null; touched_at: string | null;
+  }[];
+}
+
+/**
+ * SourceWhale coverage by band, section 15.2.
+ *
+ * Counted from the account rows rather than stored, so the bar and the list
+ * behind each segment can never disagree.
+ */
+export async function coverage(orgId: string) {
+  const rows = (await sql`
+    select effective_band as band, sw_state, count(*)::int as n
+      from account_desk
+     where org_id = ${orgId} and effective_band in ('now', 'next')
+       and disposition = 'Active'
+     group by 1, 2
+  `) as { band: string; sw_state: string; n: number }[];
+
+  const out: Record<string, Record<string, number>> = { now: {}, next: {} };
+  for (const r of rows) out[r.band][r.sw_state] = r.n;
+  return out;
+}
 
 /** The operator's own notes on a company, newest first. */
 export async function notesForAccount(orgId: string, accountId: string) {

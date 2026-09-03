@@ -2,8 +2,9 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 
 import {
-  getOrgId, commandBoard, type DeskRow, type QueueRow, type Period,
+  getOrgId, commandBoard, coverage, type DeskRow, type QueueRow, type Period,
 } from "@/lib/server/queries/desk";
+import { CoverageBar } from "@/components/ui/coverage";
 import { DESK } from "@/config/desk.mjs";
 import { Row } from "@/components/ui/clickable";
 import {
@@ -68,7 +69,7 @@ export default async function CommandPage({
 
   const period = (PERIODS.includes(params.period as Period) ? params.period : "WEEK") as Period;
 
-  const board = await commandBoard(orgId, period);
+  const [board, cover] = await Promise.all([commandBoard(orgId, period), coverage(orgId)]);
   const week = board.next_week;
   const now = board.now;
   const next = board.next;
@@ -108,6 +109,20 @@ export default async function CommandPage({
           Ranked {formatDate(banded)}. Roles last pulled {formatDate(roleCounts.pulled_at) ?? "never"}.
         </p>
       ) : null}
+
+      {/* SOURCEWHALE COVERAGE. Section 15.2: loaded is not being worked. */}
+      <Card className="mb-7 px-5 py-4">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <span className="placard text-[12px] text-[var(--alac-text-2)]">Outreach coverage</span>
+          <span className="text-[12px] text-[var(--alac-text-3)]">
+            Recorded by hand until the SourceWhale key arrives. Every segment opens its companies
+          </span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <CoverageBar band="now" label="Work now" counts={cover.now} />
+          <CoverageBar band="next" label="Up next" counts={cover.next} />
+        </div>
+      </Card>
 
       {/* WORK NOW, with the next move. The whole product on one list. */}
       <div className="mb-7">
