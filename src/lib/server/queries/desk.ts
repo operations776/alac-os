@@ -842,6 +842,44 @@ export type DeskRow = QueueRow & {
  * percentile is that "top 10%" stays true when four thousand roles become
  * six thousand.
  */
+/**
+ * The whole system in numbers, for the How it works page. Every figure is a
+ * count of something stored, so the page describes what is running rather
+ * than what was designed.
+ */
+export async function systemStatus(orgId: string) {
+  const rows = (await sql`
+    select
+      (select count(*)::int from tam_accounts where org_id = ${orgId}) as tam,
+      (select count(*)::int from tam_accounts where org_id = ${orgId} and priority = 'priority_1') as p1,
+      (select count(*)::int from tam_accounts where org_id = ${orgId} and record_id like 'MAN-%') as added_by_hand,
+      (select count(*)::int from account_desk where org_id = ${orgId} and effective_band = 'now' and disposition = 'Active') as top25,
+      (select count(*)::int from account_desk where org_id = ${orgId} and effective_band = 'next' and disposition = 'Active') as next25,
+      (select count(*)::int from account_desk where org_id = ${orgId} and recommended_for is not null) as recommended,
+      (select count(*)::int from account_desk where org_id = ${orgId} and disposition <> 'Active') as parked,
+      (select count(*)::int from heat_signals where org_id = ${orgId}) as signals,
+      (select count(*)::int from heat_signals where org_id = ${orgId}
+        and signal_date between current_date - 30 and current_date and coalesce(heat_score, 0) >= 50) as strong_signals,
+      (select max(last_scored) from heat_signals where org_id = ${orgId}) as signals_at,
+      (select count(*)::int from account_roles where org_id = ${orgId}) as roles_all,
+      (select count(*)::int from account_roles where org_id = ${orgId} and qualified and closed_at is null) as roles_live,
+      (select count(*)::int from account_roles where org_id = ${orgId} and closed_at is not null) as roles_closed,
+      (select count(*)::int from account_roles where org_id = ${orgId} and url_ok is not null) as roles_checked,
+      (select max(fetched_at) from account_roles where org_id = ${orgId}) as roles_at,
+      (select max(banded_at) from tam_accounts where org_id = ${orgId}) as ranked_at,
+      (select count(*)::int from people where org_id = ${orgId}) as people,
+      (select count(*)::int from people where org_id = ${orgId} and account_id is not null) as people_matched,
+      (select max(created_at) from people where org_id = ${orgId}) as people_at,
+      (select count(*)::int from candidates where org_id = ${orgId} and active) as candidates,
+      (select count(*)::int from account_notes where org_id = ${orgId}) as notes,
+      (select count(*)::int from outreach_drafts where org_id = ${orgId} and sent_at is not null) as messages_sent,
+      (select count(*)::int from desk_marks where org_id = ${orgId} and done) as marks,
+      (select count(*)::int from account_desk where org_id = ${orgId} and sw_state <> 'Not Added') as in_sourcewhale,
+      (select count(*)::int from band_moves where org_id = ${orgId}) as moves
+  `) as Record<string, number | string | null>[];
+  return rows[0];
+}
+
 export async function roleFloor(orgId: string, share = 0.1) {
   const rows = (await sql`
     select coalesce(percentile_cont(${1 - share}) within group (order by relevance), 0)::int as floor

@@ -30,7 +30,10 @@ export function Logo({
       width={width}
       height={height}
       priority
-      className={`shrink-0 [filter:brightness(0)_invert(1)] ${className}`}
+      // The inversion lives in CSS keyed on the theme: white on the dark
+      // ground, the brand's own navy on the light one. Without that the mark
+      // is white on white in light mode, which is how it disappeared.
+      className={`logo-mark shrink-0 ${className}`}
     />
   );
 }

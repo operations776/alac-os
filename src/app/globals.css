@@ -141,6 +141,11 @@
   --alac-elev-2: 0 15px 50px rgb(15 23 42 / 0.14);
 }
 
+/* The mark. Navy on transparent is the supplied asset; on the dark ground
+   it is flattened to white. Light mode shows it as the brand drew it. */
+.logo-mark { filter: brightness(0) invert(1); }
+:root[data-theme="light"] .logo-mark { filter: none; }
+
 /* The market bars grow in once. Reduced motion gets them already full. */
 @keyframes pulse-grow {
   from { transform: scaleX(0); }

@@ -10,6 +10,7 @@ import {
   Users,
   Briefcase,
   UserSearch,
+  BookOpen,
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import { Logo } from "./logo";
@@ -40,6 +41,7 @@ const NAV = [
   { href: "/queue", label: "Companies", Icon: ListChecks, exact: false },
   { href: "/signals", label: "What changed", Icon: Flame, exact: false },
   { href: "/people", label: "Your network", Icon: Users, exact: false },
+  { href: "/how", label: "How it works", Icon: BookOpen, exact: false },
 ];
 
 /**
