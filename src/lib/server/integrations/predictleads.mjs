@@ -203,7 +203,7 @@ export async function companyJobs(domain, { limit = 100 } = {}) {
     const loc = Array.isArray(a.location_data) ? a.location_data[0] : null;
     return {
       external_id: row.id,
-      title: a.title ?? a.normalized_title ?? null,
+      title: cleanTitle(a.title ?? a.normalized_title ?? null),
       // The raw location string is a full geographic path, "Seattle,
       // Washington, United States, Northern America, Americas", which is
       // unreadable in a list. The structured form gives back a city.
@@ -220,6 +220,27 @@ export async function companyJobs(domain, { limit = 100 } = {}) {
       contract: Array.isArray(a.contract_types) ? a.contract_types[0] : null,
     };
   });
+}
+
+/**
+ * A title as the employer wrote it, minus the board's furniture.
+ *
+ * Some boards append "New", "View & Apply" or the city to the title element
+ * and the provider passes it through: "Chief Engineer New El Segundo, CA".
+ * Observed live. Stripped here so the stored title is the job, and the
+ * location stays in its own column.
+ */
+export function cleanTitle(raw) {
+  if (!raw) return null;
+  return String(raw)
+    // The board's call to action, and anything after it.
+    .replace(/\s*\b(view\s*&\s*apply|apply now|view job)\b.*$/i, "")
+    // A trailing "New" badge, alone or followed by a short place and a state
+    // code: "New El Segundo, CA", "New Northern VA". Anchored at the end and
+    // capped at four words so "New Product Introduction Engineer" survives.
+    .replace(/\s+New(?:\s+(?:[A-Z][A-Za-z.]*\s?){1,4},?\s*[A-Z]{2})?$/, "")
+    .replace(/\s+/g, " ")
+    .trim() || null;
 }
 
 /**

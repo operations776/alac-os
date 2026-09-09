@@ -163,7 +163,7 @@ export default async function CommandPage() {
       <div className="mb-7">
         <BoardSection
           title={`${DESK.LIVE_LEADS_PER_DAY} live leads today`}
-          sub={`The hardest to fill, longest open roles that went up this week. Tick one when you have raised it and the next one takes its place`}
+          sub={`The hardest to fill roles that went up this week, difficulty ${DESK.LEAD_MIN_DIFFICULTY} or above. Tick one when you have raised it and the next one takes its place`}
           href="/roles"
           hrefLabel="All top roles"
         >
@@ -171,7 +171,7 @@ export default async function CommandPage() {
             {leads.length === 0 ? (
               <EmptyState
                 title="No new top roles this week"
-                body="Nothing posted in the last week cleared the top tenth by difficulty and time open, or every one has been raised already. The month view on Open roles has the rest."
+                body="Nothing hard to fill was posted at a company on your list in the last week, or every one has been raised already. Open roles has the month."
               />
             ) : (
               <ul className="flex flex-col">

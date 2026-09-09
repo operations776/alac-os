@@ -17,7 +17,7 @@ import {
   predictLeadsAvailable,
   PredictLeadsError,
 } from "../src/lib/server/integrations/predictleads.mjs";
-import { roleScore } from "../src/lib/scoring/roles.mjs";
+import { scoreRole } from "../src/lib/scoring/roles.mjs";
 
 config({ path: ".env.local" });
 
@@ -89,10 +89,11 @@ async function main() {
       if (!r.title) continue;
       const ok = qualifyRole(r.title);
       if (ok) qualified += 1;
+      const scored = ok ? scoreRole(r) : { value: null, difficulty: null };
 
       const age = daysAgo(r.first_seen);
       if (ok && age !== null && age <= 7) {
-        fresh.push({ ...r, company: a.company_name, band: a.work_band, score: roleScore(r), age });
+        fresh.push({ ...r, company: a.company_name, band: a.work_band, score: scored.value, age });
       }
 
       if (!APPLY) continue;
@@ -101,19 +102,20 @@ async function main() {
         `insert into account_roles
            (org_id, account_id, external_id, title, url, location, seniority,
             job_function, posted_at, qualified, source, salary_text, occupation,
-            contract, first_seen, last_seen, relevance, fetched_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'predictleads',$11,$12,$13,$14,$15,$16,now())
+            contract, first_seen, last_seen, relevance, difficulty, fetched_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'predictleads',$11,$12,$13,$14,$15,$16,$17,now())
          on conflict (org_id, account_id, external_id) do update set
            title=excluded.title, url=excluded.url, location=excluded.location,
            seniority=excluded.seniority, qualified=excluded.qualified,
            salary_text=excluded.salary_text, occupation=excluded.occupation,
            last_seen=excluded.last_seen, relevance=excluded.relevance,
-           closed_at=null, fetched_at=now()`,
+           difficulty=excluded.difficulty, closed_at=null, fetched_at=now()`,
         [
           orgId, a.id, r.external_id, r.title, r.url, r.location, r.seniority,
           r.categories?.[0] ?? null, r.first_seen, ok,
           r.salary, r.occupation, r.contract, r.first_seen, r.last_seen,
-          ok ? roleScore(r) : null,
+          ok ? scored.value : null,
+          ok ? scored.difficulty : null,
         ],
       );
       written += 1;

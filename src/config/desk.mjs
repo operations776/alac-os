@@ -19,6 +19,10 @@ export const DESK = {
   SIGNAL_MIN_HEAT: 50,
   SIGNAL_FRESH_DAYS: 30,
   LIVE_LEADS_PER_DAY: 5,
+  // A new posting cannot have aged, so the daily leads gate on how hard the
+  // role is to fill, out of 100, and time open breaks ties. 50 is "moderately
+  // hard": senior, or cleared, or a scarce specialism.
+  LEAD_MIN_DIFFICULTY: 50,
   // Roles shown by default: the top share of the whole corpus by commercial
   // score. Everything below it is processed, stored and one click away.
   ROLE_TOP_SHARE: 0.10,

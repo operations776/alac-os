@@ -695,7 +695,7 @@ export async function commandBoard(orgId: string, floor: number) {
       (select coalesce(json_agg(x), '[]'::json) from (
         select r.id, r.account_id, a.company_name, a.effective_band as work_band,
                r.title, r.url, r.location, r.salary_text, r.seniority, r.occupation,
-               r.first_seen, r.relevance, a.qualified_roles as open_at_company,
+               r.first_seen, r.relevance, r.difficulty, a.qualified_roles as open_at_company,
                a.signal_text as why_now
           from account_roles r
           join account_desk a on a.id = r.account_id
@@ -703,11 +703,11 @@ export async function commandBoard(orgId: string, floor: number) {
            and r.url_ok is distinct from false
            and a.disposition = 'Active'
            and r.first_seen >= current_date - ${DESK.ROLE_FRESH_DAYS}::int
-           and coalesce(r.relevance, 0) >= ${floor}
+           and coalesce(r.difficulty, 0) >= ${DESK.LEAD_MIN_DIFFICULTY}
            and not exists (select 1 from desk_marks m
                             where m.account_id = r.account_id and m.kind = 'role'
                               and m.ref = r.id::text and m.done)
-         order by r.relevance desc nulls last, r.first_seen desc
+         order by r.difficulty desc nulls last, r.relevance desc nulls last, r.first_seen desc
          limit ${DESK.LIVE_LEADS_PER_DAY}
       ) x) as leads,
 
@@ -729,7 +729,7 @@ export async function commandBoard(orgId: string, floor: number) {
             where r.org_id = ${orgId} and r.qualified and r.closed_at is null
               and a.disposition = 'Active'
               and r.first_seen >= current_date - ${DESK.ROLE_FRESH_DAYS}::int
-              and coalesce(r.relevance, 0) >= ${floor}) as top_roles_week,
+              and coalesce(r.difficulty, 0) >= ${DESK.LEAD_MIN_DIFFICULTY}) as top_roles_week,
           (select max(fetched_at) from account_roles where org_id = ${orgId}) as roles_pulled_at,
           (select max(last_scored) from heat_signals where org_id = ${orgId}) as signals_pulled_at,
           (select max(banded_at) from tam_accounts where org_id = ${orgId}) as ranked_at
@@ -1038,6 +1038,7 @@ export type FreshRole = {
   seniority: string | null;
   first_seen: string | null;
   relevance: number | null;
+  difficulty?: number | null;
   occupation?: string | null;
   open_at_company: number;
   why_now: string | null;
@@ -1061,12 +1062,13 @@ export async function freshRoles(
   limit = 60,
   sort: "new" | "relevant" = "new",
   floor = 0,
+  minDifficulty = 0,
 ) {
   const byRelevance = sort === "relevant";
   return (await sql`
     select r.id, r.account_id, a.company_name, a.effective_band as work_band,
            r.title, r.url, r.location, r.salary_text, r.seniority,
-           r.first_seen, r.relevance, r.occupation,
+           r.first_seen, r.relevance, r.difficulty, r.occupation,
            a.qualified_roles as open_at_company,
            (select h.what_happened from heat_signals h
              where h.account_id = a.id
@@ -1077,6 +1079,7 @@ export async function freshRoles(
        and r.qualified and r.closed_at is null and r.url_ok is distinct from false
        and a.disposition = 'Active'
        and coalesce(r.relevance, 0) >= ${floor}
+       and coalesce(r.difficulty, 0) >= ${minDifficulty}
        and r.first_seen >= current_date - ${days}::int
      order by case when ${byRelevance} then r.relevance end desc nulls last,
               r.first_seen desc nulls last, a.company_name, r.title
@@ -1085,13 +1088,13 @@ export async function freshRoles(
 }
 
 /** Counts for the fresh roles header. */
-export async function freshRoleCounts(orgId: string, floor = 0) {
+export async function freshRoleCounts(orgId: string, floor = 0, minDifficulty = 0) {
   const rows = (await sql`
     select
-      count(*) filter (where r.first_seen >= current_date - 1 and r.relevance >= ${floor})::int as today,
-      count(*) filter (where r.first_seen >= current_date - 7 and r.relevance >= ${floor})::int as week,
+      count(*) filter (where r.first_seen >= current_date - 1 and r.difficulty >= ${minDifficulty})::int as today,
+      count(*) filter (where r.first_seen >= current_date - 7 and r.difficulty >= ${minDifficulty})::int as week,
       count(*) filter (where r.first_seen >= current_date - 30 and r.relevance >= ${floor})::int as month,
-      count(distinct r.account_id) filter (where r.first_seen >= current_date - 7 and r.relevance >= ${floor})::int as companies,
+      count(distinct r.account_id) filter (where r.first_seen >= current_date - 7 and r.difficulty >= ${minDifficulty})::int as companies,
       count(*) filter (where r.relevance >= ${floor})::int as top,
       count(*)::int as total,
       (select count(*)::int from account_roles c

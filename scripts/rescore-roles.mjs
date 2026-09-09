@@ -9,7 +9,7 @@
 
 import { config } from "dotenv";
 import pg from "pg";
-import { roleScore } from "../src/lib/scoring/roles.mjs";
+import { scoreRole } from "../src/lib/scoring/roles.mjs";
 
 config({ path: ".env.local" });
 
@@ -34,13 +34,14 @@ async function main() {
     const slice = rows.slice(i, i + CHUNK);
     const params = [];
     const values = slice.map((r) => {
-      params.push(r.id, roleScore(r));
+      const s = scoreRole(r);
+      params.push(r.id, s.value, s.difficulty);
       const n = params.length;
-      return `($${n - 1}::uuid, $${n}::int)`;
+      return `($${n - 2}::uuid, $${n - 1}::int, $${n}::int)`;
     });
     await pool.query(
-      `update account_roles r set relevance = v.score
-         from (values ${values.join(",")}) as v(id, score)
+      `update account_roles r set relevance = v.score, difficulty = v.difficulty
+         from (values ${values.join(",")}) as v(id, score, difficulty)
         where r.id = v.id`,
       params,
     );

@@ -60,9 +60,17 @@ export default async function RolesPage({
     return s ? `/roles?${s}` : "/roles";
   };
 
+  // A role posted this week cannot have aged, so the short windows gate on
+  // how hard it is to fill and rank by the score; the month gates on the
+  // score itself, where time open has had time to count.
+  const fresh = range.key !== "month";
   const [allRoles, counts] = await Promise.all([
-    freshRoles(orgId, range.days, showAll ? 400 : 120, "relevant", showAll ? 0 : floor),
-    freshRoleCounts(orgId, floor),
+    freshRoles(
+      orgId, range.days, showAll ? 400 : 120, "relevant",
+      showAll || fresh ? 0 : floor,
+      showAll || !fresh ? 0 : DESK.LEAD_MIN_DIFFICULTY,
+    ),
+    freshRoleCounts(orgId, floor, DESK.LEAD_MIN_DIFFICULTY),
   ]);
   // The market bars pass a city or a discipline word; it narrows in memory
   // because the list is already small.
@@ -75,13 +83,15 @@ export default async function RolesPage({
       <PageHeader
         eyebrow="Open roles"
         title="What to call about"
-        lede={`Live requisitions at the companies on your list, graded by how hard they are to fill and how long they have been open. Showing the top tenth, score ${floor} and above. Dead postings are removed on every pull.`}
+        lede={fresh
+          ? `Live requisitions posted ${range.label.toLowerCase()} at the companies on your list, hardest to fill first. Only roles at difficulty ${DESK.LEAD_MIN_DIFFICULTY} or above: senior, cleared, or a scarce specialism. Dead postings are removed on every pull.`
+          : `Live requisitions from the last month, graded by how hard they are to fill times how long they have been open. Showing the top tenth, score ${floor} and above.`}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Top roles today" value={counts.today} hint="posted since yesterday" href={href("today", false)} />
-        <Stat label="This week" value={counts.week} href={href("week", false)} />
-        <Stat label="This month" value={counts.month} href={href("month", false)} />
+        <Stat label="Hard roles today" value={counts.today} hint="posted since yesterday" href={href("today", false)} />
+        <Stat label="This week" value={counts.week} hint="hard to fill, posted this week" href={href("week", false)} />
+        <Stat label="This month" value={counts.month} hint="top tenth by difficulty and age" href={href("month", false)} />
         <Stat
           label="Processed"
           value={counts.total.toLocaleString()}
@@ -112,7 +122,7 @@ export default async function RolesPage({
           <Link
             href={href(range.key, !showAll)}
             className={`chip transition-colors ${showAll ? "bg-[var(--alac-surface-2)] text-[var(--alac-text)]" : "hover:bg-[var(--alac-surface-2)]"}`}
-            title={showAll ? "Back to the top tenth" : "Show every live role in this window, not just the top tenth"}
+            title={showAll ? "Back to the ones that clear the bar" : "Show every live role in this window, including the easy ones"}
           >
             {showAll ? "Showing everything" : "Show everything"}
           </Link>
@@ -123,7 +133,7 @@ export default async function RolesPage({
         <Card>
           <EmptyState
             title={showAll ? "Nothing live in this window" : "Nothing cleared the bar in this window"}
-            body={showAll ? "No live role at a company on your list was posted in this window." : "Widen the window, or show everything to see roles below the top tenth."}
+            body={showAll ? "No live role at a company on your list was posted in this window." : "Widen the window, or show everything to see the easier roles too."}
           />
         </Card>
       ) : (
