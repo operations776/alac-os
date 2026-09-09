@@ -5,6 +5,7 @@ import {
   Card, EmptyState, GaugeRow, NoticeLine, PageHeader, Stat, formatDate,
 } from "@/components/ui/primitives";
 import { HEAT_COMPONENTS, HeatDelta } from "@/components/ui/desk";
+import { DESK } from "@/config/desk.mjs";
 import { Row } from "@/components/ui/clickable";
 import { WhySignal } from "@/components/ui/explain";
 
@@ -48,7 +49,29 @@ function formatMoney(v: string | null): string | null {
 // because the gap between them is the point, and the gap is what the desk acts
 // on: a signal well above its account's TAM rank is a company to move on now.
 
-export default async function SignalsPage() {
+const RANGES = [
+  { key: "today", days: 1, label: "Today" },
+  { key: "week", days: 7, label: "This week" },
+  { key: "month", days: 30, label: "This month" },
+] as const;
+
+export default async function SignalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; all?: string; unlinked?: string }>;
+}) {
+  const params = await searchParams;
+  const range = RANGES.find((r) => r.key === params.range) ?? RANGES[2];
+  const showWeak = params.all === "1";
+  const unlinkedOnly = params.unlinked === "1";
+  const href = (r: string, all: boolean, unlinked: boolean) => {
+    const p = new URLSearchParams();
+    if (r !== "month") p.set("range", r);
+    if (all) p.set("all", "1");
+    if (unlinked) p.set("unlinked", "1");
+    const s = p.toString();
+    return s ? `/signals?${s}` : "/signals";
+  };
   const orgId = await getOrgId();
   if (!orgId) {
     return (
@@ -60,25 +83,68 @@ export default async function SignalsPage() {
     );
   }
 
-  const [signals, stats] = await Promise.all([signalHeat(orgId, 100), heatCounts(orgId)]);
+  const [signals, stats] = await Promise.all([
+    signalHeat(orgId, {
+      days: range.days,
+      minHeat: showWeak ? 0 : DESK.SIGNAL_MIN_HEAT,
+      limit: 100,
+      unlinkedOnly,
+    }),
+    heatCounts(orgId, range.days, DESK.SIGNAL_MIN_HEAT),
+  ]);
 
   return (
     <div className="mx-auto max-w-[1320px] px-5 py-6 sm:px-8 sm:py-7">
       <PageHeader
         eyebrow="Signal heat"
         title="What just changed"
-        lede="Newest first. Every signal is scored out of 100 and shown against the company's standing fit score. A strong signal promotes the company into the working list on the next refresh, and each row says which band it sits in."
+        lede={`What changed at the companies on your list, strongest first. Signals under ${DESK.SIGNAL_MIN_HEAT} are kept and hidden: the system processes everything, the screen shows what clears the bar.`}
       />
 
-      <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Things that changed" value={stats.total} href="/queue?signal=1" />
-        <Stat label="More urgent than rank" value={stats.hotter_than_tam} hint="worth moving on now" href="/queue?signal=1" />
-        <Stat label="Highest urgency" value={stats.top_heat ?? "--"} />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {RANGES.map((r) => (
+          <Link
+            key={r.key}
+            href={href(r.key, showWeak, unlinkedOnly)}
+            aria-current={r.key === range.key ? "true" : undefined}
+            className={`chip transition-colors ${r.key === range.key ? "bg-[var(--alac-accent)] text-[var(--alac-ground)]" : "hover:bg-[var(--alac-surface-2)]"}`}
+          >
+            {r.label}
+          </Link>
+        ))}
+        <span className="ml-auto flex items-center gap-2">
+          {unlinkedOnly ? (
+            <Link href={href(range.key, showWeak, false)} className="chip">Showing companies not on the list · clear</Link>
+          ) : null}
+          <Link
+            href={href(range.key, !showWeak, unlinkedOnly)}
+            className={`chip transition-colors ${showWeak ? "bg-[var(--alac-surface-2)] text-[var(--alac-text)]" : "hover:bg-[var(--alac-surface-2)]"}`}
+            title={showWeak ? "Back to signals that clear the bar" : `Also show the ${stats.weak} signals under ${DESK.SIGNAL_MIN_HEAT}`}
+          >
+            {showWeak ? "Showing everything" : `Show the ${stats.weak} weaker`}
+          </Link>
+        </span>
+      </div>
+
+      <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Stat
+          label={`Changed ${range.label.toLowerCase()}`}
+          value={stats.total - stats.weak}
+          hint={`clear the bar, ${stats.weak} do not`}
+          href={href(range.key, false, false)}
+        />
+        <Stat
+          label="More urgent than rank"
+          value={stats.hotter_than_tam}
+          hint="companies whose news outran their fit score"
+          href="/queue?hotter=1"
+        />
         <Stat
           label="Not on the list yet"
           value={stats.unlinked}
-          hint="new company"
+          hint="companies with news that are not in the TAM"
           tone={stats.unlinked > 0 ? "warn" : undefined}
+          href={href(range.key, showWeak, true)}
         />
       </div>
 

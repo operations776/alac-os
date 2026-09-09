@@ -120,7 +120,48 @@ reason, shown on Who to target as "Moved on the last refresh" and on the
 company page as its history. A company with any activity on it (note, tick,
 message in 21 days, research started) is never demoted by the ranking.
 
-### How companies move between bands
+### The list is the owner's
+
+Since 9 September, `pinned_band` is the list. The ranking still runs every
+refresh and writes `work_band`, but that is a recommendation: the view
+exposes the gap as `recommended_for`, Today lists those companies with
+Accept and Decline, and nothing enters or leaves the Top 25 or Next 25
+without Adrian doing it. The switch seeded every company the ranking held
+in a working band as a pin, so nothing vanished.
+
+### The cascade
+
+| State | The list | Moves and messages | Data |
+| --- | --- | --- | --- |
+| Active | Stays where he put it | Recommended, with a next move | Pulled every refresh |
+| Hold | Off the working list, place remembered | None suggested | Still pulled |
+| Nurture | Off the working list, place remembered | Only on a strong signal | Still pulled |
+| Disqualified | Off every list | None, history kept | No longer pulled |
+| Archived | Off every list, hidden by default | None, searchable | No longer pulled |
+
+Applied in `account_desk.effective_band` and by a `disposition = 'Active'`
+predicate on every board, radar and coverage query, so a state change on the
+company page changes Today, Open roles, Talent and the coverage bars on the
+next request. "Not in our ICP" is the first preset reason for Disqualified,
+which is how his ICP gate works: his call, cascaded everywhere.
+
+### Noise limits
+
+The system processes everything and the screen shows what clears a bar,
+stated once in `DESK`: five signals at heat 50 or above inside 30 days;
+five live leads a day from the top tenth of live roles by commercial score
+(a percentile, so it stays a tenth as the corpus grows); everything below
+each bar kept, counted, and one toggle away.
+
+### Dead postings
+
+The provider reports `last_seen_at` on every role. A posting it has not
+seen for 7 days is closed on the next pull, and the top decile's URLs are
+checked directly (Greenhouse and Lever answer 404 for a filled role). Closed
+and dead postings leave every screen and every count, and reopen if the
+provider sees them again.
+
+### How the ranking recommends
 
 Stated in [`src/config/desk.mjs`](src/config/desk.mjs) and enforced in
 [`src/lib/scoring/bands.mjs`](src/lib/scoring/bands.mjs):

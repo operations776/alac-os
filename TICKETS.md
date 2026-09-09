@@ -142,6 +142,12 @@ fetchers are written to fill it.
 | ALAC-80 | Content angles from the same signals: a copyable "what to post" per strong signal | todo |
 | ALAC-81 | The tracker: notes per company, hand marks on the checklist, mentioned roles, messages written and marked sent, whole rows clickable, Results hidden | done |
 | ALAC-82 | Add a company not in the TAM from the app, with website, LinkedIn and location; lands in Up next and is ranked on the next refresh | done |
+| ALAC-97 | Owner-controlled portfolio: membership is the pin, the ranking recommends, accept and decline, seeded from the ranking on 9 Sep | done |
+| ALAC-98 | The cascade, one table: Hold and Nurture off the working list with place kept, Disqualified and Archived off every list, enforced in the view and every query | done |
+| ALAC-99 | Noise limits: five signals at heat 50+, five live leads a day, roles shown at the top tenth by difficulty x time open, everything else one click away | done |
+| ALAC-100 | Dead postings: closed when the provider has not seen them for 7 days, top decile URLs checked directly, removed from every screen | done |
+| ALAC-101 | Today rebuilt around his four questions; Who to target off the rail; his Kanban vocabulary for stages; tooltips on every column; light and dark mode | done |
+| ALAC-102 | Every company says what data it has, what is missing, why, and when the next pull fills it; Pull on the next run | done |
 | ALAC-83 | Band moves recorded with reasons; worked companies never demoted; monthly backlog signal sweep | done |
 | ALAC-84 | Owner override: pin to a band with exact rank, reason and expiry; manual and system rank always shown together | done |
 | ALAC-85 | Clickable KPIs: every summary number opens the exact filtered records | done |

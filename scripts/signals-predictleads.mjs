@@ -111,8 +111,12 @@ async function main() {
        from tam_accounts a
       where a.org_id=$1
         and a.domain is not null
-        and ($2::text is null or a.work_band = $2)
-        and ($2::text is not null or a.work_band in ('now','next'))
+        and a.disposition not in ('Disqualified', 'Archived')
+        and (
+          ($2::text is null or a.work_band = $2)
+          and ($2::text is not null or a.work_band in ('now','next') or a.pinned_band in ('now','next'))
+          or a.enrich_requested_at is not null
+        )
       order by case a.work_band when 'now' then 0 when 'next' then 1 else 2 end,
                a.final_score desc nulls last`,
     [orgId, BAND],

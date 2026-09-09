@@ -1,31 +1,27 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
-
-import {
-  getOrgId, commandBoard, coverage, type DeskRow, type QueueRow, type Period,
-} from "@/lib/server/queries/desk";
-import { CoverageBar } from "@/components/ui/coverage";
-import { WhyMove, WhyBand, WhySignal, WhyRole } from "@/components/ui/explain";
-import { DESK } from "@/config/desk.mjs";
+import { Check, ExternalLink } from "lucide-react";
+import { getOrgId, commandBoard, roleFloor, type DeskRow } from "@/lib/server/queries/desk";
+import { DESK, nextPullAt } from "@/config/desk.mjs";
+import { Card, EmptyState, PageHeader, formatDate } from "@/components/ui/primitives";
+import { NextMove, LifecycleChip, BoardSection } from "@/components/ui/desk";
 import { Row } from "@/components/ui/clickable";
-import {
-  Card, EmptyState, NoticeLine, PageHeader, Stat, Th, formatDate,
-} from "@/components/ui/primitives";
-import {
-  ExecutionStages, HeatDelta, LinkCell, MotionChip, PrepChip, PriorityChip,
-  ScoreCell, BoardSection, NextMove, LifecycleChip,
-} from "@/components/ui/desk";
+import { WhyMove, WhySignal, WhyRole } from "@/components/ui/explain";
+import { MarketPulse } from "@/components/ui/market-pulse";
+import { Hint } from "@/components/ui/hint";
+import { setMark } from "../queue/[id]/tracker";
+import { acceptRecommendation, declineRecommendation } from "../queue/[id]/portfolio";
 
 export const dynamic = "force-dynamic";
 
-// TODAY. Every list on this screen is live: the bands come from the last
-// refresh of the market map, the signals from the feed, the roles from the
-// employers' own boards. Nothing is typed on this screen and nothing on it
-// is a fixed list.
+// TODAY. Four questions, in his words, and nothing else:
+//   What matters?            up to five signals that clear the bar
+//   What am I working on?    his list, with the next move on each
+//   Why does it matter?      a Why on every number
+//   What do I do next?       five live leads, each one a call
+//
+// The system processes everything. The screen shows what changes a decision.
+// Everything else is one click away and never on this page.
 
-const PERIODS: Period[] = ["WEEK", "MONTH", "QUARTER", "YEAR"];
-
-/** The provider's category codes, in words. */
 const CATEGORY_LABEL: Record<string, string> = {
   receives_financing: "Raised money",
   increases_headcount_by: "Grew headcount",
@@ -38,10 +34,21 @@ const CATEGORY_LABEL: Record<string, string> = {
   signs_new_client: "Won a client",
   launches: "Launched something",
   has_valuation: "New valuation",
-  invests_into: "Took investment",
-  partners_with: "New partnership",
-  closes_offices_in: "Closed an office",
 };
+
+/**
+ * The clock, read once per request. A server component renders once per
+ * request, so the time is a request input rather than render impurity; it is
+ * read here, outside the component body, to keep that fact explicit.
+ */
+function clock(rolesPulledAt: string | null) {
+  const now = new Date();
+  return {
+    next_pull: nextPullAt(now),
+    today: now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }),
+    stale: rolesPulledAt ? (now.getTime() - new Date(rolesPulledAt).getTime()) / 86_400_000 > 4 : true,
+  };
+}
 
 function ago(d: string | null): string {
   if (!d) return "";
@@ -51,204 +58,98 @@ function ago(d: string | null): string {
   return `${days} days ago`;
 }
 
-export default async function CommandPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ period?: string }>;
-}) {
-  const params = await searchParams;
+const money = (v: string | null) => {
+  if (!v) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n >= 1e9 ? `$${(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `$${Math.round(n / 1e6)}M` : `$${Math.round(n / 1e3)}K`;
+};
+
+export default async function CommandPage() {
   const orgId = await getOrgId();
   if (!orgId) {
     return (
-      <div className="mx-auto max-w-[1320px] px-5 py-6 sm:px-8 sm:py-7">
-        <Card>
-          <EmptyState title="No organization" body="Seed an org before opening the board." />
-        </Card>
+      <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
+        <Card><EmptyState title="No organization" body="Seed an org before opening the board." /></Card>
       </div>
     );
   }
 
-  const period = (PERIODS.includes(params.period as Period) ? params.period : "WEEK") as Period;
-
-  const [board, cover] = await Promise.all([commandBoard(orgId, period), coverage(orgId)]);
-  const week = board.next_week;
-  const now = board.now;
-  const next = board.next;
-  const heat = board.heat;
-  const counts = board.counts;
-  const heatStats = board.heat_stats;
-  const perf = board.perf;
-  const rolesToday = board.roles_today;
-  const roleCounts = board.role_counts;
-  const banded = now[0]?.banded_at ?? null;
-
-  const calls = now.filter((r) => r.fresh_roles > 0 || r.signal_date != null).length;
+  const floor = await roleFloor(orgId, DESK.ROLE_TOP_SHARE);
+  const board = await commandBoard(orgId, floor);
+  const { now, next, recommended, signals, leads, counts } = board;
+  const { next_pull, today, stale } = clock(counts.roles_pulled_at);
 
   return (
-    <div className="mx-auto max-w-[1320px] px-5 py-6 sm:px-8 sm:py-7">
+    <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
       <PageHeader
-        eyebrow="Today"
+        eyebrow={today}
         title="What to work on"
-        lede={`The ${DESK.NOW_SIZE} companies in Work now, each with its next move. Signals and roles are pulled ${DESK.REFRESH}, and the list re-ranks itself on every pull.`}
+        lede={`${counts.on_list} companies on your list, ${counts.strong_signals} signals that clear the bar this month, ${counts.top_roles_week} top roles this week. Everything below is live from the last pull.`}
       />
 
-      <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Roles posted since yesterday" value={roleCounts.today} hint="at companies you are working" tone={roleCounts.today > 0 ? "good" : undefined} href="/roles?range=today" />
-        <Stat label="Companies with a reason to call" value={calls} hint={`of ${now.length} in Work now`} href="/queue?band=now&roles=1" />
-        <Stat label="Things that changed" value={heatStats.total} hint={`${heatStats.hotter_than_tam} hotter than their rank`} href="/signals" />
-        <Stat
-          label="Needs your review"
-          value={counts.ready_for_qc}
-          hint="waiting on you"
-          tone={counts.ready_for_qc > 0 ? "good" : undefined}
-          href="/queue?prep=READY+FOR+QC"
-        />
-      </div>
+      {/* One line on the data, not a row of counters. Amber if it is old. */}
+      <p className={`mb-6 text-[12.5px] ${stale ? "text-[var(--alac-warn)]" : "text-[var(--alac-text-3)]"}`}>
+        {stale ? "Data is over four days old. " : ""}
+        Roles pulled {formatDate(counts.roles_pulled_at) ?? "never"}, signals {formatDate(counts.signals_pulled_at) ?? "never"}.
+        {next_pull ? ` Next pull ${next_pull.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC.` : ""}
+        {counts.with_gaps > 0 ? (
+          <>
+            {" "}
+            <Link href="/queue?band=now&gaps=1" className="link">
+              {counts.with_gaps} on your list {counts.with_gaps === 1 ? "has" : "have"} missing data
+            </Link>
+            .
+          </>
+        ) : null}
+        {counts.on_hold > 0 ? (
+          <>
+            {" "}
+            <Link href="/queue?disposition=Hold" className="link">{counts.on_hold} on hold</Link>.
+          </>
+        ) : null}
+      </p>
 
-      {banded ? (
-        <p className="mb-6 text-[12.5px] text-[var(--alac-text-3)]">
-          Ranked {formatDate(banded)}. Roles last pulled {formatDate(roleCounts.pulled_at) ?? "never"}.
-        </p>
-      ) : null}
-
-      {/* SOURCEWHALE COVERAGE. Section 15.2: loaded is not being worked. */}
-      <Card className="mb-7 px-5 py-4">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <span className="placard text-[12px] text-[var(--alac-text-2)]">Outreach coverage</span>
-          <span className="text-[12px] text-[var(--alac-text-3)]">
-            Recorded by hand until the SourceWhale key arrives. Every segment opens its companies
-          </span>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <CoverageBar band="now" label="Work now" counts={cover.now} />
-          <CoverageBar band="next" label="Up next" counts={cover.next} />
-        </div>
-      </Card>
-
-      {/* WORK NOW, with the next move. The whole product on one list. */}
+      {/* 1. WHAT MATTERS. Five at most, none below the bar. */}
       <div className="mb-7">
         <BoardSection
-          title="Work now"
-          sub={`${now.length} companies, ranked by fit, what changed, and who you know`}
-          href="/targets"
-          hrefLabel="See why each is here"
+          title="What matters"
+          sub={`Signals at ${DESK.SIGNAL_MIN_HEAT} or above in the last ${DESK.SIGNAL_FRESH_DAYS} days. Weaker ones are kept, not shown`}
+          href="/signals"
+          hrefLabel="All signals"
         >
           <Card className="overflow-hidden">
-            {now.length === 0 ? (
+            {signals.length === 0 ? (
               <EmptyState
-                title="Nothing ranked yet"
-                body="Run the refresh to rank the market into Work now, Up next and Backlog."
+                title="Nothing cleared the bar"
+                body={`No signal in the last ${DESK.SIGNAL_FRESH_DAYS} days scored ${DESK.SIGNAL_MIN_HEAT} or above at a company you are working. That is the honest answer, not a gap.`}
               />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] border-collapse">
-                  <thead>
-                    <tr className="bg-[var(--alac-ground)]">
-                      <Th align="right">#</Th>
-                      <Th>Company</Th>
-                      <Th>Stage</Th>
-                      <Th>Next move</Th>
-                      <Th align="right">New roles</Th>
-                      <Th>Latest change</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {now.map((a, i) => (
-                      <Row key={a.id} href={`/queue/${a.id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
-                        <td className="readout px-4 py-2.5 text-right align-top text-[12.5px] text-[var(--alac-text-3)]">
-                          {i + 1}
-                        </td>
-                        <td className="px-4 py-2.5 align-top">
-                          <Link href={`/queue/${a.id}`} className="link text-[14px] font-medium">
-                            {a.company_name}
-                          </Link>
-                          {a.domain ? (
-                            <div className="text-[12px] text-[var(--alac-text-3)]">{a.domain}</div>
-                          ) : null}
-                          <div className="mt-0.5 text-[12px] text-[var(--alac-text-3)]">
-                            Fit {a.final_score != null ? Math.round(Number(a.final_score)) : "--"}
-                            {a.heat_score != null ? ` · Urgency ${a.heat_score}` : ""}
-                            {a.decision_makers > 0 ? ` · ${a.decision_makers} decision ${a.decision_makers === 1 ? "maker" : "makers"} known` : ""}
-                          </div>
-                          {a.last_contacted_at ? (
-                            <div className="mt-0.5 text-[12px] text-[var(--alac-good)]">
-                              Messaged {a.last_contacted_name ?? "someone"} {ago(a.last_contacted_at)}
-                              {a.contacted_count > 1 ? `, ${a.contacted_count} people so far` : ""}
-                            </div>
-                          ) : null}
-                          {a.last_note ? (
-                            <div className="mt-0.5 line-clamp-1 text-[12px] text-[var(--alac-text-3)]" title={a.last_note}>
-                              Note: {a.last_note}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-2.5 align-top"><LifecycleChip row={a} /></td>
-                        <td className="px-4 py-2.5 align-top">
-                          <NextMove row={a} />
-                          <span className="mt-1 inline-flex gap-3">
-                            <WhyMove account={a} />
-                            <WhyBand account={a} label="Why here" />
-                          </span>
-                        </td>
-                        <td className="readout px-4 py-2.5 text-right align-top text-[14px]">
-                          {a.fresh_roles > 0 ? (
-                            <span className="text-[var(--alac-good)]">{a.fresh_roles}</span>
-                          ) : (
-                            <span className="text-[var(--alac-text-3)]">--</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 align-top text-[12.5px] leading-snug text-[var(--alac-text-2)]">
-                          {a.signal_text ? (
-                            <>
-                              <span className="line-clamp-2">{a.signal_text}</span>
-                              <span className="readout text-[11.5px] text-[var(--alac-text-3)]">{ago(a.signal_date)}</span>
-                            </>
-                          ) : (
-                            <span className="text-[var(--alac-text-3)]">nothing recorded</span>
-                          )}
-                        </td>
-                      </Row>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </BoardSection>
-      </div>
-
-      {/* ROLES POSTED SINCE YESTERDAY */}
-      <div className="mb-7">
-        <BoardSection
-          title="Posted since yesterday"
-          sub={`${roleCounts.today} relevant roles, ${roleCounts.week} this week. Nobody else has called about these yet`}
-          href="/roles"
-          hrefLabel="All open roles"
-        >
-          <Card className="overflow-hidden">
-            {rolesToday.length === 0 ? (
-              <EmptyState
-                title="Nothing new since yesterday"
-                body="No relevant role appeared at a company you are working. The week view on Open roles has the rest."
-              />
-            ) : (
-              <ul className="flex flex-col gap-0.5 px-3 py-2">
-                {rolesToday.map((r) => (
-                  <Row as="li" key={r.id} href={`/queue/${r.account_id}`} className="row-hover flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[var(--alac-radius-sm)] px-3 py-2">
-                    <span className="readout w-7 shrink-0 text-right text-[13px] text-[var(--alac-accent)]">
-                      {r.relevance ?? "--"}
+              <ul className="flex flex-col">
+                {signals.map((s) => (
+                  <Row
+                    as="li"
+                    key={s.id}
+                    href={s.account_id ? `/queue/${s.account_id}` : `/queue/new?name=${encodeURIComponent(s.company_name)}`}
+                    className="row-hover flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-[var(--alac-line)] px-5 py-3 last:border-0"
+                  >
+                    <span className="readout w-8 shrink-0 text-right text-[15px] text-[var(--alac-accent)]" title="Urgency out of 100">
+                      {s.heat_score}
                     </span>
-                    <WhyRole role={r} label="" />
-                    <Link href={`/queue/${r.account_id}`} className="link shrink-0 text-[13.5px] font-medium">
-                      {r.company_name}
-                    </Link>
-                    <span className="min-w-[200px] flex-1 text-[13.5px]">{r.title}</span>
-                    {r.salary_text ? <span className="shrink-0 text-[12px] text-[var(--alac-text-2)]">{r.salary_text}</span> : null}
-                    {r.location ? <span className="shrink-0 text-[12px] text-[var(--alac-text-3)]">{r.location}</span> : null}
-                    {r.url ? (
-                      <a href={r.url} target="_blank" rel="noreferrer" className="link inline-flex shrink-0 items-center gap-1.5 text-[12px]">
-                        Posting <ExternalLink size={16} strokeWidth={1.5} />
-                      </a>
+                    <span className="min-w-[160px] text-[14px] font-medium">{s.company_name}</span>
+                    <span className="chip text-[var(--alac-text-3)]">
+                      {s.category ? CATEGORY_LABEL[s.category] ?? s.category.replace(/_/g, " ") : "Signal"}
+                    </span>
+                    {s.amount_usd ? (
+                      <span className="chip bg-[var(--alac-good-soft)] text-[var(--alac-good)]">{money(s.amount_usd)}</span>
+                    ) : null}
+                    <span className="min-w-[200px] flex-1 text-[13px] leading-snug text-[var(--alac-text-2)]">
+                      {s.what_happened}
+                    </span>
+                    <span className="readout shrink-0 text-[12px] text-[var(--alac-text-3)]">{ago(s.signal_date)}</span>
+                    <span className="shrink-0"><WhySignal signal={s} score={s.heat_score} label="Why" /></span>
+                    {!s.account_id ? (
+                      <span className="chip bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]">Not on the list, add</span>
                     ) : null}
                   </Row>
                 ))}
@@ -258,69 +159,91 @@ export default async function CommandPage({
         </BoardSection>
       </div>
 
-      {/* WHAT CHANGED, newest first */}
+      {/* 2. WHAT DO I DO NEXT. Five live leads, each a call, each disappears when ticked. */}
       <div className="mb-7">
         <BoardSection
-          title="What changed"
-          sub={
-            <>
-              Newest first &middot; {heatStats.total} on record
-              {heatStats.unlinked > 0 ? ` · ${heatStats.unlinked} at companies not on the list` : ""}
-            </>
-          }
-          href="/signals"
-          hrefLabel="See all"
+          title={`${DESK.LIVE_LEADS_PER_DAY} live leads today`}
+          sub={`The hardest to fill, longest open roles that went up this week. Tick one when you have raised it and the next one takes its place`}
+          href="/roles"
+          hrefLabel="All top roles"
         >
           <Card className="overflow-hidden">
-            {heat.length === 0 ? (
-              <EmptyState title="No signals yet" body="Run the refresh to pull the feed." />
+            {leads.length === 0 ? (
+              <EmptyState
+                title="No new top roles this week"
+                body="Nothing posted in the last week cleared the top tenth by difficulty and time open, or every one has been raised already. The month view on Open roles has the rest."
+              />
+            ) : (
+              <ul className="flex flex-col">
+                {leads.map((r) => (
+                  <Row
+                    as="li"
+                    key={r.id}
+                    href={`/queue/${r.account_id}`}
+                    className="row-hover flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-[var(--alac-line)] px-5 py-3 last:border-0"
+                  >
+                    <form action={setMark} className="shrink-0 self-center">
+                      <input type="hidden" name="accountId" value={r.account_id} />
+                      <input type="hidden" name="kind" value="role" />
+                      <input type="hidden" name="ref" value={r.id} />
+                      <input type="hidden" name="done" value="1" />
+                      <button
+                        type="submit"
+                        role="checkbox"
+                        aria-checked={false}
+                        aria-label="Raised it, show me the next one"
+                        title="Tick when you have raised this role. It leaves the list and the next one takes its place"
+                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
+                      >
+                        <Check size={16} strokeWidth={1.5} className="opacity-0" />
+                      </button>
+                    </form>
+                    <span className="readout w-8 shrink-0 text-right text-[15px] text-[var(--alac-accent)]" title="Commercial score out of 100">
+                      {r.relevance}
+                    </span>
+                    <span className="min-w-[150px] text-[14px] font-medium">{r.company_name}</span>
+                    <span className="min-w-[200px] flex-1 text-[13.5px]">{r.title}</span>
+                    {r.salary_text ? <span className="shrink-0 text-[12px] text-[var(--alac-text-2)]">{r.salary_text}</span> : null}
+                    <span className="readout shrink-0 text-[12px] text-[var(--alac-text-3)]">{ago(r.first_seen)}</span>
+                    {r.url ? (
+                      <a href={r.url} target="_blank" rel="noreferrer" className="link inline-flex shrink-0 items-center gap-1.5 text-[12px]">
+                        Posting <ExternalLink size={16} strokeWidth={1.5} />
+                      </a>
+                    ) : null}
+                    <span className="shrink-0"><WhyRole role={r} label="Why" /></span>
+                  </Row>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </BoardSection>
+      </div>
+
+      {/* 3. WHAT AM I WORKING ON. His list. The ranking's suggestions sit beside it, never in it. */}
+      <div className="mb-7">
+        <BoardSection
+          title="Your Top 25"
+          sub={`${now.length} companies you put here. Each with what to do next`}
+          href="/queue?band=now"
+          hrefLabel="Open the list"
+        >
+          <Card className="overflow-hidden">
+            {now.length === 0 ? (
+              <EmptyState title="Your list is empty" body="Accept a recommendation below, or pin a company from its page." />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px] border-collapse">
+                <table className="w-full min-w-[900px] border-collapse">
                   <thead>
                     <tr className="bg-[var(--alac-ground)]">
-                      <Th>When</Th>
-                      <Th>Company</Th>
-                      <Th>What happened</Th>
-                      <Th align="right">Urgency</Th>
-                      <Th>On the list</Th>
+                      <th className="px-5 py-2 text-left"><Hint label="Company" text="On your Top 25 because you put it there. The ranking never moves it." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Stage" text="Where it is in your Kanban: Target, Researching, Pending review, Approved, then SourceWhale." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Next move" text="One instruction, computed from the stage, the roles, the latest signal and who you know. Why opens the reasons." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Last touch" text="The last message you marked sent, or the latest note." /></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {heat.map((s) => (
-                      <Row key={s.id} href={s.account_id ? `/queue/${s.account_id}` : `/queue/new?name=${encodeURIComponent(s.company_name)}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
-                        <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-3)]">
-                          {ago(s.signal_date)}
-                        </td>
-                        <td className="px-4 py-2.5 align-top">
-                          {s.account_id ? (
-                            <Link href={`/queue/${s.account_id}`} className="link text-[14px] font-medium">
-                              {s.company_name}
-                            </Link>
-                          ) : (
-                            <span className="text-[14px] font-medium">
-                              {s.company_name}{" "}
-                              <Link href={`/queue/new?name=${encodeURIComponent(s.company_name)}`} className="link text-[12px] font-normal">
-                                add to the list
-                              </Link>
-                            </span>
-                          )}
-                          {s.category ? (
-                            <div className="mt-0.5 text-[12px] text-[var(--alac-text-3)]">{CATEGORY_LABEL[s.category] ?? s.category}</div>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-2.5 align-top text-[13px] leading-snug text-[var(--alac-text-2)]">
-                          <span className="line-clamp-2">{s.what_happened}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-right align-top">
-                          <span className="readout text-[14px] text-[var(--alac-accent)]">{s.heat_score ?? "--"}</span>{" "}
-                          <HeatDelta delta={s.heat_vs_tam} />
-                          <span className="mt-1 block"><WhySignal signal={s} score={s.heat_score} /></span>
-                        </td>
-                        <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
-                          {s.work_band === "now" ? "Work now" : s.work_band === "next" ? "Up next" : s.work_band === "backlog" ? "Backlog" : "Not ranked"}
-                        </td>
-                      </Row>
+                    {now.map((a) => (
+                      <ListRow key={a.id} a={a} />
                     ))}
                   </tbody>
                 </table>
@@ -330,140 +253,85 @@ export default async function CommandPage({
         </BoardSection>
       </div>
 
-      {/* NEXT WEEK, the Friday close */}
+      {recommended.length > 0 ? (
+        <div className="mb-7">
+          <BoardSection
+            title="Recommended for your list"
+            sub="The ranking would add these. Accept puts it on your list; decline keeps it off until something new happens"
+            href="/queue?recommended=1"
+            hrefLabel="See all"
+          >
+            <Card className="overflow-hidden">
+              <ul className="flex flex-col">
+                {recommended.map((a) => (
+                  <li key={a.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-[var(--alac-line)] px-5 py-3 last:border-0">
+                    <Link href={`/queue/${a.id}`} className="link min-w-[160px] text-[14px] font-medium">{a.company_name}</Link>
+                    <span className="chip">{a.recommended_for === "now" ? "for Top 25" : "for Next 25"}</span>
+                    <span className="min-w-[200px] flex-1 text-[12.5px] text-[var(--alac-text-2)]">{a.work_reason}</span>
+                    <form action={acceptRecommendation}><input type="hidden" name="accountId" value={a.id} /><button className="btn btn-primary">Accept</button></form>
+                    <form action={declineRecommendation}><input type="hidden" name="accountId" value={a.id} /><button className="btn btn-ghost">Decline</button></form>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </BoardSection>
+        </div>
+      ) : null}
+
+      {next.length > 0 ? (
+        <div className="mb-7">
+          <BoardSection title="Your Next 25" sub={`${next.length} on the bench, worked after the Top 25`} href="/queue?band=next" hrefLabel="Open the list">
+            <Card className="px-5 py-3">
+              <p className="text-[13px] leading-relaxed text-[var(--alac-text-2)]">
+                {next.slice(0, 12).map((a, i) => (
+                  <span key={a.id}>
+                    <Link href={`/queue/${a.id}`} className="link">{a.company_name}</Link>
+                    {i < Math.min(next.length, 12) - 1 ? ", " : ""}
+                  </span>
+                ))}
+                {next.length > 12 ? ` and ${next.length - 12} more` : ""}
+              </p>
+            </Card>
+          </BoardSection>
+        </div>
+      ) : null}
+
+      {/* 4. THE MARKET. From the roles that clear the bar, and nothing else. */}
       <div className="mb-7">
         <BoardSection
-          title="Approved for next week"
-          sub={
-            <>
-              {week.length} of {DESK.WEEK_TARGET} target
-              {week.length !== DESK.WEEK_TARGET ? (
-                <span className="text-[var(--alac-warn)]">
-                  {" "}
-                  &middot; {week.length > DESK.WEEK_TARGET ? "over" : "under"} by{" "}
-                  {Math.abs(week.length - DESK.WEEK_TARGET)}
-                </span>
-              ) : null}
-            </>
-          }
-          href="/queue?next=1"
-          hrefLabel="Open list"
+          title="Where the demand is"
+          sub={`From the top tenth of live roles, score ${floor} and above. Click a bar to open the roles behind it`}
+          href="/roles?range=month"
+          hrefLabel="This month's top roles"
         >
-          <Card className="overflow-hidden">
-            {week.length === 0 ? (
-              <EmptyState
-                title="Nothing set for next week"
-                body={`No company is flagged Next Week. Friday close should leave ${DESK.WEEK_TARGET} decision-ready companies here, drawn from Work now.`}
-              />
-            ) : (
-              <QueueTable rows={week} />
-            )}
+          <Card className="px-5 py-5">
+            <MarketPulse cities={board.by_city} disciplines={board.by_discipline} />
           </Card>
         </BoardSection>
       </div>
-
-      {/* UP NEXT */}
-      <div className="mb-7">
-        <BoardSection title="Up next" sub="The bench. Promoted into Work now as slots free up" href="/targets?band=next" hrefLabel="See all">
-          <Card className="overflow-hidden">
-            <BandList rows={next} />
-          </Card>
-        </BoardSection>
-      </div>
-
-      {/* RESULTS */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-[13px] text-[var(--alac-text-2)]">Results period</span>
-        {PERIODS.map((p) => (
-          <Link
-            key={p}
-            href={p === "WEEK" ? "/command" : `/command?period=${p}`}
-            aria-current={p === period ? "true" : undefined}
-            className={`chip transition-colors duration-200 ${
-              p === period
-                ? "bg-[var(--alac-accent)] text-[var(--alac-ground)]"
-                : "hover:bg-[color-mix(in_oklab,var(--alac-accent)_16%,var(--alac-surface-2))]"
-            }`}
-          >
-            {p}
-          </Link>
-        ))}
-      </div>
-      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Stat label="BD calls" value={perf.bd_calls ?? "--"} hint={period.toLowerCase()} />
-        <Stat label="Conversations" value={perf.client_conversations ?? "--"} />
-        <Stat label="Discoveries" value={perf.discoveries ?? "--"} />
-        <Stat label="Qualified opps" value={perf.qualified_opps ?? "--"} />
-        <Stat label="Searches won" value={perf.searches_won ?? "--"} />
-        <Stat label="Pipeline" value={perf.pipeline_usd ? `$${Number(perf.pipeline_usd).toLocaleString()}` : "--"} />
-      </div>
-      {(perf.weeks ?? 0) === 0 ? (
-        <NoticeLine>
-          No SourceWhale weeks fall inside this {period.toLowerCase()}. The counters read as not
-          reported rather than zero. They will fill in from SourceWhale once its API key is connected.
-        </NoticeLine>
-      ) : null}
     </div>
   );
 }
 
-function BandList({ rows }: { rows: DeskRow[] }) {
-  if (rows.length === 0) {
-    return <EmptyState title="Empty" body="No company has landed in this band yet." />;
-  }
+function ListRow({ a }: { a: DeskRow }) {
   return (
-    <ol className="px-3 pb-3">
-      {rows.map((a, i) => (
-        <Row as="li" key={a.id} href={`/queue/${a.id}`} className="row-hover flex items-center gap-3 rounded-[var(--alac-radius)] px-3 py-2.5">
-          <span className="readout w-5 shrink-0 text-right text-[12.5px] text-[var(--alac-text-3)]">{i + 1}</span>
-          <span className="w-8 shrink-0 text-right"><ScoreCell score={a.final_score} /></span>
-          <Link href={`/queue/${a.id}`} className="link min-w-0 flex-1 truncate text-[14px] font-medium">
-            {a.company_name}
-          </Link>
-          <span className="hidden min-w-0 flex-1 truncate text-[12.5px] text-[var(--alac-text-3)] md:inline">{a.work_reason}</span>
-          <span className="shrink-0"><NextMove row={a} compact /></span>
-        </Row>
-      ))}
-    </ol>
-  );
-}
-
-function QueueTable({ rows }: { rows: QueueRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[980px] border-collapse">
-        <thead>
-          <tr className="bg-[var(--alac-ground)]">
-            <Th align="right">Score</Th>
-            <Th>Company</Th>
-            <Th>Priority</Th>
-            <Th>Approach</Th>
-            <Th>Progress</Th>
-            <Th>Brief</Th>
-            <Th>Outreach</Th>
-            <Th>Next action</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((a) => (
-            <Row key={a.id} href={`/queue/${a.id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
-              <td className="px-4 py-2.5 text-right align-top"><ScoreCell score={a.final_score} /></td>
-              <td className="px-4 py-2.5 align-top">
-                <Link href={`/queue/${a.id}`} className="link text-[14px] font-medium">{a.company_name}</Link>
-                <div className="readout mt-0.5 text-[12px] text-[var(--alac-text-3)]">{a.record_id}</div>
-              </td>
-              <td className="px-4 py-2.5 align-top"><PriorityChip priority={a.priority} /></td>
-              <td className="px-4 py-2.5 align-top"><MotionChip motion={a.recommended_motion} /></td>
-              <td className="px-4 py-2.5 align-top"><PrepChip status={a.prep_status} /></td>
-              <td className="px-4 py-2.5 align-top"><LinkCell href={a.battlecard_url} label="Card" /></td>
-              <td className="px-4 py-2.5 align-top"><ExecutionStages heyreach={a.heyreach_stage} sourcewhale={a.sourcewhale_stage} /></td>
-              <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
-                {a.next_action ?? <span className="text-[var(--alac-text-3)]">--</span>}
-              </td>
-            </Row>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Row href={`/queue/${a.id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
+      <td className="px-5 py-2.5 align-top">
+        <span className="text-[14px] font-medium">{a.company_name}</span>
+        {a.domain ? <div className="text-[12px] text-[var(--alac-text-3)]">{a.domain}</div> : null}
+      </td>
+      <td className="px-4 py-2.5 align-top"><LifecycleChip row={a} /></td>
+      <td className="px-4 py-2.5 align-top">
+        <NextMove row={a} compact />
+        <span className="mt-1 block"><WhyMove account={a} /></span>
+      </td>
+      <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
+        {a.last_contacted_at
+          ? `Messaged ${a.last_contacted_name ?? "someone"} ${ago(a.last_contacted_at)}`
+          : a.last_note
+            ? <span className="line-clamp-1" title={a.last_note}>Note: {a.last_note}</span>
+            : <span className="text-[var(--alac-text-3)]">nothing yet</span>}
+      </td>
+    </Row>
   );
 }

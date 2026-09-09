@@ -5,33 +5,74 @@
 // definitions, and every screen reads them from here.
 
 export const DESK = {
-  // Companies in Work now: the ones being contacted, in rank order.
+  // The owner's working portfolio. He decides membership; the ranking only
+  // recommends. These are the sizes the recommendations are made against.
   NOW_SIZE: 25,
-  // The bench behind them. Promoted into Work now as slots free up.
   NEXT_SIZE: 25,
   // Friday close: this many companies fully prepared and approved for the
   // coming week. A subset of Work now, never a separate list.
   WEEK_TARGET: 10,
-  // A signal older than this no longer argues for timing on its own.
+
+  // Producer-facing noise limits, his clarification of 9 September. The
+  // system processes everything; the screen surfaces this much.
+  SIGNALS_ON_TODAY: 5,
+  SIGNAL_MIN_HEAT: 50,
   SIGNAL_FRESH_DAYS: 30,
-  // A role older than this is one of many, not a reason to call today.
+  LIVE_LEADS_PER_DAY: 5,
+  // Roles shown by default: the top share of the whole corpus by commercial
+  // score. Everything below it is processed, stored and one click away.
+  ROLE_TOP_SHARE: 0.10,
   ROLE_FRESH_DAYS: 7,
-  // Heat at or above this promotes a company into the working list.
+  // A posting the provider has not seen for this long has come down.
+  ROLE_STALE_DAYS: 7,
+
+  // Heat at or above this makes a company a recommendation for the list.
   PROMOTE_HEAT: 60,
-  // How often the feeds are pulled and the bands re-ranked. Twice a week is a
-  // cost decision: signals are free to re-read, roles are not.
+  // How often the feeds are pulled and the recommendations re-ranked.
   REFRESH: "Monday and Thursday mornings",
+  // The cron, so the app can say when the next pull is rather than "soon".
+  REFRESH_DAYS_UTC: [1, 4],
+  REFRESH_HOUR_UTC: 6,
 };
 
 /**
- * How a company moves between the bands. Read on the Who to target screen,
- * enforced in assignBands. If these two ever disagree the screen is lying.
+ * When the next scheduled pull runs, as a Date. Read by every screen that
+ * has to say why a number is not there yet: a company added on Tuesday has
+ * no roles until Thursday 06:00 UTC, and the screen should say exactly that.
  */
-export const ROLLOVER_RULES = [
-  "Every refresh re-ranks the whole market. Nobody is stuck in a band: the rank is recomputed from fit, what changed, and who you know.",
-  `A company leaves Work now when it is marked On hold, or when its rank falls below ${DESK.NOW_SIZE} because others moved ahead of it. The top of Up next takes the slot.`,
-  `A strong signal (heat ${DESK.PROMOTE_HEAT} or more, inside ${DESK.SIGNAL_FRESH_DAYS} days) guarantees at least Up next, whatever the fit score says. That is how a signal on What changed enters the working list.`,
-  "Approved companies stay in Work now until outreach is loaded. They are the ones being worked, not the ones still being decided.",
-  "A company you are working (a note, a tick, a message sent in the last three weeks, research started) never drops a band. The ranking decides who to start on, not who to stop on.",
-  "Every move is recorded. Notes, ticks and messages stay with the company whatever band it is in, so a company that comes back looks exactly as you left it.",
+export function nextPullAt(from = new Date()) {
+  const d = new Date(from);
+  for (let i = 0; i < 8; i += 1) {
+    const day = d.getUTCDay();
+    if (DESK.REFRESH_DAYS_UTC.includes(day)) {
+      const at = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), DESK.REFRESH_HOUR_UTC));
+      if (at > from) return at;
+    }
+    d.setUTCDate(d.getUTCDate() + 1);
+    d.setUTCHours(0, 0, 0, 0);
+  }
+  return null;
+}
+
+/**
+ * The portfolio rules, in words. Read on screen, enforced in the view and
+ * the queries. If these two ever disagree the screen is lying.
+ */
+export const PORTFOLIO_RULES = [
+  "Top 25 and Next 25 are yours. A company is on the list because you put it there, and it leaves when you take it off. The ranking never moves a company in or out on its own.",
+  "The ranking recommends. Every refresh it says which companies it would add and why, and you accept or decline each one. A declined company is not recommended again unless something new happens.",
+  "Every company on the list has a score and the data behind it. Where the data is missing, the page says what is missing, why, and when the next pull will fill it.",
+];
+
+/**
+ * The cascade. What each state does to a company's place on the list, its
+ * recommendations, and its data. One table, applied by the view and every
+ * query that reads it.
+ */
+export const CASCADE = [
+  { state: "Active", list: "Stays where you put it", moves: "Recommended, with a next move", data: "Pulled every refresh" },
+  { state: "Hold", list: "Off the working list, place remembered", moves: "No next move, no messages suggested", data: "Still pulled, so nothing is missed" },
+  { state: "Nurture", list: "Off the working list, place remembered", moves: "Only surfaces on a strong signal", data: "Still pulled" },
+  { state: "Disqualified", list: "Off every list", moves: "None. History kept", data: "No longer pulled" },
+  { state: "Archived", list: "Off every list, hidden by default", moves: "None. Searchable", data: "No longer pulled" },
 ];

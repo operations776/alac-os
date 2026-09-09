@@ -30,6 +30,7 @@ const arg = (flag, fallback) => {
 };
 const BAND = arg("--band", null);
 const PER_COMPANY = Number(arg("--limit", "100"));
+const STALE_DAYS = Number(arg("--stale", "7"));
 
 if (!predictLeadsAvailable()) {
   console.error("PREDICTLEADS_API_KEY and PREDICTLEADS_API_TOKEN must both be set.");
@@ -53,8 +54,12 @@ async function main() {
     `select id, company_name, domain, work_band
        from tam_accounts
       where org_id=$1 and domain is not null
-        and ($2::text is null or work_band = $2)
-        and ($2::text is not null or work_band in ('now','next'))
+        and disposition not in ('Disqualified', 'Archived')
+        and (
+          ($2::text is null or work_band = $2)
+          and ($2::text is not null or work_band in ('now','next') or pinned_band in ('now','next'))
+          or enrich_requested_at is not null
+        )
       order by case work_band when 'now' then 0 else 1 end, company_name`,
     [orgId, BAND],
   );
@@ -102,7 +107,8 @@ async function main() {
            title=excluded.title, url=excluded.url, location=excluded.location,
            seniority=excluded.seniority, qualified=excluded.qualified,
            salary_text=excluded.salary_text, occupation=excluded.occupation,
-           last_seen=excluded.last_seen, relevance=excluded.relevance, fetched_at=now()`,
+           last_seen=excluded.last_seen, relevance=excluded.relevance,
+           closed_at=null, fetched_at=now()`,
         [
           orgId, a.id, r.external_id, r.title, r.url, r.location, r.seniority,
           r.categories?.[0] ?? null, r.first_seen, ok,
@@ -116,6 +122,64 @@ async function main() {
 
   console.log(`\npulled ${pulled} postings, ${qualified} qualified, ${missing} companies unknown`);
   if (APPLY) console.log(`wrote ${written}`);
+
+  if (APPLY) {
+    // Dead postings. The provider reports when it last saw each posting, and
+    // one it has not seen for a week has come down. He hit several by hand
+    // before anything read this column. A posting that reappears is reopened
+    // by the upsert above.
+    const closed = await pool.query(
+      `update account_roles set closed_at = current_date
+        where org_id = $1 and closed_at is null and qualified
+          and last_seen < current_date - $2::int
+        returning id`,
+      [orgId, STALE_DAYS],
+    );
+    console.log(`closed ${closed.rowCount} postings not seen for ${STALE_DAYS} days`);
+
+    // The direct check, for the roles that actually surface. Greenhouse and
+    // Lever answer 404 for a filled role; a 200 from a board that keeps dead
+    // pages up is a limit of this check, not a claim the role is open.
+    const top = await pool.query(
+      `select id, url from account_roles
+        where org_id = $1 and qualified and closed_at is null and url is not null
+          and (url_checked_at is null or url_checked_at < now() - interval '3 days')
+          and relevance >= (select percentile_cont(0.9) within group (order by relevance)
+                              from account_roles where org_id = $1 and qualified and relevance is not null)
+        order by relevance desc limit 300`,
+      [orgId],
+    );
+    let ok = 0, dead = 0;
+    const check = async ({ id, url }) => {
+      let alive = null;
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 8000);
+        let res = await fetch(url, { method: "HEAD", redirect: "follow", signal: ctrl.signal });
+        if (res.status === 405 || res.status === 403) {
+          res = await fetch(url, { method: "GET", redirect: "follow", signal: ctrl.signal });
+        }
+        clearTimeout(t);
+        alive = res.status < 400;
+      } catch {
+        alive = null;
+      }
+      if (alive === true) ok += 1;
+      if (alive === false) dead += 1;
+      await pool.query(
+        `update account_roles set url_ok = $2, url_checked_at = now(),
+                closed_at = case when $2 = false then current_date else closed_at end
+          where id = $1`,
+        [id, alive],
+      );
+    };
+    // Eight at a time: enough to finish 300 in under a minute, few enough
+    // that no employer's board sees a burst from one address.
+    for (let i = 0; i < top.rowCount; i += 8) {
+      await Promise.all(top.rows.slice(i, i + 8).map(check));
+    }
+    console.log(`checked ${top.rowCount} posting urls: ${ok} live, ${dead} gone, ${top.rowCount - ok - dead} unreachable`);
+  }
 
   fresh.sort((x, y) => y.score - x.score);
   const show = TODAY_ONLY ? fresh.filter((r) => r.age <= 1) : fresh;

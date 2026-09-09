@@ -8,6 +8,7 @@
 import assert from "node:assert/strict";
 import { nextMove, lifecycle } from "../src/lib/scoring/next-move.mjs";
 import { assignBands, describeMove } from "../src/lib/scoring/bands.mjs";
+import { nextPullAt } from "../src/config/desk.mjs";
 
 let run = 0;
 const test = (name, fn) => {
@@ -33,12 +34,22 @@ const base = {
   domain: "acme.example",
 };
 
-test("lifecycle is derived from the three stage fields, outreach outranking prep", () => {
-  assert.equal(lifecycle(base), "Not started");
-  assert.equal(lifecycle({ ...base, prep_status: "READY FOR QC" }), "Needs review");
-  assert.equal(lifecycle({ ...base, prep_status: "APPROVED", heyreach_stage: "LOADED" }), "LinkedIn warming");
-  assert.equal(lifecycle({ ...base, heyreach_stage: "LOADED", sourcewhale_stage: "ACTIVE" }), "In sequence");
-  assert.equal(lifecycle({ ...base, prep_status: "HOLD", sourcewhale_stage: "ACTIVE" }), "On hold");
+test("the stage is his Kanban, and outreach state outranks research state", () => {
+  assert.equal(lifecycle(base), "Target");
+  assert.equal(lifecycle({ ...base, prep_status: "IN RESEARCH" }), "Researching");
+  assert.equal(lifecycle({ ...base, prep_status: "READY FOR QC" }), "Pending review");
+  assert.equal(lifecycle({ ...base, prep_status: "APPROVED" }), "Approved");
+  assert.equal(lifecycle({ ...base, prep_status: "APPROVED", sw_state: "Added" }), "In SourceWhale");
+  assert.equal(lifecycle({ ...base, sw_state: "Active Campaign" }), "Campaign active");
+  assert.equal(lifecycle({ ...base, sw_state: "Positive Reply" }), "Replied");
+  assert.equal(lifecycle({ ...base, sw_state: "Active Campaign", disposition: "Hold" }), "On hold");
+  assert.equal(lifecycle({ ...base, sw_state: "Active Campaign", disposition: "Archived" }), "Archived");
+});
+
+test("the cascade reaches the next move: hold and archive suggest nothing", () => {
+  assert.equal(nextMove({ ...base, top_contact: "Jane Doe", targets: 1, fresh_roles: 3, disposition: "Hold" }, AS_OF).kind, "wait");
+  assert.equal(nextMove({ ...base, top_contact: "Jane Doe", targets: 1, fresh_roles: 3, disposition: "Disqualified" }, AS_OF).move, "Nothing");
+  assert.equal(nextMove({ ...base, top_contact: "Jane Doe", sw_state: "Replied", last_contacted_name: "Jane Doe" }, AS_OF).move, "Answer Jane Doe");
 });
 
 test("no website means nothing else can happen", () => {
@@ -69,9 +80,17 @@ test("a stale signal does not argue for timing", () => {
   assert.equal(m.move, "Draft the first message");
 });
 
-test("in sequence means wait, whatever else is true", () => {
-  const m = nextMove({ ...base, sourcewhale_stage: "ACTIVE", fresh_roles: 5, top_contact: "Jane Doe" }, AS_OF);
+test("an active campaign means wait, whatever else is true", () => {
+  const m = nextMove({ ...base, sw_state: "Active Campaign", fresh_roles: 5, top_contact: "Jane Doe" }, AS_OF);
   assert.equal(m.kind, "wait");
+});
+
+test("the next pull is always a real Monday or Thursday at 06:00 UTC", () => {
+  const tue = new Date("2026-09-08T12:00:00Z");
+  const next = nextPullAt(tue);
+  assert.equal(next.toISOString(), "2026-09-10T06:00:00.000Z");
+  const thuLate = new Date("2026-09-10T07:00:00Z");
+  assert.equal(nextPullAt(thuLate).toISOString(), "2026-09-14T06:00:00.000Z");
 });
 
 test("a message sent this week means wait, then one follow up", () => {

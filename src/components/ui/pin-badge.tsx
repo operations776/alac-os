@@ -10,12 +10,25 @@ import type { DeskRow } from "@/lib/server/queries/desk";
  */
 export function PinBadge({ row }: { row: DeskRow }) {
   const name = (b: string | null) =>
-    b === "now" ? "Work now" : b === "next" ? "Up next" : b === "backlog" || b === "bench" ? "Bench" : "Not ranked";
+    b === "now" ? "Top 25" : b === "next" ? "Next 25" : b === "backlog" || b === "bench" ? "Bench" : "Not on the list";
 
   if (!row.pin_active) {
     return (
-      <span className="text-[12.5px] text-[var(--alac-text-3)]" title="Ranked automatically">
-        {name(row.work_band)}
+      <span
+        className="text-[12.5px] text-[var(--alac-text-3)]"
+        title={row.recommended_for ? `Not on your list. The ranking recommends it for ${name(row.recommended_for)}` : "Not on your list"}
+      >
+        {row.recommended_for ? `Recommended: ${name(row.recommended_for)}` : "Bench"}
+      </span>
+    );
+  }
+  if (row.pinned_by === "seed") {
+    return (
+      <span
+        className="text-[12.5px] text-[var(--alac-text-2)]"
+        title="Placed from the ranking when the list became yours. Move it from the company page."
+      >
+        {name(row.pinned_band)}
       </span>
     );
   }

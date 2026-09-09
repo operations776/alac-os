@@ -104,6 +104,56 @@
   --alac-ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* ---- Light mode. Same violet, same semantic set, on paper instead of
+   night. Every token that carries a colour is restated so nothing falls
+   through to the dark value. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --alac-ground: #f5f6fa;
+  --alac-surface: #ffffff;
+  --alac-surface-2: #0b1a3a0a;
+  --alac-surface-3: #0b1a3a14;
+  --alac-line: #1f2a4426;
+  --alac-line-strong: #1f2a4440;
+  --alac-accent: #6b4fe0;
+  --alac-accent-bright: #5a3fd0;
+  --alac-accent-light: #4d34b8;
+  --alac-accent-pale: #2d1f7a;
+  --alac-accent-soft: #6b4fe014;
+  --alac-purple: #6b4fe0;
+  --alac-purple-soft: #6b4fe014;
+  --alac-cyan: #0f8fb0;
+  --alac-cyan-soft: #0f8fb014;
+  --alac-blue: #2b6fd6;
+  --alac-blue-soft: #2b6fd614;
+  --alac-text: #0f172a;
+  --alac-text-2: #3b4661;
+  --alac-text-3: #6b7590;
+  --alac-red: #c8353d;
+  --alac-red-deep: #a82a31;
+  --alac-red-text: #b52f36;
+  --alac-red-soft: #c8353d14;
+  --alac-good: #1a9a6c;
+  --alac-good-soft: #1a9a6c14;
+  --alac-warn: #b5741a;
+  --alac-warn-soft: #b5741a14;
+  --alac-elev-1: 0 1px 2px 0 rgb(15 23 42 / 0.08);
+  --alac-elev-2: 0 15px 50px rgb(15 23 42 / 0.14);
+}
+
+/* The market bars grow in once. Reduced motion gets them already full. */
+@keyframes pulse-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.pulse-bar {
+  transform-origin: left;
+  animation: pulse-grow 700ms var(--alac-ease) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-bar { animation: none; }
+}
+
 @theme inline {
   --color-alac-ground: var(--alac-ground);
   --color-alac-surface: var(--alac-surface);

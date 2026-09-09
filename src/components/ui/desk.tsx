@@ -327,19 +327,38 @@ export function NextMove({ row, compact }: { row: DeskRow; compact?: boolean }) 
 }
 
 const STAGE_TONE: Record<string, Tone> = {
-  "Needs review": "brand",
+  "Pending review": "brand",
   Approved: "good",
-  "LinkedIn warming": "good",
-  "In sequence": "good",
+  "In SourceWhale": "neutral",
+  "Campaign active": "good",
+  Replied: "good",
   "On hold": "warn",
+  Archived: "neutral",
 };
 
-/** Where the company is in its life, from research through to sequence. */
+const STAGE_HINT: Record<string, string> = {
+  Target: "On the list, nothing started. Next: research it.",
+  Researching: "Being researched. Next: mark it for review.",
+  "Pending review": "Waiting on your decision. Next: approve or send back.",
+  Approved: "Approved to build. Next: load to SourceWhale.",
+  "In SourceWhale": "Loaded but not active. Loaded is not the same as being worked.",
+  "Campaign active": "Live in a SourceWhale campaign. Watch for the reply there.",
+  Replied: "They replied. Nothing is more urgent than answering.",
+  "On hold": "Off the working list, still watched, no outreach suggested.",
+  Archived: "Out of every list. History kept.",
+};
+
+/** Where the company is in his Kanban, derived from the fields that decide it. */
 export function LifecycleChip({
   row,
 }: {
-  row: Pick<DeskRow, "prep_status" | "heyreach_stage" | "sourcewhale_stage">;
+  row: Pick<DeskRow, "prep_status" | "heyreach_stage" | "sourcewhale_stage"> &
+    Partial<Pick<DeskRow, "sw_state" | "disposition">>;
 }) {
-  const stage = lifecycle(row);
-  return <Badge tone={STAGE_TONE[stage] ?? "neutral"}>{stage}</Badge>;
+  const stage = (lifecycle as (r: unknown) => string)(row);
+  return (
+    <span title={STAGE_HINT[stage]}>
+      <Badge tone={STAGE_TONE[stage] ?? "neutral"}>{stage}</Badge>
+    </span>
+  );
 }

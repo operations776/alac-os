@@ -112,8 +112,9 @@ export async function radar(
                     where p.candidate_id = ${candidate.id} and p.role_id = r.id) as pitched
       from account_roles r
       join account_desk a on a.id = r.account_id
-     where r.org_id = ${orgId} and r.qualified
-       and a.prep_status <> 'HOLD'
+     where r.org_id = ${orgId} and r.qualified and r.closed_at is null
+       and r.url_ok is distinct from false
+       and a.disposition = 'Active'
      order by r.relevance desc nulls last
      limit 4000
   `) as Omit<RadarRole, "match">[];
@@ -141,7 +142,7 @@ export async function radar(
            signal_date, domain, top_contact, top_contact_title
       from account_desk
      where org_id = ${orgId} and effective_band in ('now', 'next')
-       and prep_status <> 'HOLD'
+       and disposition = 'Active'
   `) as RadarAccount[];
 
   const buckets = bucketResults(scored, accounts) as {

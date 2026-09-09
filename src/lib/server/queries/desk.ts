@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "@/lib/server/db";
 import { currentSession } from "@/lib/server/auth";
+import { DESK } from "@/config/desk.mjs";
 
 /**
  * The org for the signed in operator. It comes from the verified session and
@@ -155,6 +156,9 @@ export async function searchQueue(
     band?: string;
     sw?: string;
     disposition?: string;
+    hotter?: boolean;
+    recommended?: boolean;
+    gaps?: boolean;
     pinned?: boolean;
     hasRoles?: boolean;
     hasSignal?: boolean;
@@ -180,6 +184,9 @@ export async function searchQueue(
   // Archived and disqualified accounts are out of the default view but stay
   // fully searchable, section 9.1. An explicit filter is how you reach them.
   const disposition = opts.disposition ?? "";
+  const hotter = opts.hotter ? 1 : 0;
+  const recommended = opts.recommended ? 1 : 0;
+  const gaps = opts.gaps ? 1 : 0;
   const pinned = opts.pinned ? 1 : 0;
   const hasRoles = opts.hasRoles ? 1 : 0;
   const hasSignal = opts.hasSignal ? 1 : 0;
@@ -206,9 +213,13 @@ export async function searchQueue(
        and (${noContact} = 0 or a.top_contact is null)
        and (${contacted} = 0 or a.last_contacted_at is not null)
        and (${sw} = '' or a.sw_state = ${sw})
+       and (${hotter} = 0 or a.hot_delta is not null)
+       and (${recommended} = 0 or a.recommended_for is not null)
+       and (${gaps} = 0 or a.qualified_roles = 0 or a.heat_score is null or a.domain is null or a.top_contact is null)
        and (case when ${disposition} = '' then a.disposition not in ('Archived', 'Disqualified')
                  else a.disposition = ${disposition} end)
-     order by a.pin_active desc, a.pinned_rank asc nulls last,
+     order by case when ${hotter} = 1 then a.hot_delta end desc nulls last,
+              a.pin_active desc, a.pinned_rank asc nulls last,
               a.priority nulls last, a.final_score desc nulls last, a.company_name
      limit ${perPage} offset ${offset}
   `) as DeskRow[];
@@ -229,6 +240,9 @@ export async function searchQueue(
        and (${noContact} = 0 or a.top_contact is null)
        and (${contacted} = 0 or a.last_contacted_at is not null)
        and (${sw} = '' or a.sw_state = ${sw})
+       and (${hotter} = 0 or a.hot_delta is not null)
+       and (${recommended} = 0 or a.recommended_for is not null)
+       and (${gaps} = 0 or a.qualified_roles = 0 or a.heat_score is null or a.domain is null or a.top_contact is null)
        and (case when ${disposition} = '' then a.disposition not in ('Archived', 'Disqualified')
                  else a.disposition = ${disposition} end)
   `) as { n: number }[];
@@ -319,7 +333,16 @@ export type HeatRow = {
  * roughly a third of the log is a company that produced a signal before it was
  * scored into the TAM, and those are the most interesting rows on the board.
  */
-export async function signalHeat(orgId: string, limit = 100) {
+export async function signalHeat(
+  orgId: string,
+  opts: { days?: number; minHeat?: number; limit?: number; unlinkedOnly?: boolean } = {},
+) {
+  const days = opts.days ?? 30;
+  const minHeat = opts.minHeat ?? 0;
+  const limit = opts.limit ?? 100;
+  const unlinked = opts.unlinkedOnly ? 1 : 0;
+  // Companies he has archived or disqualified do not produce news for this
+  // desk. Their signals stay stored; they stop being shown.
   return (await sql`
     select s.id, s.company_name, s.account_id, a.record_id as account_record_id,
            s.signal_date, s.what_happened, s.the_number, s.hq, s.best_contact,
@@ -327,12 +350,15 @@ export async function signalHeat(orgId: string, limit = 100) {
            s.access, s.freshness, s.heat_score, s.tam_final_score,
            s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources,
            s.source::text as source, s.category, s.amount_usd, s.person_name,
-           s.person_title, s.confidence, a.work_band
+           s.person_title, s.confidence, a.effective_band as work_band
       from heat_signals s
-      left join tam_accounts a on a.id = s.account_id
+      left join account_desk a on a.id = s.account_id
      where s.org_id = ${orgId}
-     order by (s.signal_date > current_date), s.signal_date desc nulls last,
-              s.heat_score desc nulls last
+       and s.signal_date between current_date - ${days}::int and current_date
+       and coalesce(s.heat_score, 0) >= ${minHeat}
+       and (a.id is null or a.disposition not in ('Disqualified', 'Archived'))
+       and (${unlinked} = 0 or s.account_id is null)
+     order by s.heat_score desc nulls last, s.signal_date desc nulls last
      limit ${limit}
   `) as HeatRow[];
 }
@@ -350,16 +376,22 @@ export async function signalsForAccount(orgId: string, accountId: string) {
   `) as HeatRow[];
 }
 
-export async function heatCounts(orgId: string) {
+export async function heatCounts(orgId: string, days = 30, minHeat = 0) {
+  // Every number here is the size of a list the reader can open, filtered
+  // exactly the same way. hotter_than_tam counts companies, not signals,
+  // because the list it opens is a list of companies.
   const rows = (await sql`
-    select count(*)::int                                       as total,
-           count(*) filter (where account_id is null)::int      as unlinked,
-           count(*) filter (where heat_vs_tam > 0)::int         as hotter_than_tam,
-           max(heat_score)::int                                 as top_heat,
-           max(last_scored)                                     as last_scored
-      from heat_signals
-     where org_id = ${orgId}
-  `) as { total: number; unlinked: number; hotter_than_tam: number; top_heat: number | null; last_scored: string | null }[];
+    select count(*)::int as total,
+           count(*) filter (where s.account_id is null)::int as unlinked,
+           count(distinct s.account_id) filter (where s.heat_vs_tam > 0)::int as hotter_than_tam,
+           count(*) filter (where coalesce(s.heat_score, 0) < ${minHeat})::int as weak,
+           max(s.last_scored) as last_scored
+      from heat_signals s
+      left join account_desk a on a.id = s.account_id
+     where s.org_id = ${orgId}
+       and s.signal_date between current_date - ${days}::int and current_date
+       and (a.id is null or a.disposition not in ('Disqualified', 'Archived'))
+  `) as { total: number; unlinked: number; hotter_than_tam: number; weak: number; last_scored: string | null }[];
   return rows[0];
 }
 
@@ -546,6 +578,8 @@ export type RoleRow = {
   first_seen: string | null;
   salary_text: string | null;
   relevance: number | null;
+  closed_at?: string | null;
+  url_ok?: boolean | null;
 };
 
 /**
@@ -557,10 +591,10 @@ export type RoleRow = {
 export async function rolesForAccount(orgId: string, accountId: string) {
   return (await sql`
     select r.id, r.title, r.url, r.location, r.seniority, r.posted_at, r.qualified,
-           r.first_seen, r.salary_text, r.relevance
+           r.first_seen, r.salary_text, r.relevance, r.closed_at, r.url_ok
       from account_roles r
      where r.org_id = ${orgId} and r.account_id = ${accountId}
-     order by r.qualified desc, r.relevance desc nulls last,
+     order by (r.closed_at is not null), r.qualified desc, r.relevance desc nulls last,
               coalesce(r.first_seen, r.posted_at) desc nulls last
      limit 40
   `) as RoleRow[];
@@ -618,104 +652,131 @@ export async function briefForAccount(orgId: string, accountId: string) {
  * One statement, several subqueries, each returning its slice as json. The
  * work is identical; what disappears is six network waits.
  */
-export async function commandBoard(orgId: string, period: Period) {
-  const days = PERIOD_DAYS[period];
+export async function commandBoard(orgId: string, floor: number) {
+  // Everything Today needs, in one statement. Four questions, four lists,
+  // each capped at what a person can act on in a morning, and every count a
+  // list he can open. What does not fit is one click away, never on screen.
   const rows = (await sql`
     select
       (select coalesce(json_agg(x), '[]'::json) from (
-        select a.id, a.record_id, a.priority, a.final_score, a.company_name,
-               a.linkedin_url, a.next_week, a.sales_nav_url, a.battlecard_url,
-               a.recommended_motion, a.prep_status, a.next_action,
-               a.heyreach_stage, a.heyreach_date, a.heyreach_uploaded,
-               a.sourcewhale_stage
-          from tam_accounts a
-         where a.org_id = ${orgId} and a.next_week
-         order by a.priority nulls last, a.final_score desc nulls last
-      ) x) as next_week,
-
-      (select coalesce(json_agg(x), '[]'::json) from (
         select * from account_desk
-         where org_id = ${orgId} and effective_band = 'now'
-           and prep_status <> 'HOLD'
-         order by pin_active desc, pinned_rank asc nulls last,
-                  work_score desc nulls last, company_name
+         where org_id = ${orgId} and effective_band = 'now' and disposition = 'Active'
+         order by pinned_rank asc nulls last, work_score desc nulls last, company_name
       ) x) as now,
 
       (select coalesce(json_agg(x), '[]'::json) from (
         select * from account_desk
-         where org_id = ${orgId} and effective_band = 'next'
-           and prep_status <> 'HOLD'
-         order by pin_active desc, pinned_rank asc nulls last,
-                  work_score desc nulls last, company_name
+         where org_id = ${orgId} and effective_band = 'next' and disposition = 'Active'
+         order by pinned_rank asc nulls last, work_score desc nulls last, company_name
       ) x) as next,
 
       (select coalesce(json_agg(x), '[]'::json) from (
-        select s.id, s.company_name, s.account_id, s.what_happened, s.heat_score,
-               s.heat_vs_tam, s.recommended_move, s.coverage, s.signal_date,
-               s.category, s.source::text as source, a.work_band
-          from heat_signals s
-          left join tam_accounts a on a.id = s.account_id
-         where s.org_id = ${orgId} and s.signal_date <= current_date
-         order by s.signal_date desc nulls last, s.heat_score desc nulls last
+        select * from account_desk
+         where org_id = ${orgId} and recommended_for is not null
+         order by work_score desc nulls last, company_name
          limit 8
-      ) x) as heat,
+      ) x) as recommended,
 
       (select coalesce(json_agg(x), '[]'::json) from (
-        select r.id, r.account_id, a.company_name, a.work_band, r.title, r.url,
-               r.location, r.salary_text, r.seniority, r.first_seen, r.relevance,
-               0 as open_at_company, null::text as why_now
+        select s.id, s.company_name, s.account_id, s.what_happened, s.heat_score,
+               s.heat_vs_tam, s.signal_date, s.category, s.amount_usd, s.person_name,
+               s.person_title, s.confidence, s.primary_source, s.detail,
+               s.source::text as source, a.effective_band as work_band
+          from heat_signals s
+          left join account_desk a on a.id = s.account_id
+         where s.org_id = ${orgId}
+           and s.signal_date between current_date - ${DESK.SIGNAL_FRESH_DAYS}::int and current_date
+           and coalesce(s.heat_score, 0) >= ${DESK.SIGNAL_MIN_HEAT}
+           and (a.id is null or a.disposition = 'Active')
+         order by s.heat_score desc nulls last, s.signal_date desc
+         limit ${DESK.SIGNALS_ON_TODAY}
+      ) x) as signals,
+
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select r.id, r.account_id, a.company_name, a.effective_band as work_band,
+               r.title, r.url, r.location, r.salary_text, r.seniority, r.occupation,
+               r.first_seen, r.relevance, a.qualified_roles as open_at_company,
+               a.signal_text as why_now
           from account_roles r
-          join tam_accounts a on a.id = r.account_id
-         where r.org_id = ${orgId} and r.qualified
-           and r.first_seen >= current_date - 1
+          join account_desk a on a.id = r.account_id
+         where r.org_id = ${orgId} and r.qualified and r.closed_at is null
+           and r.url_ok is distinct from false
+           and a.disposition = 'Active'
+           and r.first_seen >= current_date - ${DESK.ROLE_FRESH_DAYS}::int
+           and coalesce(r.relevance, 0) >= ${floor}
+           and not exists (select 1 from desk_marks m
+                            where m.account_id = r.account_id and m.kind = 'role'
+                              and m.ref = r.id::text and m.done)
          order by r.relevance desc nulls last, r.first_seen desc
-         limit 10
-      ) x) as roles_today,
+         limit ${DESK.LIVE_LEADS_PER_DAY}
+      ) x) as leads,
 
       (select row_to_json(x) from (
-        select count(*) filter (where first_seen >= current_date - 1)::int as today,
-               count(*) filter (where first_seen >= current_date - 7)::int as week,
-               max(fetched_at) as pulled_at
-          from account_roles where org_id = ${orgId} and qualified
-      ) x) as role_counts,
-
-      (select row_to_json(x) from (
-        select count(*)::int as total,
-               count(*) filter (where next_week)::int as next_week,
-               count(*) filter (where prep_status = 'READY FOR QC')::int as ready_for_qc,
-               count(*) filter (where priority = 'unscored')::int as unscored
-          from tam_accounts where org_id = ${orgId}
+        select
+          (select count(*)::int from account_desk
+            where org_id = ${orgId} and disposition in ('Hold', 'Nurture')) as on_hold,
+          (select count(*)::int from account_desk
+            where org_id = ${orgId} and effective_band in ('now', 'next')
+              and disposition = 'Active' and pin_active) as on_list,
+          (select count(*)::int from account_desk
+            where org_id = ${orgId} and effective_band in ('now', 'next') and disposition = 'Active'
+              and (qualified_roles = 0 or heat_score is null or domain is null or top_contact is null)) as with_gaps,
+          (select count(*)::int from heat_signals s
+            where s.org_id = ${orgId}
+              and s.signal_date between current_date - ${DESK.SIGNAL_FRESH_DAYS}::int and current_date
+              and coalesce(s.heat_score, 0) >= ${DESK.SIGNAL_MIN_HEAT}) as strong_signals,
+          (select count(*)::int from account_roles r join account_desk a on a.id = r.account_id
+            where r.org_id = ${orgId} and r.qualified and r.closed_at is null
+              and a.disposition = 'Active'
+              and r.first_seen >= current_date - ${DESK.ROLE_FRESH_DAYS}::int
+              and coalesce(r.relevance, 0) >= ${floor}) as top_roles_week,
+          (select max(fetched_at) from account_roles where org_id = ${orgId}) as roles_pulled_at,
+          (select max(last_scored) from heat_signals where org_id = ${orgId}) as signals_pulled_at,
+          (select max(banded_at) from tam_accounts where org_id = ${orgId}) as ranked_at
       ) x) as counts,
 
-      (select row_to_json(x) from (
-        select count(*)::int as total,
-               count(*) filter (where account_id is null)::int as unlinked,
-               count(*) filter (where heat_vs_tam > 0)::int as hotter_than_tam,
-               max(heat_score)::int as top_heat
-          from heat_signals where org_id = ${orgId}
-      ) x) as heat_stats,
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select split_part(r.location, ',', 1) as city, count(*)::int as n
+          from account_roles r join account_desk a on a.id = r.account_id
+         where r.org_id = ${orgId} and r.qualified and r.closed_at is null
+           and a.disposition = 'Active' and r.location is not null
+           and coalesce(r.relevance, 0) >= ${floor}
+         group by 1 order by 2 desc limit 8
+      ) x) as by_city,
 
-      (select row_to_json(x) from (
-        select sum(bd_calls)::int as bd_calls,
-               sum(client_conversations)::int as client_conversations,
-               sum(discoveries)::int as discoveries,
-               sum(qualified_opps)::int as qualified_opps,
-               sum(searches_won)::int as searches_won,
-               sum(pipeline_usd)::bigint as pipeline_usd,
-               count(*)::int as weeks
-          from performance_weeks
-         where org_id = ${orgId} and week_ending > (current_date - ${days}::int)
-      ) x) as perf
+      (select coalesce(json_agg(x), '[]'::json) from (
+        select case
+                 when r.title ~* 'gnc|guidance|navigation|flight software|avionics' then 'GNC and flight software'
+                 when r.title ~* 'rf|radar|electronic warfare|antenna' then 'RF and radar'
+                 when r.title ~* 'propulsion|structures|mechanical' then 'Mechanical and propulsion'
+                 when r.title ~* 'software|embedded|firmware|autonomy' then 'Software and autonomy'
+                 when r.title ~* 'business development|capture|growth|sales' then 'Business development'
+                 when r.title ~* 'program|project' then 'Programs'
+                 when r.title ~* 'manufactur|production|quality' then 'Manufacturing'
+                 when r.title ~* 'electrical|systems engineer' then 'Electrical and systems'
+                 else 'Other engineering'
+               end as discipline,
+               count(*)::int as n,
+               round(avg(current_date - r.first_seen))::int as avg_age
+          from account_roles r join account_desk a on a.id = r.account_id
+         where r.org_id = ${orgId} and r.qualified and r.closed_at is null
+           and a.disposition = 'Active'
+           and coalesce(r.relevance, 0) >= ${floor}
+         group by 1 order by 2 desc limit 8
+      ) x) as by_discipline
   `) as {
-    next_week: QueueRow[];
     now: DeskRow[];
     next: DeskRow[];
-    heat: HeatRow[];
-    roles_today: FreshRole[];
-    role_counts: { today: number; week: number; pulled_at: string | null };
-    counts: Record<string, number>;
-    heat_stats: Record<string, number>;
-    perf: Record<string, number | null>;
+    recommended: DeskRow[];
+    signals: HeatRow[];
+    leads: FreshRole[];
+    counts: {
+      on_hold: number; on_list: number; with_gaps: number; strong_signals: number;
+      top_roles_week: number; roles_pulled_at: string | null;
+      signals_pulled_at: string | null; ranked_at: string | null;
+    };
+    by_city: { city: string; n: number }[];
+    by_discipline: { discipline: string; n: number; avg_age: number }[];
   }[];
   return rows[0];
 }
@@ -767,7 +828,28 @@ export type DeskRow = QueueRow & {
   sw_last_activity: string | null;
   lanes_touched: number;
   lanes_engaged: number;
+  pinned_by: string | null;
+  recommended_for: string | null;
+  hot_delta: number | null;
+  hot_signal: string | null;
+  enrich_requested_at: string | null;
 };
+
+/**
+ * The relevance a role needs to be in the top share of the corpus.
+ *
+ * Computed, never stored: it moves as the corpus does, and the point of a
+ * percentile is that "top 10%" stays true when four thousand roles become
+ * six thousand.
+ */
+export async function roleFloor(orgId: string, share = 0.1) {
+  const rows = (await sql`
+    select coalesce(percentile_cont(${1 - share}) within group (order by relevance), 0)::int as floor
+      from account_roles
+     where org_id = ${orgId} and qualified and closed_at is null and relevance is not null
+  `) as { floor: number }[];
+  return rows[0]?.floor ?? 0;
+}
 
 /** The six organizational levels for one account, section 14. */
 export async function touchesForAccount(orgId: string, accountId: string) {
@@ -867,6 +949,7 @@ export async function marketMap(orgId: string, band: string, limit = 25, offset 
   return (await sql`
     select * from account_desk
      where org_id = ${orgId} and effective_band = ${band}
+       and disposition = 'Active'
      order by pin_active desc, pinned_rank asc nulls last,
               work_score desc nulls last, company_name
      limit ${limit} offset ${offset}
@@ -955,6 +1038,7 @@ export type FreshRole = {
   seniority: string | null;
   first_seen: string | null;
   relevance: number | null;
+  occupation?: string | null;
   open_at_company: number;
   why_now: string | null;
 };
@@ -971,21 +1055,28 @@ export type FreshRole = {
  * new role plus the round that paid for it is a call and a new role alone is a
  * job board.
  */
-export async function freshRoles(orgId: string, days = 7, limit = 60, sort: "new" | "relevant" = "new") {
+export async function freshRoles(
+  orgId: string,
+  days = 7,
+  limit = 60,
+  sort: "new" | "relevant" = "new",
+  floor = 0,
+) {
   const byRelevance = sort === "relevant";
   return (await sql`
-    select r.id, r.account_id, a.company_name, a.work_band,
+    select r.id, r.account_id, a.company_name, a.effective_band as work_band,
            r.title, r.url, r.location, r.salary_text, r.seniority,
-           r.first_seen, r.relevance,
-           (select count(*)::int from account_roles x
-             where x.account_id = a.id and x.qualified) as open_at_company,
+           r.first_seen, r.relevance, r.occupation,
+           a.qualified_roles as open_at_company,
            (select h.what_happened from heat_signals h
              where h.account_id = a.id
              order by h.signal_date desc nulls last limit 1) as why_now
       from account_roles r
-      join tam_accounts a on a.id = r.account_id
+      join account_desk a on a.id = r.account_id
      where r.org_id = ${orgId}
-       and r.qualified
+       and r.qualified and r.closed_at is null and r.url_ok is distinct from false
+       and a.disposition = 'Active'
+       and coalesce(r.relevance, 0) >= ${floor}
        and r.first_seen >= current_date - ${days}::int
      order by case when ${byRelevance} then r.relevance end desc nulls last,
               r.first_seen desc nulls last, a.company_name, r.title
@@ -994,17 +1085,22 @@ export async function freshRoles(orgId: string, days = 7, limit = 60, sort: "new
 }
 
 /** Counts for the fresh roles header. */
-export async function freshRoleCounts(orgId: string) {
+export async function freshRoleCounts(orgId: string, floor = 0) {
   const rows = (await sql`
     select
-      count(*) filter (where first_seen >= current_date)::int        as today,
-      count(*) filter (where first_seen >= current_date - 1)::int    as day,
-      count(*) filter (where first_seen >= current_date - 7)::int    as week,
-      count(distinct account_id) filter (where first_seen >= current_date - 7)::int as companies,
-      count(*)::int                                                  as total,
-      max(fetched_at)                                                as pulled_at
-    from account_roles
-    where org_id = ${orgId} and qualified
-  `) as { today: number; day: number; week: number; companies: number; total: number; pulled_at: string | null }[];
+      count(*) filter (where r.first_seen >= current_date - 1 and r.relevance >= ${floor})::int as today,
+      count(*) filter (where r.first_seen >= current_date - 7 and r.relevance >= ${floor})::int as week,
+      count(*) filter (where r.first_seen >= current_date - 30 and r.relevance >= ${floor})::int as month,
+      count(distinct r.account_id) filter (where r.first_seen >= current_date - 7 and r.relevance >= ${floor})::int as companies,
+      count(*) filter (where r.relevance >= ${floor})::int as top,
+      count(*)::int as total,
+      (select count(*)::int from account_roles c
+        where c.org_id = ${orgId} and c.qualified and c.closed_at is not null) as closed,
+      max(r.fetched_at) as pulled_at
+    from account_roles r
+    join account_desk a on a.id = r.account_id
+    where r.org_id = ${orgId} and r.qualified and r.closed_at is null
+      and r.url_ok is distinct from false and a.disposition = 'Active'
+  `) as { today: number; week: number; month: number; companies: number; top: number; total: number; closed: number; pulled_at: string | null }[];
   return rows[0];
 }

@@ -2,11 +2,12 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { getOrgId, searchQueue, deskCounts } from "@/lib/server/queries/desk";
 import {
-  Button, Card, EmptyState, PageHeader, Th,
+  Button, Card, EmptyState, PageHeader,
 } from "@/components/ui/primitives";
 import { PriorityChip, ScoreCell } from "@/components/ui/desk";
 import { SourceWhaleChip } from "@/components/ui/sourcewhale";
 import { Row } from "@/components/ui/clickable";
+import { Hint } from "@/components/ui/hint";
 import { InlineSelect } from "@/components/ui/inline";
 import { PinBadge } from "@/components/ui/pin-badge";
 import type { DeskRow } from "@/lib/server/queries/desk";
@@ -64,7 +65,7 @@ export default async function QueuePage({
     q?: string; priority?: string; prep?: string; motion?: string;
     next?: string; page?: string; band?: string; pinned?: string;
     roles?: string; signal?: string; nocontact?: string; contacted?: string;
-    sw?: string; disposition?: string;
+    sw?: string; disposition?: string; hotter?: string; recommended?: string; gaps?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -93,12 +94,15 @@ export default async function QueuePage({
   const contacted = params.contacted === "1";
   const sw = params.sw ?? "";
   const disposition = params.disposition ?? "";
+  const hotter = params.hotter === "1";
+  const recommended = params.recommended === "1";
+  const gaps = params.gaps === "1";
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
   const [{ rows, total, perPage }, counts] = await Promise.all([
     searchQueue(orgId, {
       q, priority, prep, motion, nextWeek: onlyNext, band, pinned, sw, disposition,
-      hasRoles, hasSignal, noContact, contacted, page, perPage: 50,
+      hotter, recommended, gaps, hasRoles, hasSignal, noContact, contacted, page, perPage: 50,
     }),
     deskCounts(orgId),
   ]);
@@ -108,7 +112,7 @@ export default async function QueuePage({
   const last = Math.min(page * perPage, total);
   const filtered = Boolean(
     q || priority || prep || motion || onlyNext || band || pinned ||
-    hasRoles || hasSignal || noContact || contacted || sw || disposition,
+    hasRoles || hasSignal || noContact || contacted || sw || disposition || hotter || recommended || gaps,
   );
   // What the filter is called, so a filtered view says why it is filtered.
   const filterName =
@@ -122,13 +126,17 @@ export default async function QueuePage({
     : contacted ? "Messaged"
     : sw ? `SourceWhale: ${sw}`
     : disposition ? disposition
+    : hotter ? "More urgent than their rank"
+    : recommended ? "Recommended for your list"
+    : gaps ? "Missing data"
     : null;
 
   const href = (next: Record<string, string | number | undefined>) => {
     const sp = new URLSearchParams();
     const merged = {
       q, priority, prep, motion, next: onlyNext ? "1" : "", band,
-      pinned: pinned ? "1" : "", sw, disposition, roles: hasRoles ? "1" : "",
+      pinned: pinned ? "1" : "", sw, disposition, hotter: hotter ? "1" : "",
+      recommended: recommended ? "1" : "", gaps: gaps ? "1" : "", roles: hasRoles ? "1" : "",
       signal: hasSignal ? "1" : "", nocontact: noContact ? "1" : "",
       contacted: contacted ? "1" : "", page, ...next,
     } as Record<string, string | number | undefined>;
@@ -214,14 +222,14 @@ export default async function QueuePage({
             <table className="w-full min-w-[1080px] border-collapse">
               <thead>
                 <tr className="bg-[var(--alac-ground)]">
-                  <Th align="right">Fit</Th>
-                  <Th>Company</Th>
-                  <Th>Priority</Th>
-                  <Th>Band</Th>
-                  <Th>This week</Th>
-                  <Th>Approach</Th>
-                  <Th>Progress</Th>
-                  <Th>SourceWhale</Th>
+                  <th className="px-4 py-2 text-right"><Hint label="Fit" text="The fit score from the master TAM, out of 100. Set upstream, never changed here." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Company" text="Opens the company page: next move, roles, people, notes and every control." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Priority" text="Priority 1, 2 or 3 from the master TAM." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Your list" text="Top 25, Next 25 or Bench. You decide; the ranking only recommends. Change it on the company page." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="This week" text="Flagged for this week's Friday list. Saves as soon as you change it." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Approach" text="How you plan to open: new business, live lead, lead with a candidate. Saves on change." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Research" text="How far the research got. Hold here suppresses next moves. Saves on change." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="SourceWhale" text="Added is not active. Active means at least one contact is enrolled in a live campaign." /></th>
                 </tr>
               </thead>
               <tbody>
@@ -241,6 +249,11 @@ export default async function QueuePage({
                     <td className="px-4 py-2.5 align-top"><PriorityChip priority={a.priority} /></td>
                     <td className="px-4 py-2.5 align-top">
                       <PinBadge row={a} />
+                      {hotter && a.hot_delta != null ? (
+                        <div className="mt-1 max-w-[260px] text-[12px] leading-snug text-[var(--alac-cyan)]" title={a.hot_signal ?? undefined}>
+                          Urgency {a.hot_delta} above fit: {a.hot_signal}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       <InlineSelect

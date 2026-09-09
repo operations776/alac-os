@@ -10,7 +10,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 
 ## The model, in one paragraph
 
-`tam_accounts` is the account queue, keyed on Record ID. `heat_signals` is the signal log, six components out of 100 plus the delta against the account's TAM score. `performance_weeks` is one row per SourceWhale week, carrying the counters and the Thursday choke point analysis. Work now and Up next are the `work_band` written by `map-market` on every refresh, from fit, what changed, who you know and what went up this week. The `account_desk` view carries every input the next move needs, and `nextMove()` in `src/lib/scoring/next-move.mjs` turns them into one instruction per company, derived on read. The performance snapshot is a rollup. `people` is the warm network, matched to accounts by normalized company name and independent of the TAM.
+`tam_accounts` is the account queue, keyed on Record ID. `heat_signals` is the signal log, six components out of 100 plus the delta against the account's TAM score. `performance_weeks` is one row per SourceWhale week, carrying the counters and the Thursday choke point analysis. **The list is the owner's.** Top 25 and Next 25 are `pinned_band`, set by Adrian; the ranking (`work_band`, written by `map-market` every refresh) only recommends, and `account_desk.recommended_for` is the gap between the two. `effective_band` applies the cascade (`CASCADE` in `src/config/desk.mjs`): Hold and Nurture leave the working list and keep their place, Disqualified and Archived leave every list. Every board query filters `disposition = 'Active'`. `nextMove()` in `src/lib/scoring/next-move.mjs` turns the view's inputs into one instruction per company, derived on read, in his Kanban's vocabulary. Noise limits live in `DESK`: five signals at heat 50+, five live leads a day from the top tenth of roles by `relevance`, everything else one click away. The performance snapshot is a rollup. `people` is the warm network, matched to accounts by normalized company name and independent of the TAM.
 
 ## Workflow
 
@@ -50,6 +50,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 - **Writing a payload parser from the docs alone.** PredictLeads returns `posted_at` as null on every job and dates events by `effective_date` with `found_at` as the fallback. The client was written against live responses, not the examples. Read the live payload before trusting an example.
 - **A regex through a shell heredoc.** `\b` became a literal backspace and `qualifyRole` rejected all 4,122 titles without throwing. Anything that filters silently gets a unit test (`test-predictleads.mjs`), and regexes are written with the Write tool, never through bash.
 - **A leading word boundary in an alternation.** `/\bchief|cto|.../` anchors only the first branch, so `cto` matched inside `director` and every director was classified an executive. Every alternative carries its own boundaries: `/\b(chief|cto|...)\b/`. Caught by `test-match.mjs`, never by the screen.
+- **A count that opens a different list than it counts.** "More urgent than rank" once linked to every company with any signal. Every Stat href filters exactly what the number counted, and `heatCounts` and `signalHeat` take the same window and floor so they cannot drift.
 - **Ranking before pulling.** The bands are computed from signal and role counts, so `map-market` after `signals` and `jobs`, never before. `npm run refresh` fixes the order.
 
 ## Commands
@@ -65,7 +66,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 | `npm run import:desk` | Load the Desk Command Center workbook from `ALAC_DATA_DIR`: account queue, signal log, performance. Mirrors the workbook, so it prunes what it does not see |
 | `npm run refresh` | Signals, then roles, then re-rank the bands. What the Monday and Thursday Action runs |
 | `npm run signals -- --apply` | Pull and score PredictLeads events for Work now and Up next. Plan only without `--apply` |
-| `npm run jobs -- --apply` | Pull open roles for the same 50, qualify, score relevance. `--today` lists what appeared in 24 hours |
+| `npm run jobs -- --apply` | Pull open roles for the list, qualify, score relevance, close postings not seen for 7 days, check the top decile's URLs. `--today` lists what appeared in 24 hours |
 | `npm run map` | Re-rank the market into Work now, Up next, Backlog. Free |
 | `npm run rescore` | Recompute role relevance for every stored role. Free, no network |
 | `npm run test:unit` | xlsx, heat, outreach, PredictLeads and next-move checks. Fast, no database, no network |

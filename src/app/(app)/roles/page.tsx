@@ -1,19 +1,21 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { getOrgId, freshRoles, freshRoleCounts } from "@/lib/server/queries/desk";
+import { getOrgId, freshRoles, freshRoleCounts, roleFloor } from "@/lib/server/queries/desk";
+import { DESK } from "@/config/desk.mjs";
 import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
 import { Row } from "@/components/ui/clickable";
 import { WhyRole } from "@/components/ui/explain";
+import { Hint } from "@/components/ui/hint";
 
 export const dynamic = "force-dynamic";
 
-// What went up recently, and what to call about.
+// OPEN ROLES. His number one, in his words: the active requisitions, live
+// today, this week or this month, graded by how hard the job is to fill and
+// how long it has been on the market.
 //
-// The one screen that is time sensitive by nature. A role posted this morning
-// is a reason to contact somebody this morning: nobody else has called yet, and
-// the hiring manager still has the requisition in front of them. The same role
-// in three weeks is one of forty and no longer a reason for anything, so this
-// is ordered by when it appeared and nothing else.
+// The whole corpus is processed. The screen shows the top tenth by that
+// grade, because five live leads a day come from the top of the list, not
+// from four thousand rows. Everything else is one toggle away.
 
 const RANGES = [
   { key: "today", days: 1, label: "Today" },
@@ -32,151 +34,145 @@ function ago(d: string | null): string {
 export default async function RolesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; sort?: string }>;
+  searchParams: Promise<{ range?: string; all?: string; q?: string }>;
 }) {
   const params = await searchParams;
   const orgId = await getOrgId();
   if (!orgId) {
     return (
       <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
-        <Card>
-          <EmptyState title="No organization" body="Seed an org first." />
-        </Card>
+        <Card><EmptyState title="No organization" body="Seed an org first." /></Card>
       </div>
     );
   }
 
   const range = RANGES.find((r) => r.key === params.range) ?? RANGES[1];
-  const sort = params.sort === "relevant" ? "relevant" : "new";
-  const qs = (r: string, s: string) => {
+  const showAll = params.all === "1";
+  const q = (params.q ?? "").trim().toLowerCase();
+  const floor = await roleFloor(orgId, DESK.ROLE_TOP_SHARE);
+
+  const href = (r: string, all: boolean) => {
     const p = new URLSearchParams();
     if (r !== "week") p.set("range", r);
-    if (s !== "new") p.set("sort", s);
-    const q = p.toString();
-    return q ? `/roles?${q}` : "/roles";
+    if (all) p.set("all", "1");
+    if (q) p.set("q", q);
+    const s = p.toString();
+    return s ? `/roles?${s}` : "/roles";
   };
-  const [roles, counts] = await Promise.all([
-    freshRoles(orgId, range.days, 80, sort),
-    freshRoleCounts(orgId),
+
+  const [allRoles, counts] = await Promise.all([
+    freshRoles(orgId, range.days, showAll ? 400 : 120, "relevant", showAll ? 0 : floor),
+    freshRoleCounts(orgId, floor),
   ]);
+  // The market bars pass a city or a discipline word; it narrows in memory
+  // because the list is already small.
+  const roles = q
+    ? allRoles.filter((r) => `${r.title} ${r.location ?? ""} ${r.occupation ?? ""}`.toLowerCase().includes(q))
+    : allRoles;
 
   return (
     <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
       <PageHeader
         eyebrow="Open roles"
         title="What to call about"
-        lede="Roles that went up recently at the companies you are working. Newest first by default; switch to most relevant to rank by seniority, discipline and whether a salary is published."
+        lede={`Live requisitions at the companies on your list, graded by how hard they are to fill and how long they have been open. Showing the top tenth, score ${floor} and above. Dead postings are removed on every pull.`}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Posted today" value={counts.today ?? 0} hint="nobody has called yet" href="/roles?range=today" />
-        <Stat label="This week" value={counts.week ?? 0} href="/roles" />
-        <Stat label="Companies hiring" value={counts.companies ?? 0} hint="this week" href="/queue?roles=1" />
-        <Stat label="Relevant roles open" value={counts.total ?? 0} hint={`pulled ${formatDate(counts.pulled_at ?? null) ?? "never"}`} />
+        <Stat label="Top roles today" value={counts.today} hint="posted since yesterday" href={href("today", false)} />
+        <Stat label="This week" value={counts.week} href={href("week", false)} />
+        <Stat label="This month" value={counts.month} href={href("month", false)} />
+        <Stat
+          label="Processed"
+          value={counts.total.toLocaleString()}
+          hint={`${counts.top} clear the bar. ${counts.closed} closed postings removed`}
+          href={href(range.key, true)}
+        />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {RANGES.map((r) => (
           <Link
             key={r.key}
-            href={qs(r.key, sort)}
+            href={href(r.key, showAll)}
             aria-current={r.key === range.key ? "true" : undefined}
             className={`chip transition-colors ${
-              r.key === range.key
-                ? "bg-[var(--alac-accent)] text-[var(--alac-ground)]"
-                : "hover:bg-[var(--alac-surface-2)]"
+              r.key === range.key ? "bg-[var(--alac-accent)] text-[var(--alac-ground)]" : "hover:bg-[var(--alac-surface-2)]"
             }`}
           >
             {r.label}
           </Link>
         ))}
+        {q ? (
+          <span className="chip">
+            {q} <Link href={href(range.key, showAll)} className="ml-1 link">clear</Link>
+          </span>
+        ) : null}
         <span className="ml-auto flex items-center gap-2">
-          {(["new", "relevant"] as const).map((s) => (
-            <Link
-              key={s}
-              href={qs(range.key, s)}
-              aria-current={s === sort ? "true" : undefined}
-              className={`chip transition-colors ${s === sort ? "bg-[var(--alac-surface-2)] text-[var(--alac-text)]" : "hover:bg-[var(--alac-surface-2)]"}`}
-            >
-              {s === "new" ? "Newest" : "Most relevant"}
-            </Link>
-          ))}
+          <Link
+            href={href(range.key, !showAll)}
+            className={`chip transition-colors ${showAll ? "bg-[var(--alac-surface-2)] text-[var(--alac-text)]" : "hover:bg-[var(--alac-surface-2)]"}`}
+            title={showAll ? "Back to the top tenth" : "Show every live role in this window, not just the top tenth"}
+          >
+            {showAll ? "Showing everything" : "Show everything"}
+          </Link>
         </span>
       </div>
 
       {roles.length === 0 ? (
         <Card>
           <EmptyState
-            title="Nothing new in this window"
-            body="No relevant roles have appeared at the companies you are working. Widen the window, or pull again."
+            title={showAll ? "Nothing live in this window" : "Nothing cleared the bar in this window"}
+            body={showAll ? "No live role at a company on your list was posted in this window." : "Widen the window, or show everything to see roles below the top tenth."}
           />
         </Card>
       ) : (
-        <ol className="rise-list flex flex-col gap-3">
-          {roles.map((r) => (
-            <Row as="li" key={r.id} href={`/queue/${r.account_id}`}>
-              <Card interactive className="px-5 py-4">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-                  <Link
-                    href={`/queue/${r.account_id}`}
-                    className="link display text-[16px] font-medium"
-                  >
-                    {r.company_name}
-                  </Link>
-                  {r.work_band === "now" ? (
-                    <span className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent)]">
-                      Work now
-                    </span>
-                  ) : r.work_band === "next" ? (
-                    <span className="chip">Up next</span>
-                  ) : null}
-                  <span className="ml-auto flex shrink-0 items-baseline gap-3">
-                    <span className="readout text-[12.5px] text-[var(--alac-text-3)]">
-                      {ago(r.first_seen)}
-                    </span>
-                    {r.relevance != null ? (
-                      <span className="readout text-[12.5px] text-[var(--alac-accent)]">{r.relevance}</span>
-                    ) : null}
-                    <WhyRole role={r} />
-                  </span>
-                </div>
-
-                <p className="mt-1.5 text-[15px] font-medium">{r.title}</p>
-
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-[var(--alac-text-3)]">
-                  {r.location ? <span>{r.location}</span> : null}
-                  {/* Only some employers publish a band. Where they do, a
-                      candidate conversation can start without a discovery call
-                      about money, which is worth showing. */}
-                  {r.salary_text ? (
-                    <span className="text-[var(--alac-text-2)]">{r.salary_text}</span>
-                  ) : null}
-                  <span>{r.open_at_company} relevant roles open here</span>
-                  {r.url ? (
-                    <a
-                      href={r.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="link inline-flex items-center gap-1.5"
-                    >
-                      Open the posting <ExternalLink size={16} strokeWidth={1.5} />
-                    </a>
-                  ) : null}
-                </div>
-
-                {/* The reason to call, not just the role. A new opening plus the
-                    round that paid for it is a conversation; the opening alone
-                    is a job board. */}
-                {r.why_now ? (
-                  <p className="mt-2.5 border-t border-[var(--alac-line)] pt-2.5 text-[13px] leading-relaxed text-[var(--alac-text-2)]">
-                    Why now: {r.why_now}
-                  </p>
-                ) : null}
-              </Card>
-            </Row>
-          ))}
-        </ol>
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] border-collapse">
+              <thead>
+                <tr className="bg-[var(--alac-ground)]">
+                  <th className="px-4 py-2 text-right"><Hint label="Score" text="Commercial score out of 100: how hard to fill, times how long open, plus discipline fit and published salary. Why opens the arithmetic." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Company" text="Only companies on your list. Not in your ICP? Open the company and mark it Disqualified; its roles leave every screen." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Role" text="The title as the employer posted it. Opens the live posting." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Open" text="Days since the posting first appeared. Longer open means their own pipeline has failed." /></th>
+                  <th className="px-4 py-2 text-left"><Hint label="Where" text="Location and published salary where the employer gives one." /></th>
+                  <th className="px-4 py-2 text-left"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {roles.map((r) => (
+                  <Row key={r.id} href={`/queue/${r.account_id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
+                    <td className="readout px-4 py-2.5 text-right align-top text-[15px] text-[var(--alac-accent)]">{r.relevance ?? "--"}</td>
+                    <td className="px-4 py-2.5 align-top">
+                      <span className="text-[13.5px] font-medium">{r.company_name}</span>
+                      {r.open_at_company > 1 ? (
+                        <div className="text-[11.5px] text-[var(--alac-text-3)]">{r.open_at_company} live here</div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2.5 align-top text-[13.5px]">
+                      {r.url ? (
+                        <a href={r.url} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1.5">
+                          {r.title} <ExternalLink size={16} strokeWidth={1.5} />
+                        </a>
+                      ) : r.title}
+                    </td>
+                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-3)]">{ago(r.first_seen)}</td>
+                    <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
+                      {[r.location, r.salary_text].filter(Boolean).join(" · ") || <span className="text-[var(--alac-text-3)]">--</span>}
+                    </td>
+                    <td className="px-4 py-2.5 align-top"><WhyRole role={r} label="Why" /></td>
+                  </Row>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
+
+      <p className="mt-4 text-[12px] text-[var(--alac-text-3)]">
+        Pulled {formatDate(counts.pulled_at) ?? "never"}. A posting the provider has not seen for {DESK.ROLE_STALE_DAYS} days, or whose page has gone, is closed and removed from every screen.
+      </p>
     </div>
   );
 }

@@ -44,7 +44,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`h-full ${display.variable} ${body.variable}`}>
+    <html lang="en" className={`h-full ${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <head>
+        {/* The saved theme, applied before first paint so a light-mode user
+            never sees a dark flash. Inline because it has to run before any
+            stylesheet is evaluated; three lines, no dependencies. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{var t=localStorage.getItem('alac-theme');if(t==='light')document.documentElement.dataset.theme='light'}catch(e){}",
+          }}
+        />
+      </head>
       {/* suppressHydrationWarning is scoped to this element and covers exactly
           one case: browser extensions such as Grammarly and password managers
           inject attributes into body before React hydrates, which React then

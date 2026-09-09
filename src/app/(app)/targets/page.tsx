@@ -4,7 +4,7 @@ import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/
 import { QuickLook } from "@/components/ui/quick-look";
 import { NextMove, LifecycleChip } from "@/components/ui/desk";
 import { WhyBand, WhyMove } from "@/components/ui/explain";
-import { DESK, ROLLOVER_RULES } from "@/config/desk.mjs";
+import { DESK, PORTFOLIO_RULES } from "@/config/desk.mjs";
 import { Row } from "@/components/ui/clickable";
 
 export const dynamic = "force-dynamic";
@@ -132,9 +132,9 @@ export default async function TargetsPage({
       ) : null}
 
       <details className="mb-4 rounded-[var(--alac-radius)] bg-[var(--alac-surface)] px-4 py-3 text-[13px]">
-        <summary className="cursor-pointer text-[var(--alac-text-2)]">How companies move between the bands</summary>
+        <summary className="cursor-pointer text-[var(--alac-text-2)]">How the list works</summary>
         <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 text-[var(--alac-text-2)]">
-          {ROLLOVER_RULES.map((r) => <li key={r}>{r}</li>)}
+          {PORTFOLIO_RULES.map((r: string) => <li key={r}>{r}</li>)}
         </ul>
       </details>
 

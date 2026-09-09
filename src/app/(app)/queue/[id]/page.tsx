@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import {
-  getOrgId, accountById, signalsForAccount, peopleForAccount, PRIORITY_LABEL,
+  getOrgId, accountById, signalsForAccount, peopleForAccount, PRIORITY_LABEL, type DeskRow,
   targetsForAccount, rolesForAccount, accountPackage, briefForAccount,
   draftsForAccount, notesForAccount, marksForAccount, movesForAccount,
   touchesForAccount,
@@ -24,6 +24,8 @@ import { PinControl } from "@/components/ui/pin";
 import { OrgMap } from "@/components/ui/org-map";
 import { WhyBand, WhyMove } from "@/components/ui/explain";
 import { setSourceWhale, setDisposition } from "./org";
+import { requestEnrichment, removeFromList } from "./portfolio";
+import { nextPullAt } from "@/config/desk.mjs";
 import { setMark } from "./tracker";
 
 export const dynamic = "force-dynamic";
@@ -289,6 +291,10 @@ export default async function QueueAccountPage({
             </div>
           </Card>
 
+          {/* What the desk knows and does not. His clarification: no
+              unexplained blank, ever. Each gap says why and when. */}
+          <DataCard account={account} />
+
           {/* Who has been approached, at which level. Section 14. */}
           <Card>
             <CardHeader
@@ -494,7 +500,14 @@ export default async function QueueAccountPage({
               </label>
               <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
                 Reason
-                <input name="reason" defaultValue={account.disposition_reason ?? ""} maxLength={300} className="field" />
+                <input name="reason" defaultValue={account.disposition_reason ?? ""} maxLength={300} list="disposition-reasons" className="field" />
+                <datalist id="disposition-reasons">
+                  <option value="Not in our ICP" />
+                  <option value="Client" />
+                  <option value="Competitor" />
+                  <option value="No hiring authority reachable" />
+                  <option value="Timing, revisit next quarter" />
+                </datalist>
               </label>
               <button type="submit" className="btn btn-secondary">Save</button>
             </form>
@@ -572,6 +585,90 @@ export default async function QueueAccountPage({
         </div>
       </div>
     </div>
+  );
+}
+
+function DataCard({ account }: { account: DeskRow }) {
+  const next = nextPullAt();
+  const nextText = next
+    ? next.toLocaleString("en-GB", { weekday: "long", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) + " UTC"
+    : "the next scheduled pull";
+  const onList = account.effective_band === "now" || account.effective_band === "next";
+  const rows: { label: string; ok: boolean; value: string }[] = [
+    {
+      label: "Fit score",
+      ok: account.final_score != null,
+      value: account.final_score != null
+        ? `${Math.round(Number(account.final_score))} from the master TAM`
+        : "Not in the master TAM, so no fit score. Added by hand; the ranking uses urgency and roles instead.",
+    },
+    {
+      label: "Website",
+      ok: Boolean(account.domain),
+      value: account.domain ?? "Unknown. Nothing can be pulled without it: no roles, no signals, no people.",
+    },
+    {
+      label: "Signals",
+      ok: account.heat_score != null,
+      value: account.heat_score != null
+        ? `Latest ${formatDate(account.signal_date)}, urgency ${account.heat_score}`
+        : onList || account.enrich_requested_at
+          ? `None found yet. Next pull ${nextText}.`
+          : "Not pulled: only companies on your list are pulled. Put it on the list, or ask for a pull below.",
+    },
+    {
+      label: "Open roles",
+      ok: account.qualified_roles > 0,
+      value: account.qualified_roles > 0
+        ? `${account.qualified_roles} live, ${account.fresh_roles} this week`
+        : onList || account.enrich_requested_at
+          ? `None live on the last pull. Next pull ${nextText}.`
+          : "Not pulled: only companies on your list are pulled.",
+    },
+    {
+      label: "People",
+      ok: Boolean(account.top_contact),
+      value: account.top_contact
+        ? `${account.warm_contacts} known, ${account.targets} sourced. Best: ${account.top_contact}`
+        : "Nobody known or sourced. Import your connections, add a person, or source contacts.",
+    },
+  ];
+  const missing = rows.filter((r) => !r.ok).length;
+  return (
+    <Card>
+      <CardHeader
+        title="What the desk knows"
+        sub={missing === 0 ? "Everything a score needs is here" : `${missing} missing, each with the reason`}
+      />
+      <dl className="flex flex-col gap-2 px-5 pb-4">
+        {rows.map((r) => (
+          <div key={r.label} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[13px]">
+            <dt className="w-[90px] shrink-0 text-[var(--alac-text-3)]">{r.label}</dt>
+            <dd className={r.ok ? "text-[var(--alac-text-2)]" : "text-[var(--alac-warn)]"}>{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex flex-wrap items-center gap-3 px-5 pb-5">
+        {account.domain && !account.enrich_requested_at ? (
+          <form action={requestEnrichment}>
+            <input type="hidden" name="accountId" value={account.id} />
+            <button type="submit" className="btn btn-secondary" title="Flags this company for the next scheduled pull, whatever list it is on. The app never calls the provider itself.">
+              Pull on the next run
+            </button>
+          </form>
+        ) : account.enrich_requested_at ? (
+          <span className="text-[12.5px] text-[var(--alac-good)]">Queued for the next pull, {nextText}.</span>
+        ) : null}
+        {onList ? (
+          <form action={removeFromList}>
+            <input type="hidden" name="accountId" value={account.id} />
+            <button type="submit" className="btn btn-ghost" title="Takes it off your Top 25 or Next 25. Nothing else changes; the history stays.">
+              Remove from my list
+            </button>
+          </form>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 

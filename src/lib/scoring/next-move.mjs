@@ -15,25 +15,37 @@
  * whether anything has actually been sent. Storing a seventh field for the
  * combination would let it drift from the six it summarises.
  */
+// The stages are his own Kanban's columns, in his words, because the desk
+// already thinks in them: Target, Researching, Pending review, Approved,
+// then SourceWhale takes over, then Archive. The disposition and the
+// SourceWhale state outrank the research status, because a company on hold
+// or already in a campaign is not "being researched" whatever the workbook
+// column says.
 export const LIFECYCLE = [
-  "Not started",
-  "Being researched",
-  "Needs review",
+  "Target",
+  "Researching",
+  "Pending review",
   "Approved",
-  "LinkedIn warming",
-  "In sequence",
+  "In SourceWhale",
+  "Campaign active",
+  "Replied",
   "On hold",
+  "Archived",
 ];
 
-export function lifecycle({ prep_status, heyreach_stage, sourcewhale_stage }) {
-  if (prep_status === "HOLD") return "On hold";
-  if (sourcewhale_stage && sourcewhale_stage !== "NOT LOADED") return "In sequence";
-  if (heyreach_stage && heyreach_stage !== "NOT LOADED") return "LinkedIn warming";
+export function lifecycle({ prep_status, heyreach_stage, sourcewhale_stage, sw_state, disposition }) {
+  if (disposition === "Archived" || disposition === "Disqualified") return "Archived";
+  if (disposition === "Hold" || disposition === "Nurture" || prep_status === "HOLD") return "On hold";
+  if (sw_state === "Replied" || sw_state === "Positive Reply") return "Replied";
+  if (sw_state === "Active Campaign") return "Campaign active";
+  if (sw_state === "Added" || sw_state === "Paused") return "In SourceWhale";
+  if (sourcewhale_stage && sourcewhale_stage !== "NOT LOADED") return "Campaign active";
+  if (heyreach_stage && heyreach_stage !== "NOT LOADED") return "In SourceWhale";
   switch (prep_status) {
     case "APPROVED": return "Approved";
-    case "READY FOR QC": return "Needs review";
-    case "IN RESEARCH": return "Being researched";
-    default: return "Not started";
+    case "READY FOR QC": return "Pending review";
+    case "IN RESEARCH": return "Researching";
+    default: return "Target";
   }
 }
 
@@ -76,31 +88,41 @@ export function nextMove(a, asOf) {
     Number(a.warm_contacts ?? 0) > 0 ||
     Number(a.targets ?? 0) > 0;
 
+  if (stage === "Archived") {
+    return { kind: "wait", move: "Nothing", why: "Out of the working list. The history is kept." };
+  }
   if (stage === "On hold") {
     return {
       kind: "wait",
       move: "Leave it",
-      why: "Marked on hold. Nothing here changes that until you take it off hold.",
+      why: "On hold. Still watched, no outreach suggested, until you take it off hold.",
     };
   }
-  if (stage === "In sequence") {
+  if (stage === "Replied") {
+    return {
+      kind: "call",
+      move: `Answer ${a.last_contacted_name ?? "the reply"}`,
+      why: "They replied in SourceWhale. Nothing on this desk is more urgent than a live reply.",
+    };
+  }
+  if (stage === "Campaign active") {
     return {
       kind: "wait",
-      move: "Let the sequence run",
-      why: "Already in the email sequence. Watch for the reply in SourceWhale rather than starting a second thread.",
+      move: "Let the campaign run",
+      why: "Active in SourceWhale. Watch for the reply there rather than starting a second thread.",
     };
   }
-  if (stage === "LinkedIn warming") {
+  if (stage === "In SourceWhale") {
     return fresh > 0
       ? {
           kind: "call",
-          move: "Move to email, there is a live role",
-          why: `${fresh} relevant ${fresh === 1 ? "role" : "roles"} went up this week. That is the reason to step past warming.`,
+          move: "Activate the campaign, there is a live role",
+          why: `${fresh} relevant ${fresh === 1 ? "role" : "roles"} went up this week. Loaded but not active is a list, not outreach.`,
         }
       : {
-          kind: "wait",
-          move: "Keep warming, then load to email",
-          why: "LinkedIn is loaded and the email step is not. The sequence rule is LinkedIn first.",
+          kind: "prepare",
+          move: "Activate the campaign",
+          why: "Loaded into SourceWhale and not yet active. Loaded is not the same as being worked.",
         };
   }
   const contactedAgo = days(a.last_contacted_at, asOf);

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Flame,
   LayoutGrid,
-  Target,
   ListChecks,
   LogOut,
   Users,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import { Logo } from "./logo";
+import { ThemeToggle } from "./theme-toggle";
 
 // Lucide only, 16px, stroke 1.5. No emoji. DESIGN.md section 7.
 //
@@ -31,12 +31,14 @@ import { Logo } from "./logo";
 // with a tonal pill, which is a stronger signal than a lit digit and does not
 // need a second column to track down.
 const NAV = [
+  // His order, his words: open roles and talent are the product, the rest
+  // supports them. Who to target is still a route; it left the rail because
+  // he said he does not need it right now.
   { href: "/command", label: "Today", Icon: LayoutGrid, exact: false },
-  { href: "/targets", label: "Who to target", Icon: Target, exact: false },
-  { href: "/queue", label: "All companies", Icon: ListChecks, exact: false },
-  { href: "/signals", label: "What changed", Icon: Flame, exact: false },
-  { href: "/talent", label: "Talent", Icon: UserSearch, exact: false },
   { href: "/roles", label: "Open roles", Icon: Briefcase, exact: false },
+  { href: "/talent", label: "Talent", Icon: UserSearch, exact: false },
+  { href: "/queue", label: "Companies", Icon: ListChecks, exact: false },
+  { href: "/signals", label: "What changed", Icon: Flame, exact: false },
   { href: "/people", label: "Your network", Icon: Users, exact: false },
 ];
 
@@ -111,7 +113,8 @@ export function Nav({
         </p>
 
         <div className="border-t border-[var(--alac-line)] pt-4">
-          <div className="truncate text-[13px] text-[var(--alac-text-2)]">{userName}</div>
+          <ThemeToggle />
+          <div className="mt-2 truncate text-[13px] text-[var(--alac-text-2)]">{userName}</div>
           <div className="placard mt-1 text-[10px] text-[var(--alac-text-3)]">{userRole}</div>
           <form action={signOut}>
             <button
@@ -127,6 +130,7 @@ export function Nav({
 
       {/* Small screens: the identity block collapses, so sign out moves here. */}
       <div className="flex items-center gap-3 border-t border-[var(--alac-line)] px-5 py-2 lg:hidden">
+        <ThemeToggle />
         <span className="truncate text-[12px] text-[var(--alac-text-3)]">{userName}</span>
         <form action={signOut} className="ml-auto">
           <button

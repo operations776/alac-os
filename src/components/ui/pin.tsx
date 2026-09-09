@@ -35,7 +35,7 @@ export function PinControl({
   const [state, action, pending] = useActionState(pinAccount, { ok: false });
 
   const name = (b: string | null) =>
-    b === "now" ? "Work now" : b === "next" ? "Up next" : b === "bench" || b === "backlog" ? "Bench" : "Not ranked";
+    b === "now" ? "Top 25" : b === "next" ? "Next 25" : b === "bench" || b === "backlog" ? "Bench" : "Not on the list";
 
   return (
     <>
@@ -52,14 +52,14 @@ export function PinControl({
         <Pin size={16} strokeWidth={1.5} />
         {pinActive
           ? `Manual ${pinnedRank ? `#${pinnedRank}` : name(pinnedBand)} · System ${systemRank ? `#${systemRank}` : name(systemBand)}`
-          : "Pin"}
+          : "Put on the list"}
       </button>
 
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Owner override"
-        sub={`The system puts this at ${name(systemBand)}${systemRank ? `, rank ${systemRank}` : ""}. Your decision holds until you release it or it expires.`}
+        title="Where does this company sit?"
+        sub={`The ranking recommends ${name(systemBand)}${systemRank ? `, score ${systemRank}` : ""}. Your choice holds until you change it or it expires; the ranking never moves it.`}
       >
         <form action={action} className="flex flex-col gap-3">
           <input type="hidden" name="accountId" value={accountId} />
@@ -67,9 +67,9 @@ export function PinControl({
           <label className="flex flex-col gap-1.5 text-[13px] text-[var(--alac-text-2)]">
             Put it in
             <select name="band" defaultValue={pinnedBand ?? systemBand ?? "now"} className="field">
-              <option value="now">Work now</option>
-              <option value="next">Up next</option>
-              <option value="bench">Bench</option>
+              <option value="now">Top 25</option>
+              <option value="next">Next 25</option>
+              <option value="bench">Bench, off the list</option>
             </select>
           </label>
 
@@ -124,7 +124,7 @@ export function PinControl({
           <form action={releasePin} className="mt-3 border-t border-[var(--alac-line)] pt-3">
             <input type="hidden" name="accountId" value={accountId} />
             <button type="submit" className="btn btn-ghost">
-              Release override, back to automatic ranking
+              Clear my choice and take the recommendation
             </button>
           </form>
         ) : null}
