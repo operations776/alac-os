@@ -6,6 +6,7 @@ import { Card, EmptyState, PageHeader, Stat, formatDate } from "@/components/ui/
 import { Row } from "@/components/ui/clickable";
 import { WhyRole } from "@/components/ui/explain";
 import { Hint } from "@/components/ui/hint";
+import { CheckRoles } from "@/components/ui/check-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -180,9 +181,14 @@ export default async function RolesPage({
         </Card>
       )}
 
-      <p className="mt-4 text-[12px] text-[var(--alac-text-3)]">
-        Pulled {formatDate(counts.pulled_at) ?? "never"}. A posting the provider has not seen for {DESK.ROLE_STALE_DAYS} days, or whose page has gone, is closed and removed from every screen.
-      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-[var(--alac-text-3)]">
+          Pulled {formatDate(counts.pulled_at) ?? "never"}. Postings are checked against the employer&apos;s own page
+          every morning; one whose page has gone, or that the provider has not seen for {DESK.ROLE_STALE_DAYS} days,
+          is closed and leaves every screen.
+        </p>
+        <CheckRoles />
+      </div>
     </div>
   );
 }

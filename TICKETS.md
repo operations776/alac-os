@@ -142,6 +142,7 @@ fetchers are written to fill it.
 | ALAC-80 | Content angles from the same signals: a copyable "what to post" per strong signal | todo |
 | ALAC-81 | The tracker: notes per company, hand marks on the checklist, mentioned roles, messages written and marked sent, whole rows clickable, Results hidden | done |
 | ALAC-82 | Add a company not in the TAM from the app, with website, LinkedIn and location; lands in Up next and is ranked on the next refresh | done |
+| ALAC-107 | Role verification covers what the screens show, both sets, and runs in the app: button, nightly cron, and script from one definition | done |
 | ALAC-97 | Owner-controlled portfolio: membership is the pin, the ranking recommends, accept and decline, seeded from the ranking on 9 Sep | done |
 | ALAC-98 | The cascade, one table: Hold and Nurture off the working list with place kept, Disqualified and Archived off every list, enforced in the view and every query | done |
 | ALAC-99 | Noise limits: five signals at heat 50+, five live leads a day, roles shown at the top tenth by difficulty x time open, everything else one click away | done |

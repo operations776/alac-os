@@ -3,9 +3,9 @@
 //   npm run verify:roles            check what needs checking
 //   npm run verify:roles -- --all   recheck everything, ignoring the 3 day window
 //
-// The same check jobs-pull runs at the end of a pull, on its own, so it can
-// be run without spending a provider credit. A posting whose page has gone
-// is closed and leaves every screen.
+// The same check the app runs from the button on Open roles and from the
+// nightly cron route, available on the command line so it can be run without
+// a browser. A posting whose page has gone is closed and leaves every screen.
 //
 // What this can and cannot tell you: Greenhouse and Lever answer 404 for a
 // filled role, which is a real answer. A board that keeps dead pages up

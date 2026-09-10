@@ -150,7 +150,7 @@ Provisioned automatically by the Neon integration and pulled with `vercel env pu
 | `PROSPEO_API_KEY` | no | reveal button | People search and on-demand email reveal. The reveal runs in a server action, so this one is in Vercel. |
 | `APIFY_TOKEN` | no | wider pull | LinkedIn org ids and the monthly wider jobs pull. Scripts only. |
 | `SOURCEWHALE_API_KEY` | no | phase 2 | Read-oriented sync. See section 9. Unset: the CSV bridge covers the same code path. |
-| `CRON_SECRET` | no | phase 2 | Shared secret for scheduled runs. |
+| `CRON_SECRET` | no | for the nightly check | Bearer token Vercel Cron sends to `/api/cron/verify-roles`. Unset: the route returns 503 and refuses to run, rather than leaving a URL anyone can hit that makes hundreds of outbound requests. |
 
 ## 9. The SourceWhale boundary
 

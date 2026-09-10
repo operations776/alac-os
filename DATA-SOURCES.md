@@ -155,6 +155,14 @@ each bar kept, counted, and one toggle away.
 
 ### Dead postings
 
+Three ways to run the same check, one definition in
+`src/lib/server/roles/verify.ts`: a Check postings button on Open roles, a
+nightly Vercel Cron at 05:00 UTC on `/api/cron/verify-roles`, and
+`npm run verify:roles` for the command line. The pull costs a provider
+credit and runs twice a week; checking whether a page is still there costs
+nothing but a request to the employer's own board, so it runs daily.
+
+
 The provider reports `last_seen_at` on every role. A posting it has not
 seen for 7 days is closed on the next pull, and the top decile's URLs are
 checked directly (Greenhouse and Lever answer 404 for a filled role). Closed
