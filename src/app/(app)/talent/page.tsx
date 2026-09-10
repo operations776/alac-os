@@ -13,7 +13,13 @@ export const dynamic = "force-dynamic";
 // priority market, "not a large database labeled MPC". A screen that made it
 // easy to accumulate hundreds would be working against that.
 
-export default async function TalentPage() {
+export default async function TalentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ off?: string }>;
+}) {
+  const params = await searchParams;
+  const showOff = params.off === "1";
   const orgId = await getOrgId();
   if (!orgId) {
     return (
@@ -23,7 +29,10 @@ export default async function TalentPage() {
     );
   }
 
-  const list = await candidates(orgId);
+  const [list, off] = await Promise.all([
+    candidates(orgId, !showOff),
+    candidates(orgId, false),
+  ]);
   const platinum = list.filter((c) => (c.mpc_score ?? 0) >= 95).length;
   const gold = list.filter((c) => (c.mpc_score ?? 0) >= 90 && (c.mpc_score ?? 0) < 95).length;
   const cleared = list.filter((c) => c.clearance).length;
@@ -37,19 +46,37 @@ export default async function TalentPage() {
       />
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Active candidates" value={list.length} hint="aim for 3 to 5 per market" />
+        <Stat
+          label={showOff ? "Off the market" : "Active candidates"}
+          value={list.length}
+          hint={showOff ? "nothing is deleted" : "aim for 3 to 5 per market"}
+        />
         <Stat label="Gold or better" value={platinum + gold} tone={platinum + gold > 0 ? "good" : undefined} />
         <Stat label="Cleared" value={cleared} hint="clearance recorded" />
         <Stat label="Requisitions to search" value="4,000+" hint="already collected" />
       </div>
+
+      {off.length > 0 || showOff ? (
+        <div className="mb-4 flex items-center gap-2">
+          <Link
+            href={showOff ? "/talent" : "/talent?off=1"}
+            className={`chip transition-colors ${showOff ? "bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]" : "hover:bg-[var(--alac-surface-2)]"}`}
+            title={showOff ? "Back to the active list" : "Candidates you took off the market. Nothing is deleted"}
+          >
+            {showOff ? "Showing off the market" : `${off.length} off the market`}
+          </Link>
+        </div>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div>
           {list.length === 0 ? (
             <Card>
               <EmptyState
-                title="No candidates yet"
-                body="Paste a profile on the right. The system classifies them, then searches every requisition already collected for exact matches, adjacent roles, implied demand and strategic targets."
+                title={showOff ? "Nobody off the market" : "No candidates yet"}
+                body={showOff
+                  ? "Every candidate is active. A candidate taken off the market appears here and can be put back."
+                  : "Paste a profile on the right. The system classifies them, then searches every requisition already collected for exact matches, adjacent roles, implied demand and strategic targets."}
               />
             </Card>
           ) : (
@@ -65,6 +92,11 @@ export default async function TalentPage() {
                         MPC {c.mpc_score ?? "--"}
                       </span>
                       {c.clearance ? <span className="chip">{c.clearance}</span> : null}
+                      {c.inactive_reason ? (
+                        <span className="chip bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]">
+                          {c.inactive_reason}
+                        </span>
+                      ) : null}
                       <span className="readout ml-auto text-[12.5px] text-[var(--alac-text-3)]">
                         Search demand
                       </span>

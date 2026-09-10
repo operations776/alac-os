@@ -24,13 +24,17 @@ export type Candidate = {
   comp_target: string | null;
   mpc_score: number | null;
   active: boolean;
+  inactive_reason: string | null;
+  deactivated_at: string | null;
   created_at: string;
 };
 
-export async function candidates(orgId: string) {
+export async function candidates(orgId: string, activeOnly = true) {
+  // The off-market list is the same query with the flag flipped, so the two
+  // views cannot disagree about who is in which.
   return (await sql`
     select * from candidates
-     where org_id = ${orgId} and active
+     where org_id = ${orgId} and active = ${activeOnly}
      order by mpc_score desc nulls last, created_at desc
      limit 100
   `) as Candidate[];

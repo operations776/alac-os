@@ -146,6 +146,7 @@ fetchers are written to fill it.
 | ALAC-108 | Pin dialog wrote a stale band back: uncontrolled selects keyed on the saved value so a save cannot revert the next one | done |
 | ALAC-109 | Dismiss and restore for signals and roles, with a reason, nothing deleted, dismissed views on both pages | done |
 | ALAC-110 | Demand Radar buckets as a column table, matching Open roles and the company page | done |
+| ALAC-113 | A candidate can be edited, taken off the market with a reason, and put back. Nothing deleted, off-market view on Talent | done |
 | ALAC-97 | Owner-controlled portfolio: membership is the pin, the ranking recommends, accept and decline, seeded from the ranking on 9 Sep | done |
 | ALAC-98 | The cascade, one table: Hold and Nurture off the working list with place kept, Disqualified and Archived off every list, enforced in the view and every query | done |
 | ALAC-99 | Noise limits: five signals at heat 50+, five live leads a day, roles shown at the top tenth by difficulty x time open, everything else one click away | done |

@@ -88,6 +88,90 @@ export async function addCandidate(_prev: CandidateState, formData: FormData): P
   redirect(`/talent/${rows[0].id}`);
 }
 
+
+/**
+ * Take a candidate off the market.
+ *
+ * Nothing is deleted. The row keeps its classification, its score and every
+ * role it was pitched for; it leaves the Talent list and the radar, and one
+ * click puts it back. A placed candidate is a record worth keeping.
+ */
+export async function deactivateCandidate(formData: FormData): Promise<void> {
+  const orgId = await getOrgId();
+  if (!orgId) return;
+  const id = String(formData.get("candidateId") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 120) || null;
+
+  await sql`
+    update candidates
+       set active = false, inactive_reason = ${reason}, deactivated_at = now(), updated_at = now()
+     where org_id = ${orgId} and id = ${id}
+  `;
+  revalidatePath("/talent");
+  revalidatePath(`/talent/${id}`);
+}
+
+/** Put a candidate back on the market, exactly as they were. */
+export async function reactivateCandidate(formData: FormData): Promise<void> {
+  const orgId = await getOrgId();
+  if (!orgId) return;
+  const id = String(formData.get("candidateId") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+
+  await sql`
+    update candidates
+       set active = true, inactive_reason = null, deactivated_at = null, updated_at = now()
+     where org_id = ${orgId} and id = ${id}
+  `;
+  revalidatePath("/talent");
+  revalidatePath(`/talent/${id}`);
+}
+
+/**
+ * Correct what the classifier read.
+ *
+ * The brief asks for owner refinement regardless of what classification
+ * decided, and until now the only way to fix a wrong title or a missed
+ * clearance was to add the candidate again. Every field the parser fills is
+ * editable here, and the marketability score is recomputed from the result
+ * so it cannot drift from what the fields say.
+ */
+export async function updateCandidate(_prev: CandidateState, formData: FormData): Promise<CandidateState> {
+  const orgId = await getOrgId();
+  if (!orgId) return { error: "Not signed in" };
+  const id = String(formData.get("candidateId") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Bad candidate" };
+
+  const name = String(formData.get("name") ?? "").trim().slice(0, 200);
+  if (!name) return { error: "The candidate needs a name" };
+
+  const title = String(formData.get("title") ?? "").trim().slice(0, 200) || null;
+  const company = String(formData.get("company") ?? "").trim().slice(0, 200) || null;
+  const geography = String(formData.get("geography") ?? "").trim().slice(0, 200) || null;
+  const linkedin = String(formData.get("linkedin") ?? "").trim().slice(0, 300) || null;
+  const clearance = String(formData.get("clearance") ?? "").trim().slice(0, 100) || null;
+  const domains = String(formData.get("domains") ?? "").trim().slice(0, 500) || null;
+  const comp = String(formData.get("comp") ?? "").trim().slice(0, 100) || null;
+  const summary = String(formData.get("summary") ?? "").trim().slice(0, 20000) || null;
+
+  const score = mpcScore({ title, clearance, domains, summary });
+
+  await sql`
+    update candidates
+       set full_name = ${name}, title = ${title}, company = ${company},
+           location = ${geography}, geography = ${geography},
+           linkedin_url = ${linkedin}, clearance = ${clearance},
+           domains = ${domains}, comp_target = ${comp},
+           summary = coalesce(${summary}, summary),
+           mpc_score = ${score}, updated_at = now()
+     where org_id = ${orgId} and id = ${id}
+  `;
+  revalidatePath("/talent");
+  revalidatePath(`/talent/${id}`);
+  return {};
+}
+
 /** Record that a role was raised with the client for this candidate. */
 export async function togglePitch(formData: FormData): Promise<void> {
   const orgId = await getOrgId();

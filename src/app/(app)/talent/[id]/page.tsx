@@ -6,6 +6,7 @@ import { candidateById, radar, type RadarRole } from "@/lib/server/queries/talen
 import { Card, CardHeader, EmptyState, NoticeLine, PageHeader, Stat } from "@/components/ui/primitives";
 import { togglePitch } from "../actions";
 import { WhyMatch, WhyRole } from "@/components/ui/explain";
+import { DeactivateCandidate, ReactivateCandidate, EditCandidate } from "@/components/ui/candidate-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,23 @@ export default async function CandidatePage({
             Profile <ExternalLink size={16} strokeWidth={1.5} />
           </a>
         ) : null}
+        <span className="ml-auto flex items-center gap-2">
+          <EditCandidate candidate={candidate} />
+          {candidate.active
+            ? <DeactivateCandidate candidateId={candidate.id} />
+            : <ReactivateCandidate candidateId={candidate.id} />}
+        </span>
       </div>
+
+      {!candidate.active ? (
+        <div className="mb-5">
+          <NoticeLine>
+            Off the market{candidate.inactive_reason ? `: ${candidate.inactive_reason}` : ""}. They are not
+            matched against roles and do not appear in the Talent list. Nothing has been deleted, and
+            Back on the market restores them exactly as they were.
+          </NoticeLine>
+        </div>
+      ) : null}
 
       {/* The search. Natural language plus whatever structure it can read. */}
       <form method="get" className="mb-3 flex flex-wrap items-center gap-2">
