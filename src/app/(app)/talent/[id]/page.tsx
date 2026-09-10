@@ -205,82 +205,117 @@ function Bucket({
   candidateName: string;
   empty: string;
 }) {
+  // The provider writes a full geographic path, "Washington, United States,
+  // Northern America, Americas". A recruiter reads a city and a state.
+  const place = (v: string | null) => (v ? v.split(",").slice(0, 2).join(",").trim() : null);
+
   return (
     <Card>
       <CardHeader title={`${title}${roles.length ? ` (${roles.length})` : ""}`} sub={sub} />
       {roles.length === 0 ? (
         <EmptyState title="None" body={empty} />
       ) : (
-        <ul className="flex flex-col gap-0.5 px-3 pb-3">
-          {roles.map((r) => (
-            <li key={r.id} className="row-hover rounded-[var(--alac-radius)] px-3 py-2.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                {/* Pitched: this role has already been raised for this
-                    candidate. One row, toggled, like every other mark. */}
-                <form action={togglePitch} className="shrink-0">
-                  <input type="hidden" name="candidateId" value={candidateId} />
-                  <input type="hidden" name="roleId" value={r.id} />
-                  <input type="hidden" name="on" value={r.pitched ? "0" : "1"} />
-                  <button
-                    type="submit"
-                    role="checkbox"
-                    aria-checked={r.pitched}
-                    aria-label={r.pitched ? "Pitched, click to clear" : "Mark as pitched"}
-                    title={r.pitched ? "Already raised with the client" : "Mark that you have raised this role"}
-                    className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border ${
-                      r.pitched
-                        ? "border-[var(--alac-good)] bg-[var(--alac-good)] text-[var(--alac-ground)]"
-                        : "border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
-                    }`}
-                  >
-                    {r.pitched ? <Check size={16} strokeWidth={1.5} /> : null}
-                  </button>
-                </form>
+        <div className="overflow-x-auto px-2 pb-3">
+          <table className="w-full min-w-[860px] border-collapse">
+            <thead>
+              <tr className="text-left text-[11px] text-[var(--alac-text-3)]">
+                <th className="px-2 py-2 font-normal" title="Tick the roles you have already raised with the client">
+                  Raised
+                </th>
+                <th className="px-2 py-2 text-right font-normal" title="How well this candidate fits this role, out of 100">
+                  Match
+                </th>
+                <th className="px-2 py-2 font-normal">Company</th>
+                <th className="px-2 py-2 font-normal">Role</th>
+                <th className="px-2 py-2 font-normal">Where</th>
+                <th className="px-2 py-2 font-normal">Salary</th>
+                <th className="px-2 py-2 font-normal">Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roles.map((r) => (
+                <tr key={r.id} className="row-hover border-t border-[var(--alac-line)] align-top">
+                  <td className="px-2 py-2">
+                    {/* Pitched: this role has already been raised for this
+                        candidate. One row, toggled, like every other mark. */}
+                    <form action={togglePitch}>
+                      <input type="hidden" name="candidateId" value={candidateId} />
+                      <input type="hidden" name="roleId" value={r.id} />
+                      <input type="hidden" name="on" value={r.pitched ? "0" : "1"} />
+                      <button
+                        type="submit"
+                        role="checkbox"
+                        aria-checked={r.pitched}
+                        aria-label={r.pitched ? "Pitched, click to clear" : "Mark as pitched"}
+                        title={r.pitched ? "Already raised with the client" : "Mark that you have raised this role"}
+                        className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border ${
+                          r.pitched
+                            ? "border-[var(--alac-good)] bg-[var(--alac-good)] text-[var(--alac-ground)]"
+                            : "border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
+                        }`}
+                      >
+                        {r.pitched ? <Check size={16} strokeWidth={1.5} /> : null}
+                      </button>
+                    </form>
+                  </td>
 
-                <span className="readout w-8 shrink-0 text-right text-[13px] text-[var(--alac-accent)]">
-                  {r.match.score}%
-                </span>
-                <Link href={`/queue/${r.account_id}`} className="link shrink-0 text-[13.5px] font-medium">
-                  {r.company_name}
-                </Link>
-                <span className="min-w-[180px] flex-1 text-[13.5px]">{r.title}</span>
-                {r.location ? (
-                  <span className="shrink-0 text-[12px] text-[var(--alac-text-3)]">{r.location}</span>
-                ) : null}
-                {r.salary_text ? (
-                  <span className="shrink-0 text-[12px] text-[var(--alac-text-2)]">{r.salary_text}</span>
-                ) : null}
-                {r.url ? (
-                  <a href={r.url} target="_blank" rel="noreferrer" className="link inline-flex shrink-0 items-center gap-1.5 text-[12px]">
-                    Posting <ExternalLink size={16} strokeWidth={1.5} />
-                  </a>
-                ) : null}
-                <span className="flex shrink-0 items-center gap-3">
-                  <WhyMatch
-                    score={r.match.score}
-                    role={r.title}
-                    candidate={candidateName}
-                    why={r.match.why}
-                    flags={r.match.flags}
-                    label="Why matched"
-                  />
-                  <WhyRole role={r} label="Why the role" />
-                </span>
-              </div>
+                  <td className="readout px-2 py-2 text-right text-[13px] text-[var(--alac-accent)]">
+                    {r.match.score}%
+                  </td>
 
-              {/* Why it matched, and anything that would stop it. Section 21
-                  asks for both on every result. */}
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-[46px] text-[12px]">
-                {r.match.why.map((w) => (
-                  <span key={w} className="text-[var(--alac-text-3)]">{w}</span>
-                ))}
-                {r.match.flags.map((f) => (
-                  <span key={f} className="text-[var(--alac-warn)]">{f}</span>
-                ))}
-              </div>
-            </li>
-          ))}
-        </ul>
+                  <td className="px-2 py-2">
+                    <Link href={`/queue/${r.account_id}`} className="link text-[13px] font-medium">
+                      {r.company_name}
+                    </Link>
+                  </td>
+
+                  <td className="px-2 py-2 text-[13.5px]">
+                    {r.url ? (
+                      <a href={r.url} target="_blank" rel="noreferrer" className="link inline-flex items-baseline gap-1.5">
+                        {r.title}
+                        <ExternalLink size={16} strokeWidth={1.5} className="shrink-0 self-center" />
+                      </a>
+                    ) : (
+                      r.title
+                    )}
+                    {/* Why it matched, and anything that would stop it.
+                        Section 21 asks for both on every result. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px]">
+                      {r.match.why.map((w) => (
+                        <span key={w} className="text-[var(--alac-text-3)]">{w}</span>
+                      ))}
+                      {r.match.flags.map((fl) => (
+                        <span key={fl} className="text-[var(--alac-warn)]">{fl}</span>
+                      ))}
+                    </div>
+                  </td>
+
+                  <td className="px-2 py-2 text-[12px] text-[var(--alac-text-3)]">
+                    {place(r.location) ?? "--"}
+                  </td>
+
+                  <td className="px-2 py-2 text-[12px] text-[var(--alac-text-2)]">
+                    {r.salary_text ?? "--"}
+                  </td>
+
+                  <td className="px-2 py-2">
+                    <span className="flex items-center gap-3">
+                      <WhyMatch
+                        score={r.match.score}
+                        role={r.title}
+                        candidate={candidateName}
+                        why={r.match.why}
+                        flags={r.match.flags}
+                        label="Match"
+                      />
+                      <WhyRole role={r} label="Role" />
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );

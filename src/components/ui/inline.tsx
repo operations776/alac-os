@@ -32,6 +32,12 @@ export function InlineSelect({
       <input type="hidden" name="field" value={field} />
       <select
         name="value"
+        // Keyed on the stored value, so a save that changes it remounts the
+        // field. defaultValue applies once at mount, and this component
+        // survives the revalidate, so without the key the select would keep
+        // showing what it was first rendered with and write that back on the
+        // next change.
+        key={value}
         defaultValue={value}
         aria-label={field}
         onChange={() => ref.current?.requestSubmit()}

@@ -100,7 +100,9 @@ export function MessageButton({
           <div className="flex items-center gap-3">
             <label className="text-[12.5px] text-[var(--alac-text-2)]">
               Channel{" "}
-              <select name="channel" defaultValue={channel} className="field ml-1 w-auto">
+              {/* Keyed, so a save that changes the channel remounts the
+                  field rather than leaving the value it first mounted with. */}
+              <select key={channel} name="channel" defaultValue={channel} className="field ml-1 w-auto">
                 <option value="linkedin">LinkedIn</option>
                 <option value="email">Email</option>
               </select>

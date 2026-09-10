@@ -34,6 +34,19 @@ export function PinControl({
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(pinAccount, { ok: false });
 
+  // What the form shows after a save.
+  //
+  // defaultValue on an uncontrolled select applies once, when the field
+  // mounts. The dialog stays mounted across a save, so after picking Top 25
+  // and saving, the select still held whatever the page was rendered with,
+  // and the next save wrote that stale value back: the company appeared to
+  // move to Next 25 on its own.
+  //
+  // The revalidate does refresh these props, so the fix is to remount the
+  // fields when the incoming value changes. The key is the saved state, so
+  // the form always shows what is actually stored.
+  const formKey = `${pinnedBand ?? "none"}-${pinnedRank ?? ""}-${pinReason ?? ""}-${pinExpires ?? ""}`;
+
   const name = (b: string | null) =>
     b === "now" ? "Top 25" : b === "next" ? "Next 25" : b === "bench" || b === "backlog" ? "Bench" : "Not on the list";
 
@@ -61,7 +74,7 @@ export function PinControl({
         title="Where does this company sit?"
         sub={`The ranking recommends ${name(systemBand)}${systemRank ? `, score ${systemRank}` : ""}. Your choice holds until you change it or it expires; the ranking never moves it.`}
       >
-        <form action={action} className="flex flex-col gap-3">
+        <form key={formKey} action={action} className="flex flex-col gap-3">
           <input type="hidden" name="accountId" value={accountId} />
 
           <label className="flex flex-col gap-1.5 text-[13px] text-[var(--alac-text-2)]">

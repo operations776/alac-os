@@ -7,6 +7,8 @@ import {
 import { HEAT_COMPONENTS, HeatDelta } from "@/components/ui/desk";
 import { DESK } from "@/config/desk.mjs";
 import { Row } from "@/components/ui/clickable";
+import { Dismiss, Restore } from "@/components/ui/dismiss";
+import { DISMISS_REASONS } from "@/config/dismiss-reasons.mjs";
 import { WhySignal } from "@/components/ui/explain";
 
 export const dynamic = "force-dynamic";
@@ -58,17 +60,19 @@ const RANGES = [
 export default async function SignalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; all?: string; unlinked?: string }>;
+  searchParams: Promise<{ range?: string; all?: string; unlinked?: string; dismissed?: string }>;
 }) {
   const params = await searchParams;
   const range = RANGES.find((r) => r.key === params.range) ?? RANGES[2];
   const showWeak = params.all === "1";
   const unlinkedOnly = params.unlinked === "1";
-  const href = (r: string, all: boolean, unlinked: boolean) => {
+  const showDismissed = params.dismissed === "1";
+  const href = (r: string, all: boolean, unlinked: boolean, dismissed = showDismissed) => {
     const p = new URLSearchParams();
     if (r !== "month") p.set("range", r);
     if (all) p.set("all", "1");
     if (unlinked) p.set("unlinked", "1");
+    if (dismissed) p.set("dismissed", "1");
     const s = p.toString();
     return s ? `/signals?${s}` : "/signals";
   };
@@ -85,10 +89,13 @@ export default async function SignalsPage({
 
   const [signals, stats] = await Promise.all([
     signalHeat(orgId, {
-      days: range.days,
-      minHeat: showWeak ? 0 : DESK.SIGNAL_MIN_HEAT,
+      // The dismissed view ignores the window and the floor, for the same
+      // reason the roles one does: he has to be able to find all of them.
+      days: showDismissed ? 365 : range.days,
+      minHeat: showWeak || showDismissed ? 0 : DESK.SIGNAL_MIN_HEAT,
       limit: 100,
       unlinkedOnly,
+      dismissedOnly: showDismissed,
     }),
     heatCounts(orgId, range.days, DESK.SIGNAL_MIN_HEAT),
   ]);
@@ -113,6 +120,15 @@ export default async function SignalsPage({
           </Link>
         ))}
         <span className="ml-auto flex items-center gap-2">
+          {stats.dismissed > 0 || showDismissed ? (
+            <Link
+              href={href(range.key, showWeak, unlinkedOnly, !showDismissed)}
+              className={`chip transition-colors ${showDismissed ? "bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]" : "hover:bg-[var(--alac-surface-2)]"}`}
+              title={showDismissed ? "Back to the live board" : "The signals you took off the board. Nothing is deleted"}
+            >
+              {showDismissed ? "Showing dismissed" : `${stats.dismissed} dismissed`}
+            </Link>
+          ) : null}
           {unlinkedOnly ? (
             <Link href={href(range.key, showWeak, false)} className="chip">Showing companies not on the list · clear</Link>
           ) : null}
@@ -310,7 +326,10 @@ export default async function SignalsPage({
                           <span className="text-[13px] text-[var(--alac-text-3)]"> / 100</span>
                         </span>
                       </div>
-                      <div className="mt-2">
+                      <div className="mt-2 flex items-center gap-4">
+                        {showDismissed
+                          ? <Restore kind="signal" refId={s.id} />
+                          : <Dismiss kind="signal" refId={s.id} reasons={DISMISS_REASONS.signal} />}
                         <WhySignal
                           signal={s}
                           score={s.heat_score}

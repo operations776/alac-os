@@ -115,6 +115,8 @@ export async function radar(
      where r.org_id = ${orgId} and r.qualified and r.closed_at is null
        and r.url_ok is distinct from false
        and a.disposition = 'Active'
+       and not exists (select 1 from dismissals d
+                        where d.org_id = r.org_id and d.kind = 'role' and d.ref_id = r.id)
      order by r.relevance desc nulls last
      limit 4000
   `) as Omit<RadarRole, "match">[];

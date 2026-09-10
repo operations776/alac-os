@@ -7,6 +7,8 @@ import { Row } from "@/components/ui/clickable";
 import { WhyRole } from "@/components/ui/explain";
 import { Hint } from "@/components/ui/hint";
 import { CheckRoles } from "@/components/ui/check-roles";
+import { Dismiss, Restore } from "@/components/ui/dismiss";
+import { DISMISS_REASONS } from "@/config/dismiss-reasons.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +37,7 @@ function ago(d: string | null): string {
 export default async function RolesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; all?: string; q?: string }>;
+  searchParams: Promise<{ range?: string; all?: string; q?: string; dismissed?: string }>;
 }) {
   const params = await searchParams;
   const orgId = await getOrgId();
@@ -49,13 +51,15 @@ export default async function RolesPage({
 
   const range = RANGES.find((r) => r.key === params.range) ?? RANGES[1];
   const showAll = params.all === "1";
+  const showDismissed = params.dismissed === "1";
   const q = (params.q ?? "").trim().toLowerCase();
   const floor = await roleFloor(orgId, DESK.ROLE_TOP_SHARE);
 
-  const href = (r: string, all: boolean) => {
+  const href = (r: string, all: boolean, dismissed = showDismissed) => {
     const p = new URLSearchParams();
     if (r !== "week") p.set("range", r);
     if (all) p.set("all", "1");
+    if (dismissed) p.set("dismissed", "1");
     if (q) p.set("q", q);
     const s = p.toString();
     return s ? `/roles?${s}` : "/roles";
@@ -67,9 +71,12 @@ export default async function RolesPage({
   const fresh = range.key !== "month";
   const [allRoles, counts] = await Promise.all([
     freshRoles(
-      orgId, range.days, showAll ? 400 : 120, "relevant",
-      showAll || fresh ? 0 : floor,
-      showAll || !fresh ? 0 : DESK.LEAD_MIN_DIFFICULTY,
+      // The dismissed view ignores every bar: he took these off deliberately
+      // and has to be able to find all of them again.
+      orgId, showDismissed ? 365 : range.days, showAll || showDismissed ? 400 : 120, "relevant",
+      showAll || showDismissed || fresh ? 0 : floor,
+      showAll || showDismissed || !fresh ? 0 : DESK.LEAD_MIN_DIFFICULTY,
+      showDismissed,
     ),
     freshRoleCounts(orgId, floor, DESK.LEAD_MIN_DIFFICULTY),
   ]);
@@ -120,6 +127,15 @@ export default async function RolesPage({
           </span>
         ) : null}
         <span className="ml-auto flex items-center gap-2">
+          {counts.dismissed > 0 || showDismissed ? (
+            <Link
+              href={href(range.key, showAll, !showDismissed)}
+              className={`chip transition-colors ${showDismissed ? "bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]" : "hover:bg-[var(--alac-surface-2)]"}`}
+              title={showDismissed ? "Back to the live list" : "The roles you took off the boards. Nothing is deleted"}
+            >
+              {showDismissed ? "Showing dismissed" : `${counts.dismissed} dismissed`}
+            </Link>
+          ) : null}
           <Link
             href={href(range.key, !showAll)}
             className={`chip transition-colors ${showAll ? "bg-[var(--alac-surface-2)] text-[var(--alac-text)]" : "hover:bg-[var(--alac-surface-2)]"}`}
@@ -133,7 +149,7 @@ export default async function RolesPage({
       {roles.length === 0 ? (
         <Card>
           <EmptyState
-            title={showAll ? "Nothing live in this window" : "Nothing cleared the bar in this window"}
+            title={showDismissed ? "Nothing dismissed" : showAll ? "Nothing live in this window" : "Nothing cleared the bar in this window"}
             body={showAll ? "No live role at a company on your list was posted in this window." : "Widen the window, or show everything to see the easier roles too."}
           />
         </Card>
@@ -172,7 +188,14 @@ export default async function RolesPage({
                     <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                       {[r.location, r.salary_text].filter(Boolean).join(" · ") || <span className="text-[var(--alac-text-3)]">--</span>}
                     </td>
-                    <td className="px-4 py-2.5 align-top"><WhyRole role={r} label="Why" /></td>
+                    <td className="px-4 py-2.5 align-top">
+                      <span className="flex items-center gap-3">
+                        <WhyRole role={r} label="Why" />
+                        {showDismissed
+                          ? <Restore kind="role" refId={r.id} />
+                          : <Dismiss kind="role" refId={r.id} reasons={DISMISS_REASONS.role} />}
+                      </span>
+                    </td>
                   </Row>
                 ))}
               </tbody>

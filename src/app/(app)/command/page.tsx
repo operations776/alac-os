@@ -8,6 +8,8 @@ import { Row } from "@/components/ui/clickable";
 import { WhyMove, WhySignal, WhyRole } from "@/components/ui/explain";
 import { MarketPulse } from "@/components/ui/market-pulse";
 import { Hint } from "@/components/ui/hint";
+import { Dismiss } from "@/components/ui/dismiss";
+import { DISMISS_REASONS } from "@/config/dismiss-reasons.mjs";
 import { setMark } from "../queue/[id]/tracker";
 import { acceptRecommendation, declineRecommendation } from "../queue/[id]/portfolio";
 
@@ -147,7 +149,10 @@ export default async function CommandPage() {
                       {s.what_happened}
                     </span>
                     <span className="readout shrink-0 text-[12px] text-[var(--alac-text-3)]">{ago(s.signal_date)}</span>
-                    <span className="shrink-0"><WhySignal signal={s} score={s.heat_score} label="Why" /></span>
+                    <span className="flex shrink-0 items-center gap-3">
+                      <WhySignal signal={s} score={s.heat_score} label="Why" />
+                      <Dismiss kind="signal" refId={s.id} reasons={DISMISS_REASONS.signal} />
+                    </span>
                     {!s.account_id ? (
                       <span className="chip bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]">Not on the list, add</span>
                     ) : null}
@@ -210,7 +215,10 @@ export default async function CommandPage() {
                         Posting <ExternalLink size={16} strokeWidth={1.5} />
                       </a>
                     ) : null}
-                    <span className="shrink-0"><WhyRole role={r} label="Why" /></span>
+                    <span className="flex shrink-0 items-center gap-3">
+                      <WhyRole role={r} label="Why" />
+                      <Dismiss kind="role" refId={r.id} reasons={DISMISS_REASONS.role} />
+                    </span>
                   </Row>
                 ))}
               </ul>

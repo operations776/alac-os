@@ -326,6 +326,7 @@ export type HeatRow = {
   person_title: string | null;
   confidence: string | null;
   work_band: string | null;
+  dismissed?: boolean;
 };
 
 /**
@@ -335,12 +336,18 @@ export type HeatRow = {
  */
 export async function signalHeat(
   orgId: string,
-  opts: { days?: number; minHeat?: number; limit?: number; unlinkedOnly?: boolean } = {},
+  opts: {
+    days?: number; minHeat?: number; limit?: number;
+    unlinkedOnly?: boolean; dismissedOnly?: boolean;
+  } = {},
 ) {
   const days = opts.days ?? 30;
   const minHeat = opts.minHeat ?? 0;
   const limit = opts.limit ?? 100;
   const unlinked = opts.unlinkedOnly ? 1 : 0;
+  // The dismissed list is the same query with the predicate flipped, so the
+  // two views can never disagree about what is in which.
+  const dismissed = opts.dismissedOnly ? 1 : 0;
   // Companies he has archived or disqualified do not produce news for this
   // desk. Their signals stay stored; they stop being shown.
   return (await sql`
@@ -358,6 +365,8 @@ export async function signalHeat(
        and coalesce(s.heat_score, 0) >= ${minHeat}
        and (a.id is null or a.disposition not in ('Disqualified', 'Archived'))
        and (${unlinked} = 0 or s.account_id is null)
+       and (${dismissed} = 1) = exists (select 1 from dismissals d
+                                         where d.org_id = s.org_id and d.kind = 'signal' and d.ref_id = s.id)
      order by s.heat_score desc nulls last, s.signal_date desc nulls last
      limit ${limit}
   `) as HeatRow[];
@@ -369,7 +378,9 @@ export async function signalsForAccount(orgId: string, accountId: string) {
            s.signal_date, s.what_happened, s.the_number, s.hq, s.best_contact,
            s.hiring_urgency, s.icp_fit, s.capital, s.talent_scarcity,
            s.access, s.freshness, s.heat_score, s.tam_final_score,
-           s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources
+           s.heat_vs_tam, s.recommended_move, s.primary_source, s.detail, s.sources,
+           exists (select 1 from dismissals d
+                    where d.org_id = s.org_id and d.kind = 'signal' and d.ref_id = s.id) as dismissed
       from heat_signals s
      where s.org_id = ${orgId} and s.account_id = ${accountId}
      order by s.signal_date desc nulls last
@@ -385,13 +396,16 @@ export async function heatCounts(orgId: string, days = 30, minHeat = 0) {
            count(*) filter (where s.account_id is null)::int as unlinked,
            count(distinct s.account_id) filter (where s.heat_vs_tam > 0)::int as hotter_than_tam,
            count(*) filter (where coalesce(s.heat_score, 0) < ${minHeat})::int as weak,
+           count(*) filter (where exists (select 1 from dismissals d
+                                           where d.org_id = s.org_id and d.kind = 'signal'
+                                             and d.ref_id = s.id))::int as dismissed,
            max(s.last_scored) as last_scored
       from heat_signals s
       left join account_desk a on a.id = s.account_id
      where s.org_id = ${orgId}
        and s.signal_date between current_date - ${days}::int and current_date
        and (a.id is null or a.disposition not in ('Disqualified', 'Archived'))
-  `) as { total: number; unlinked: number; hotter_than_tam: number; weak: number; last_scored: string | null }[];
+  `) as { total: number; unlinked: number; hotter_than_tam: number; weak: number; dismissed: number; last_scored: string | null }[];
   return rows[0];
 }
 
@@ -580,6 +594,7 @@ export type RoleRow = {
   relevance: number | null;
   closed_at?: string | null;
   url_ok?: boolean | null;
+  dismissed?: boolean;
 };
 
 /**
@@ -591,7 +606,9 @@ export type RoleRow = {
 export async function rolesForAccount(orgId: string, accountId: string) {
   return (await sql`
     select r.id, r.title, r.url, r.location, r.seniority, r.posted_at, r.qualified,
-           r.first_seen, r.salary_text, r.relevance, r.closed_at, r.url_ok
+           r.first_seen, r.salary_text, r.relevance, r.closed_at, r.url_ok,
+           exists (select 1 from dismissals d
+                    where d.org_id = r.org_id and d.kind = 'role' and d.ref_id = r.id) as dismissed
       from account_roles r
      where r.org_id = ${orgId} and r.account_id = ${accountId}
      order by (r.closed_at is not null), r.qualified desc, r.relevance desc nulls last,
@@ -688,6 +705,8 @@ export async function commandBoard(orgId: string, floor: number) {
            and s.signal_date between current_date - ${DESK.SIGNAL_FRESH_DAYS}::int and current_date
            and coalesce(s.heat_score, 0) >= ${DESK.SIGNAL_MIN_HEAT}
            and (a.id is null or a.disposition = 'Active')
+       and not exists (select 1 from dismissals d
+                        where d.org_id = s.org_id and d.kind = 'signal' and d.ref_id = s.id)
          order by s.heat_score desc nulls last, s.signal_date desc
          limit ${DESK.SIGNALS_ON_TODAY}
       ) x) as signals,
@@ -707,6 +726,8 @@ export async function commandBoard(orgId: string, floor: number) {
            and not exists (select 1 from desk_marks m
                             where m.account_id = r.account_id and m.kind = 'role'
                               and m.ref = r.id::text and m.done)
+       and not exists (select 1 from dismissals d
+                        where d.org_id = r.org_id and d.kind = 'role' and d.ref_id = r.id)
          order by r.difficulty desc nulls last, r.relevance desc nulls last, r.first_seen desc
          limit ${DESK.LIVE_LEADS_PER_DAY}
       ) x) as leads,
@@ -724,12 +745,16 @@ export async function commandBoard(orgId: string, floor: number) {
           (select count(*)::int from heat_signals s
             where s.org_id = ${orgId}
               and s.signal_date between current_date - ${DESK.SIGNAL_FRESH_DAYS}::int and current_date
-              and coalesce(s.heat_score, 0) >= ${DESK.SIGNAL_MIN_HEAT}) as strong_signals,
+              and coalesce(s.heat_score, 0) >= ${DESK.SIGNAL_MIN_HEAT}
+              and not exists (select 1 from dismissals d
+                               where d.org_id = s.org_id and d.kind = 'signal' and d.ref_id = s.id)) as strong_signals,
           (select count(*)::int from account_roles r join account_desk a on a.id = r.account_id
             where r.org_id = ${orgId} and r.qualified and r.closed_at is null
               and a.disposition = 'Active'
               and r.first_seen >= current_date - ${DESK.ROLE_FRESH_DAYS}::int
-              and coalesce(r.difficulty, 0) >= ${DESK.LEAD_MIN_DIFFICULTY}) as top_roles_week,
+              and coalesce(r.difficulty, 0) >= ${DESK.LEAD_MIN_DIFFICULTY}
+              and not exists (select 1 from dismissals d
+                               where d.org_id = r.org_id and d.kind = 'role' and d.ref_id = r.id)) as top_roles_week,
           (select max(fetched_at) from account_roles where org_id = ${orgId}) as roles_pulled_at,
           (select max(last_scored) from heat_signals where org_id = ${orgId}) as signals_pulled_at,
           (select max(banded_at) from tam_accounts where org_id = ${orgId}) as ranked_at
@@ -1101,8 +1126,10 @@ export async function freshRoles(
   sort: "new" | "relevant" = "new",
   floor = 0,
   minDifficulty = 0,
+  dismissedOnly = false,
 ) {
   const byRelevance = sort === "relevant";
+  const dismissed = dismissedOnly ? 1 : 0;
   return (await sql`
     select r.id, r.account_id, a.company_name, a.effective_band as work_band,
            r.title, r.url, r.location, r.salary_text, r.seniority,
@@ -1118,6 +1145,8 @@ export async function freshRoles(
        and a.disposition = 'Active'
        and coalesce(r.relevance, 0) >= ${floor}
        and coalesce(r.difficulty, 0) >= ${minDifficulty}
+       and (${dismissed} = 1) = exists (select 1 from dismissals d
+                                         where d.org_id = r.org_id and d.kind = 'role' and d.ref_id = r.id)
        and r.first_seen >= current_date - ${days}::int
      order by case when ${byRelevance} then r.relevance end desc nulls last,
               r.first_seen desc nulls last, a.company_name, r.title
@@ -1134,6 +1163,9 @@ export async function freshRoleCounts(orgId: string, floor = 0, minDifficulty = 
       count(*) filter (where r.first_seen >= current_date - 30 and r.relevance >= ${floor})::int as month,
       count(distinct r.account_id) filter (where r.first_seen >= current_date - 7 and r.difficulty >= ${minDifficulty})::int as companies,
       count(*) filter (where r.relevance >= ${floor})::int as top,
+      count(*) filter (where exists (select 1 from dismissals d
+                                      where d.org_id = r.org_id and d.kind = 'role'
+                                        and d.ref_id = r.id))::int as dismissed,
       count(*)::int as total,
       (select count(*)::int from account_roles c
         where c.org_id = ${orgId} and c.qualified and c.closed_at is not null) as closed,
@@ -1142,6 +1174,6 @@ export async function freshRoleCounts(orgId: string, floor = 0, minDifficulty = 
     join account_desk a on a.id = r.account_id
     where r.org_id = ${orgId} and r.qualified and r.closed_at is null
       and r.url_ok is distinct from false and a.disposition = 'Active'
-  `) as { today: number; week: number; month: number; companies: number; top: number; total: number; closed: number; pulled_at: string | null }[];
+  `) as { today: number; week: number; month: number; companies: number; top: number; dismissed: number; total: number; closed: number; pulled_at: string | null }[];
   return rows[0];
 }
