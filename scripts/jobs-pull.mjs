@@ -18,6 +18,7 @@ import {
   PredictLeadsError,
 } from "../src/lib/server/integrations/predictleads.mjs";
 import { scoreRole } from "../src/lib/scoring/roles.mjs";
+import { DESK } from "../src/config/desk.mjs";
 
 config({ path: ".env.local" });
 
@@ -31,6 +32,9 @@ const arg = (flag, fallback) => {
 const BAND = arg("--band", null);
 const PER_COMPANY = Number(arg("--limit", "100"));
 const STALE_DAYS = Number(arg("--stale", "7"));
+// The bar Today uses for a live lead, so the URL check covers exactly the
+// roles the screen offers rather than a different set.
+const LEAD_MIN_DIFFICULTY = DESK.LEAD_MIN_DIFFICULTY;
 
 if (!predictLeadsAvailable()) {
   console.error("PREDICTLEADS_API_KEY and PREDICTLEADS_API_TOKEN must both be set.");
@@ -142,14 +146,28 @@ async function main() {
     // The direct check, for the roles that actually surface. Greenhouse and
     // Lever answer 404 for a filled role; a 200 from a board that keeps dead
     // pages up is a limit of this check, not a claim the role is open.
+    //
+    // Which roles surface is two different questions, and checking only one
+    // of them left every role on Today unverified. A new posting cannot have
+    // aged, so the daily leads gate on difficulty; the month view gates on
+    // the commercial score. Both sets are checked, freshest first, because a
+    // role he is about to call about matters more than one he may never open.
     const top = await pool.query(
       `select id, url from account_roles
         where org_id = $1 and qualified and closed_at is null and url is not null
           and (url_checked_at is null or url_checked_at < now() - interval '3 days')
-          and relevance >= (select percentile_cont(0.9) within group (order by relevance)
-                              from account_roles where org_id = $1 and qualified and relevance is not null)
-        order by relevance desc limit 300`,
-      [orgId],
+          and (
+            -- what Today offers as a live lead
+            (first_seen >= current_date - 7 and difficulty >= $2::int)
+            -- what the month view puts in the top tenth
+            or relevance >= (select percentile_cont(0.9) within group (order by relevance)
+                               from account_roles
+                              where org_id = $1 and qualified and closed_at is null
+                                and relevance is not null)
+          )
+        order by (first_seen >= current_date - 7) desc, relevance desc
+        limit 400`,
+      [orgId, LEAD_MIN_DIFFICULTY],
     );
     let ok = 0, dead = 0;
     const check = async ({ id, url }) => {

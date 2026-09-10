@@ -68,6 +68,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 | `npm run signals -- --apply` | Pull and score PredictLeads events for Work now and Up next. Plan only without `--apply` |
 | `npm run jobs -- --apply` | Pull open roles for the list, qualify, score relevance, close postings not seen for 7 days, check the top decile's URLs. `--today` lists what appeared in 24 hours |
 | `npm run map` | Re-rank the market into Work now, Up next, Backlog. Free |
+| `npm run verify:roles` | Check the roles the screens show are still open, against the employer page. `--all` ignores the 3 day window |
 | `npm run rescore` | Recompute role relevance for every stored role. Free, no network |
 | `npm run test:unit` | xlsx, heat, outreach, PredictLeads and next-move checks. Fast, no database, no network |
 | `npm run test:e2e` | Playwright. **Daniyal runs this, not Claude.** Write the specs, hand him the verification step. |
