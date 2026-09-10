@@ -22,7 +22,8 @@ async function main() {
   const { rows } = await pool.query(
     `select r.id, r.title, r.occupation, r.salary_text, r.first_seen,
             (select count(*)::int from account_roles x
-              where x.account_id = r.account_id and x.qualified) as open_at_company
+              where x.account_id = r.account_id and x.qualified
+                and x.closed_at is null) as open_at_company
        from account_roles r
       where r.qualified`,
   );

@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 import { matchRole, bucketResults, parseQuery, tokens, levelOf, functionOf } from "../src/lib/scoring/match.mjs";
-import { roleScore, difficulty, aging } from "../src/lib/scoring/roles.mjs";
+import { roleScore, scoreRole as roleScoreFull, difficulty, aging } from "../src/lib/scoring/roles.mjs";
 
 let run = 0;
 const test = (name, fn) => {
@@ -56,6 +56,25 @@ test("an easy role open forever is still not a strong lead", () => {
   const easyOld = roleScore({ title: "Data Entry Clerk", first_seen: "2024-01-01" }, AS_OF);
   const hardMid = roleScore({ title: "Senior Avionics Engineer", first_seen: "2026-07-15" }, AS_OF);
   assert.ok(easyOld < hardMid, `${easyOld} < ${hardMid}`);
+});
+
+test("the breakdown always adds up to the score it explains", () => {
+  // The panel shows the terms and the stored score side by side. A scorer
+  // whose terms do not sum to its own return value puts "the terms add to 35
+  // and the stored score is 29" in front of the operator, which is how a
+  // missing input was found: the pull was not passing open_at_company, so
+  // every score it wrote was 6 short of what the breakdown described.
+  const cases = [
+    { title: "Director of Engineering", first_seen: "2026-09-10", salary_text: "210000 - 310000 USD per year", open_at_company: 179 },
+    { title: "Principal GNC Engineer, TS/SCI", first_seen: "2026-06-01" },
+    { title: "Recruiting Coordinator", first_seen: "2026-09-01", open_at_company: 2 },
+    { title: "Senior RF Engineer", first_seen: "2025-01-01", salary_text: "$150,000", open_at_company: 9 },
+  ];
+  for (const c of cases) {
+    const s = roleScoreFull(c, "2026-09-10");
+    const sum = s.terms.filter((t) => !t.reason).reduce((n, t) => n + t.points, 0);
+    assert.equal(sum, s.value, `${c.title}: terms sum to ${sum}, score is ${s.value}`);
+  }
 });
 
 test("role scores stay inside 0 to 100", () => {

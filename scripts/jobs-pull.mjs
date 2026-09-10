@@ -89,11 +89,21 @@ async function main() {
 
     pulled += roles.length;
 
+    // How many relevant roles this company has open, counted from what the
+    // provider just returned. The scorer gives a company hiring several hard
+    // roles at once a bonus, and the pull was not passing this at all: every
+    // score it wrote was missing that term, while the rescore script did pass
+    // it. The two disagreed permanently, which is what put a stored 29 next
+    // to a breakdown adding to 35 on screen.
+    const openHere = roles.filter((x) => x.title && qualifyRole(x.title)).length;
+
     for (const r of roles) {
       if (!r.title) continue;
       const ok = qualifyRole(r.title);
       if (ok) qualified += 1;
-      const scored = ok ? scoreRole(r) : { value: null, difficulty: null };
+      const scored = ok
+        ? scoreRole({ ...r, open_at_company: openHere })
+        : { value: null, difficulty: null };
 
       const age = daysAgo(r.first_seen);
       if (ok && age !== null && age <= 7) {
