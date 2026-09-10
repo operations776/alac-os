@@ -232,7 +232,7 @@ export default async function HowPage() {
               </ul>
               <ul className="flex list-disc flex-col gap-2 pl-5">
                 <li className="text-[var(--alac-warn)]">SourceWhale: no API key yet. Campaign state is typed in until then.</li>
-                <li className="text-[var(--alac-warn)]">Exa: no key yet. Messages draft from stored facts only, without article detail.</li>
+                <li>Exa: live. A drafted message can cite the coverage behind a signal, from outlets rather than the company&apos;s own press release.</li>
                 <li>Nothing sends, posts or enrols from this app. A human does every one of those.</li>
               </ul>
             </div>

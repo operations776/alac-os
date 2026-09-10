@@ -127,38 +127,60 @@ export default async function CommandPage() {
                 body={`No signal in the last ${DESK.SIGNAL_FRESH_DAYS} days scored ${DESK.SIGNAL_MIN_HEAT} or above at a company you are working. That is the honest answer, not a gap.`}
               />
             ) : (
-              <ul className="flex flex-col">
-                {signals.map((s) => (
-                  <Row
-                    as="li"
-                    key={s.id}
-                    href={s.account_id ? `/queue/${s.account_id}` : `/queue/new?name=${encodeURIComponent(s.company_name)}`}
-                    className="row-hover flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-[var(--alac-line)] px-5 py-3 last:border-0"
-                  >
-                    <span className="readout w-8 shrink-0 text-right text-[15px] text-[var(--alac-accent)]" title="Urgency out of 100">
-                      {s.heat_score}
-                    </span>
-                    <span className="min-w-[160px] text-[14px] font-medium">{s.company_name}</span>
-                    <span className="chip text-[var(--alac-text-3)]">
-                      {s.category ? CATEGORY_LABEL[s.category] ?? s.category.replace(/_/g, " ") : "Signal"}
-                    </span>
-                    {s.amount_usd ? (
-                      <span className="chip bg-[var(--alac-good-soft)] text-[var(--alac-good)]">{money(s.amount_usd)}</span>
-                    ) : null}
-                    <span className="min-w-[200px] flex-1 text-[13px] leading-snug text-[var(--alac-text-2)]">
-                      {s.what_happened}
-                    </span>
-                    <span className="readout shrink-0 text-[12px] text-[var(--alac-text-3)]">{ago(s.signal_date)}</span>
-                    <span className="flex shrink-0 items-center gap-3">
-                      <WhySignal signal={s} score={s.heat_score} label="Why" />
-                      <Dismiss kind="signal" refId={s.id} reasons={DISMISS_REASONS.signal} />
-                    </span>
-                    {!s.account_id ? (
-                      <span className="chip bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]">Not on the list, add</span>
-                    ) : null}
-                  </Row>
-                ))}
-              </ul>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--alac-ground)]">
+                      <th className="px-5 py-2 text-right"><Hint label="Urgency" text="Out of 100: how directly the event implies hiring, how recent, how big, and how sure the provider is. Why opens the arithmetic." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Company" text="Opens the company. A company not on your list can be added from here." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="What happened" text="The event, in the provider's words, with the amount where one was reported." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="When" text="When the event happened, not when we found it." /></th>
+                      <th className="px-4 py-2 text-left"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {signals.map((s) => (
+                      <Row
+                        key={s.id}
+                        href={s.account_id ? `/queue/${s.account_id}` : `/queue/new?name=${encodeURIComponent(s.company_name)}`}
+                        className="row-hover border-b border-[var(--alac-line)] last:border-0"
+                      >
+                        <td className="readout px-5 py-3 text-right align-top text-[15px] text-[var(--alac-accent)]">
+                          {s.heat_score}
+                        </td>
+                        <td className="px-4 py-3 align-top">
+                          <span className="text-[14px] font-medium">{s.company_name}</span>
+                          <div className="mt-0.5 text-[12px] text-[var(--alac-text-3)]">
+                            {s.category ? CATEGORY_LABEL[s.category] ?? s.category.replace(/_/g, " ") : "Signal"}
+                          </div>
+                          {!s.account_id ? (
+                            <span className="mt-1 inline-block chip bg-[var(--alac-warn-soft)] text-[var(--alac-warn)]">
+                              Not on the list, add
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3 align-top text-[13px] leading-snug text-[var(--alac-text-2)]">
+                          {s.what_happened}
+                          {s.amount_usd ? (
+                            <span className="ml-2 chip bg-[var(--alac-good-soft)] text-[var(--alac-good)]">
+                              {money(s.amount_usd)}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="readout px-4 py-3 align-top text-[12px] text-[var(--alac-text-3)]">
+                          {ago(s.signal_date)}
+                        </td>
+                        <td className="px-4 py-3 align-top">
+                          <span className="flex items-center gap-3">
+                            <WhySignal signal={s} score={s.heat_score} label="Why" />
+                            <Dismiss kind="signal" refId={s.id} reasons={DISMISS_REASONS.signal} />
+                          </span>
+                        </td>
+                      </Row>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
         </BoardSection>
@@ -179,49 +201,71 @@ export default async function CommandPage() {
                 body="Nothing hard to fill was posted at a company on your list in the last week, or every one has been raised already. Open roles has the month."
               />
             ) : (
-              <ul className="flex flex-col">
-                {leads.map((r) => (
-                  <Row
-                    as="li"
-                    key={r.id}
-                    href={`/queue/${r.account_id}`}
-                    className="row-hover flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-[var(--alac-line)] px-5 py-3 last:border-0"
-                  >
-                    <form action={setMark} className="shrink-0 self-center">
-                      <input type="hidden" name="accountId" value={r.account_id} />
-                      <input type="hidden" name="kind" value="role" />
-                      <input type="hidden" name="ref" value={r.id} />
-                      <input type="hidden" name="done" value="1" />
-                      <button
-                        type="submit"
-                        role="checkbox"
-                        aria-checked={false}
-                        aria-label="Raised it, show me the next one"
-                        title="Tick when you have raised this role. It leaves the list and the next one takes its place"
-                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
-                      >
-                        <Check size={16} strokeWidth={1.5} className="opacity-0" />
-                      </button>
-                    </form>
-                    <span className="readout w-8 shrink-0 text-right text-[15px] text-[var(--alac-accent)]" title="Commercial score out of 100">
-                      {r.relevance}
-                    </span>
-                    <span className="min-w-[150px] text-[14px] font-medium">{r.company_name}</span>
-                    <span className="min-w-[200px] flex-1 text-[13.5px]">{r.title}</span>
-                    {r.salary_text ? <span className="shrink-0 text-[12px] text-[var(--alac-text-2)]">{r.salary_text}</span> : null}
-                    <span className="readout shrink-0 text-[12px] text-[var(--alac-text-3)]">{ago(r.first_seen)}</span>
-                    {r.url ? (
-                      <a href={r.url} target="_blank" rel="noreferrer" className="link inline-flex shrink-0 items-center gap-1.5 text-[12px]">
-                        Posting <ExternalLink size={16} strokeWidth={1.5} />
-                      </a>
-                    ) : null}
-                    <span className="flex shrink-0 items-center gap-3">
-                      <WhyRole role={r} label="Why" />
-                      <Dismiss kind="role" refId={r.id} reasons={DISMISS_REASONS.role} />
-                    </span>
-                  </Row>
-                ))}
-              </ul>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px] border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--alac-ground)]">
+                      <th className="px-5 py-2 text-left"><Hint label="Raised" text="Tick when you have raised this role. It leaves the list and the next one takes its place." /></th>
+                      <th className="px-4 py-2 text-right"><Hint label="Score" text="Commercial score out of 100: how hard to fill, times how long open. Why opens the arithmetic." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Company" text="Opens the company page." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Role" text="The title as the employer posted it. Posting opens their own page." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Salary" text="Where the employer publishes a band." /></th>
+                      <th className="px-4 py-2 text-left"><Hint label="Posted" text="When the posting first appeared." /></th>
+                      <th className="px-4 py-2 text-left"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leads.map((r) => (
+                      <Row key={r.id} href={`/queue/${r.account_id}`} className="row-hover border-b border-[var(--alac-line)] last:border-0">
+                        <td className="px-5 py-3 align-top">
+                          <form action={setMark}>
+                            <input type="hidden" name="accountId" value={r.account_id} />
+                            <input type="hidden" name="kind" value="role" />
+                            <input type="hidden" name="ref" value={r.id} />
+                            <input type="hidden" name="done" value="1" />
+                            <button
+                              type="submit"
+                              role="checkbox"
+                              aria-checked={false}
+                              aria-label="Raised it, show me the next one"
+                              title="Tick when you have raised this role. It leaves the list and the next one takes its place"
+                              className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
+                            >
+                              <Check size={16} strokeWidth={1.5} className="opacity-0" />
+                            </button>
+                          </form>
+                        </td>
+                        <td className="readout px-4 py-3 text-right align-top text-[15px] text-[var(--alac-accent)]">
+                          {r.relevance}
+                        </td>
+                        <td className="px-4 py-3 align-top text-[14px] font-medium">{r.company_name}</td>
+                        <td className="px-4 py-3 align-top text-[13.5px]">
+                          {r.url ? (
+                            <a href={r.url} target="_blank" rel="noreferrer" className="link inline-flex items-baseline gap-1.5">
+                              {r.title}
+                              <ExternalLink size={16} strokeWidth={1.5} className="shrink-0 self-center" />
+                            </a>
+                          ) : (
+                            r.title
+                          )}
+                        </td>
+                        <td className="px-4 py-3 align-top text-[12px] text-[var(--alac-text-2)]">
+                          {r.salary_text ?? "--"}
+                        </td>
+                        <td className="readout px-4 py-3 align-top text-[12px] text-[var(--alac-text-3)]">
+                          {ago(r.first_seen)}
+                        </td>
+                        <td className="px-4 py-3 align-top">
+                          <span className="flex items-center gap-3">
+                            <WhyRole role={r} label="Why" />
+                            <Dismiss kind="role" refId={r.id} reasons={DISMISS_REASONS.role} />
+                          </span>
+                        </td>
+                      </Row>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
         </BoardSection>

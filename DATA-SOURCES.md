@@ -19,7 +19,7 @@ the budget.
 | Open roles at a company | **PredictLeads** | Same call family, employer's own board link, salary where published |
 | Open roles, wider market | **Apify** | ~$0.40 per 1,000 postings for the companies PredictLeads has no record of |
 | Find people and their emails | **Prospeo** | 1 credit per request, not per person |
-| Read recent news | **Exa** | Built for machines reading articles. No key set yet |
+| Read recent news | **Exa** | Built for machines reading articles, not for ranking pages |
 | Write the message | **OpenAI** | Everything above is input to this |
 
 **Fiber is gone.** It was a watcher that had to be told which companies to
@@ -226,8 +226,11 @@ from the account page, on demand, never in bulk.
 
 [`src/lib/server/integrations/exa.mjs`](src/lib/server/integrations/exa.mjs).
 `researchCompany()` uses `category: "news"`, a 180 day floor, and excludes the
-company's own domain. **No key is set.** Without it the message writer works
-from stored facts only.
+company's own domain. **Live since 10 September.** Verified against the
+account: a search for one launch company returned six articles from
+GlobeNewswire, TechCrunch and Bloomberg, none from the company's own site.
+The message writer now has the coverage behind a signal rather than the
+stored summary alone.
 
 ---
 
@@ -278,7 +281,7 @@ when it was last loaded.
 | `APIFY_TOKEN` | Wider jobs, company identity | local |
 | `PROSPEO_API_KEY` | People, emails, domains | Vercel (reveal button), local |
 | `OPENAI_API_KEY` | Message writing | local |
-| `EXA_API_KEY` | Recent coverage | **not set** |
+| `EXA_API_KEY` | Recent coverage | local `.env.local`, Vercel |
 
 Keys are never logged or echoed. The PredictLeads client redacts them from
 error messages.

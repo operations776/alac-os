@@ -147,6 +147,7 @@ Provisioned automatically by the Neon integration and pulled with `vercel env pu
 | `ALAC_SEED_PASSWORD` | no | `create:user` only | Password for `npm run create:user`. Unset: one is generated and printed once. Never committed, never a default. |
 | `PREDICTLEADS_API_KEY` | no | refresh only | Signals and open roles. Read by the scripts, never at request time, so it lives in GitHub Actions secrets and `.env.local`, not in Vercel. |
 | `PREDICTLEADS_API_TOKEN` | no | refresh only | The second half of the PredictLeads credential. Both are required or the client refuses to start. |
+| `EXA_API_KEY` | no | for message research | Recent coverage behind a signal, used when a message is drafted. Unset: the writer works from stored facts only and says so rather than inventing prose. |
 | `PROSPEO_API_KEY` | no | reveal button | People search and on-demand email reveal. The reveal runs in a server action, so this one is in Vercel. |
 | `APIFY_TOKEN` | no | wider pull | LinkedIn org ids and the monthly wider jobs pull. Scripts only. |
 | `SOURCEWHALE_API_KEY` | no | phase 2 | Read-oriented sync. See section 9. Unset: the CSV bridge covers the same code path. |
