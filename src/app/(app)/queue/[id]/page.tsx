@@ -14,12 +14,13 @@ import {
   formatDate,
 } from "@/components/ui/primitives";
 import {
-  ExecutionStages, HEAT_COMPONENTS, HeatDelta, MotionChip, PrepChip,
+  HEAT_COMPONENTS, HeatDelta, MotionChip,
   PriorityChip, NextMove, LifecycleChip,
 } from "@/components/ui/desk";
 import { TargetList, RoleList, Brief, type SentMap } from "@/components/ui/targets";
 import { DraftList } from "@/components/ui/drafts";
 import { NoteForm, MessageButton } from "@/components/ui/tracker";
+import { Fold } from "@/components/ui/fold";
 import { PinControl } from "@/components/ui/pin";
 import { OrgMap } from "@/components/ui/org-map";
 import { WhyBand, WhyMove } from "@/components/ui/explain";
@@ -117,6 +118,10 @@ export default async function QueueAccountPage({
     [...marks].filter((m) => m.startsWith("role:")).map((m) => m.slice(5)),
   );
   const site = account.domain ? `https://${account.domain.replace(/^https?:\/\//, "")}` : null;
+  // Live, relevant roles only. An unqualified posting is kept for the count
+  // and is never a reason to call anyone, so it is not on this page; a
+  // closed one is not open. Both were padding the list to forty rows.
+  const topRoles = roles.filter((r) => r.qualified && !r.closed_at);
 
   return (
     <div className="mx-auto max-w-[1240px] px-5 py-6 sm:px-8 sm:py-7">
@@ -133,7 +138,6 @@ export default async function QueueAccountPage({
             <LifecycleChip row={account} />
             <PriorityChip priority={account.priority} />
             <MotionChip motion={account.recommended_motion} />
-            <PrepChip status={account.prep_status} />
             <PinControl
               accountId={account.id}
               systemBand={account.work_band}
@@ -154,10 +158,6 @@ export default async function QueueAccountPage({
                 Next week
               </span>
             ) : null}
-            <ExecutionStages
-              heyreach={account.heyreach_stage}
-              sourcewhale={account.sourcewhale_stage}
-            />
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
             {site ? (
@@ -296,11 +296,11 @@ export default async function QueueAccountPage({
           <DataCard account={account} />
 
           {/* Who has been approached, at which level. Section 14. */}
-          <Card>
-            <CardHeader
-              title="Organization penetration"
-              sub={`${account.lanes_touched} of six levels approached, ${account.lanes_engaged} in conversation`}
-            />
+          <Fold
+            title="Organization penetration"
+            count={`${account.lanes_touched} of 6 approached`}
+            sub={account.lanes_engaged > 0 ? `${account.lanes_engaged} in conversation` : undefined}
+          >
             <OrgMap
               accountId={account.id}
               touches={touches}
@@ -308,7 +308,7 @@ export default async function QueueAccountPage({
               freshRoles={account.fresh_roles}
               roleTitles={roles.filter((r) => r.qualified).slice(0, 20).map((r) => r.title)}
             />
-          </Card>
+          </Fold>
 
           {/* The tracker: what he did. */}
           <Card>
@@ -370,26 +370,29 @@ export default async function QueueAccountPage({
               title="Open roles"
               sub={
                 pkg.total_roles > 0
-                  ? `${pkg.qualified_roles} relevant of ${pkg.total_roles} found, most relevant first. Tick the ones you have raised`
+                  ? `The ${Math.min(topRoles.length, 10)} best of ${pkg.qualified_roles} relevant. Tick the ones you have raised`
                   : undefined
               }
             />
-            <RoleList roles={roles} accountId={account.id} mentioned={mentioned} />
+            <RoleList roles={topRoles.slice(0, 10)} accountId={account.id} mentioned={mentioned} />
+            {topRoles.length > 10 ? (
+              <div className="px-5 pb-4">
+                <Link href={`/roles?range=month&q=${encodeURIComponent(account.company_name)}`} className="link text-[12.5px]">
+                  All {topRoles.length} relevant roles at this company
+                </Link>
+              </div>
+            ) : null}
           </Card>
 
-          <Card>
-            <CardHeader
-              title="The brief"
-              sub={brief ? "Grounded in the signals and contacts below" : "Not written yet"}
-            />
+          <Fold title="The brief" sub={brief ? "Grounded in the signals and contacts" : "Not written yet"}>
             <Brief brief={brief} />
-          </Card>
+          </Fold>
 
-          <Card>
-            <CardHeader
-              title="What changed"
-              sub={signals.length > 0 ? `${signals.length} on record, newest first` : undefined}
-            />
+          <Fold
+            title="What changed"
+            count={signals.length > 0 ? `${signals.length} on record` : undefined}
+            sub="Newest first"
+          >
             {signals.length === 0 ? (
               <EmptyState
                 title="Nothing recorded"
@@ -440,15 +443,14 @@ export default async function QueueAccountPage({
                 })}
               </div>
             )}
-          </Card>
+          </Fold>
         </div>
 
         <div className="flex flex-col gap-5">
-          <Card>
-            <CardHeader
-              title="SourceWhale"
-              sub="Loaded is not the same as being worked"
-            />
+          <Fold
+            title="SourceWhale"
+            count={account.sw_state === "Not Added" ? "not added" : account.sw_state}
+          >
             <form action={setSourceWhale} className="flex flex-col gap-2.5 px-5 pb-5">
               <input type="hidden" name="accountId" value={account.id} />
               <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
@@ -480,46 +482,44 @@ export default async function QueueAccountPage({
                 fields, so nothing here is redone.
               </NoticeLine>
             </div>
-          </Card>
+          </Fold>
 
           {/* Disposition. Section 15.1: never a hard delete, always a choice
               about which kind of stop this is. */}
-          <Card>
-            <CardHeader title="Working this account?" sub="Each answer changes what the desk recommends" />
+          <Fold title="Working this account?" count={account.disposition}>
             <form action={setDisposition} className="flex flex-col gap-2.5 px-5 pb-5">
               <input type="hidden" name="accountId" value={account.id} />
               <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
                 Disposition
                 <select name="disposition" defaultValue={account.disposition} className="field">
-                  <option value="Active">Active, recommend it</option>
-                  <option value="Hold">On hold, keep watching, no outreach</option>
-                  <option value="Nurture">Nurture, only on a strong signal</option>
-                  <option value="Disqualified">Disqualified, keep the history</option>
-                  <option value="Archived">Archived, hide but keep searchable</option>
+                  <option value="Active">Active, Recommend It</option>
+                  <option value="Hold">On Hold, Keep Watching</option>
+                  <option value="Nurture">Nurture, Only On A Strong Signal</option>
+                  <option value="Disqualified">Disqualified, Keep The History</option>
+                  <option value="Archived">Archived, Hide But Keep Searchable</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1.5 text-[12.5px] text-[var(--alac-text-2)]">
                 Reason
                 <input name="reason" defaultValue={account.disposition_reason ?? ""} maxLength={300} list="disposition-reasons" className="field" />
                 <datalist id="disposition-reasons">
-                  <option value="Not in our ICP" />
+                  <option value="Not In Our ICP" />
                   <option value="Client" />
                   <option value="Competitor" />
-                  <option value="No hiring authority reachable" />
-                  <option value="Timing, revisit next quarter" />
+                  <option value="No Hiring Authority Reachable" />
+                  <option value="Timing, Revisit Next Quarter" />
                 </datalist>
               </label>
               <button type="submit" className="btn btn-secondary">Save</button>
             </form>
-          </Card>
+          </Fold>
 
-          <Card>
-            <CardHeader title="LinkedIn warming" sub="Before the email sequence" />
-            <dl className="flex flex-col gap-2.5 px-5 pb-5 text-[13px]">
+          <Fold title="LinkedIn warming" count={account.heyreach_stage === "NOT LOADED" ? "not loaded" : account.heyreach_stage}>
+            <dl className="flex flex-col gap-2.5 px-5 py-4 text-[13px]">
               <Row label="Stage" value={account.heyreach_stage} />
               <Row label="First loaded" value={formatDate(account.heyreach_date) ?? "not recorded"} />
             </dl>
-          </Card>
+          </Fold>
 
           <Card>
             <CardHeader title="People you already know" sub={`${people.length} matched`} />

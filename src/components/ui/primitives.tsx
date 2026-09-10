@@ -8,6 +8,10 @@ import {
   XCircle,
 } from "lucide-react";
 
+// One definition, shared with the importer: the screen formats rows that
+// were imported before the importer knew to.
+export { formatFigure } from "@/lib/server/import/figure.mjs";
+
 // Hand rolled primitives, per DESIGN.md. No component library.
 //
 // The ALAC brand. On a near black ground a shadow does nothing, so depth is a

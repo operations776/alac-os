@@ -16,6 +16,7 @@
 import { config } from "dotenv";
 import pg from "pg";
 import { openWorkbook, serialToISO, colIdx } from "../src/lib/server/import/xlsx.mjs";
+import { formatFigure } from "../src/lib/server/import/figure.mjs";
 import { normCompany } from "../src/lib/server/import/normalize.mjs";
 
 config({ path: ".env.local" });
@@ -39,6 +40,8 @@ const int = (v) => {
   const n = num(v);
   return n == null ? null : Math.round(n);
 };
+
+
 
 // The workbook writes "Priority 1"; the enum is priority_1. UNSCORED is a real
 // state, not a missing value, so it maps rather than falling through to null.
@@ -288,7 +291,10 @@ const run = async () => {
         accountId,
         serialToISO(cell(r, "C")),
         cell(r, "D") || "(not recorded)",
-        cell(r, "E") || null,
+        // The figure column. A cell typed as a number arrives as a raw
+        // double, so 46058871 comes out of the file as "4.6058871E7" and
+        // that string went straight onto the signal card.
+        formatFigure(cell(r, "E")),
         cell(r, "F") || null,
         cell(r, "M") || null,
         int(cell(r, "G")),

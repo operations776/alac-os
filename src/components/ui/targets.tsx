@@ -137,69 +137,95 @@ export function RoleList({
       />
     );
   }
+  // A table, because these are five facts about each of forty rows and a
+  // wrapping flex row let each one land in a different place. Columns line
+  // the scores up under each other, which is the only way a column of
+  // numbers can be read down.
+  //
+  // The provider writes locations as a full geographic path, "California,
+  // United States, Northern America, Americas". The city is the part a
+  // recruiter reads.
+  const place = (s: string | null) => (s ? s.split(",").slice(0, 2).join(",").trim() : null);
+
   return (
-    <ul className="flex flex-col gap-0.5 px-3 pb-3">
-      {roles.map((r) => (
-        <li
-          key={r.id}
-          className={`row-hover flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[var(--alac-radius-sm)] px-3 py-2 ${
-            r.qualified ? "" : "opacity-55"
-          }`}
-        >
-          {/* Mentioned: he has already raised this role with someone there.
-              A plain form, one row, toggled. */}
-          <form action={setMark} className="shrink-0">
-            <input type="hidden" name="accountId" value={accountId} />
-            <input type="hidden" name="kind" value="role" />
-            <input type="hidden" name="ref" value={r.id} />
-            <input type="hidden" name="done" value={mentioned?.has(r.id) ? "0" : "1"} />
-            <button
-              type="submit"
-              role="checkbox"
-              aria-checked={mentioned?.has(r.id) ?? false}
-              aria-label={mentioned?.has(r.id) ? "Mentioned, click to clear" : "Mark as mentioned"}
-              title={mentioned?.has(r.id) ? "You have raised this role. Click to clear" : "Mark that you have raised this role with them"}
-              className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border ${
-                mentioned?.has(r.id)
-                  ? "border-[var(--alac-good)] bg-[var(--alac-good)] text-[var(--alac-ground)]"
-                  : "border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
-              }`}
+    <div className="overflow-x-auto px-2 pb-3">
+      <table className="w-full min-w-[720px] border-collapse">
+        <thead>
+          <tr className="text-left text-[11px] text-[var(--alac-text-3)]">
+            <th className="px-2 py-2 font-normal" title="Tick the roles you have already raised with them">
+              Raised
+            </th>
+            <th className="px-2 py-2 text-right font-normal" title="Commercial score out of 100: how hard to fill, times how long open">
+              Score
+            </th>
+            <th className="px-2 py-2 font-normal">Role</th>
+            <th className="px-2 py-2 font-normal">Where</th>
+            <th className="px-2 py-2 font-normal">Salary</th>
+            <th className="px-2 py-2 font-normal">Posted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {roles.map((r) => (
+            <tr
+              key={r.id}
+              className={`row-hover border-t border-[var(--alac-line)] ${r.qualified ? "" : "opacity-55"}`}
             >
-              {mentioned?.has(r.id) ? <Check size={16} strokeWidth={1.5} /> : null}
-            </button>
-          </form>
-          <span className="readout w-[76px] shrink-0 text-[12px] text-[var(--alac-text-3)]">
-            {formatDate(r.first_seen ?? r.posted_at) ?? "undated"}
-          </span>
-          {r.relevance != null ? (
-            <span className="readout w-6 shrink-0 text-right text-[12px] text-[var(--alac-accent)]">
-              {r.relevance}
-            </span>
-          ) : null}
-          <span className="shrink-0"><WhyRole role={{ ...r, title: r.title }} label="" /></span>
-          <span className="min-w-[180px] flex-1">
-            {r.url ? (
-              <a href={r.url} target="_blank" rel="noreferrer" className="link text-[13.5px]">
-                {r.title}
-              </a>
-            ) : (
-              <span className="text-[13.5px]">{r.title}</span>
-            )}
-          </span>
-          {r.location ? (
-            <span className="shrink-0 text-[12px] text-[var(--alac-text-3)]">{r.location}</span>
-          ) : null}
-          {r.salary_text ? (
-            <span className="shrink-0 text-[12px] text-[var(--alac-text-2)]">{r.salary_text}</span>
-          ) : null}
-          {!r.qualified ? (
-            <span className="chip min-h-[22px] px-2 text-[10px]" title="Recorded, but not a role ALAC would be engaged on">
-              Not ALAC
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+              <td className="px-2 py-2 align-top">
+                {/* Mentioned: he has already raised this role with someone
+                    there. A plain form, one row, toggled. */}
+                <form action={setMark}>
+                  <input type="hidden" name="accountId" value={accountId} />
+                  <input type="hidden" name="kind" value="role" />
+                  <input type="hidden" name="ref" value={r.id} />
+                  <input type="hidden" name="done" value={mentioned?.has(r.id) ? "0" : "1"} />
+                  <button
+                    type="submit"
+                    role="checkbox"
+                    aria-checked={mentioned?.has(r.id) ?? false}
+                    aria-label={mentioned?.has(r.id) ? "Mentioned, click to clear" : "Mark as mentioned"}
+                    title={mentioned?.has(r.id) ? "You have raised this role. Click to clear" : "Mark that you have raised this role with them"}
+                    className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border ${
+                      mentioned?.has(r.id)
+                        ? "border-[var(--alac-good)] bg-[var(--alac-good)] text-[var(--alac-ground)]"
+                        : "border-[var(--alac-line)] bg-[var(--alac-ground)] hover:border-[var(--alac-accent)]"
+                    }`}
+                  >
+                    {mentioned?.has(r.id) ? <Check size={16} strokeWidth={1.5} /> : null}
+                  </button>
+                </form>
+              </td>
+              <td className="px-2 py-2 text-right align-top">
+                <span className="inline-flex items-baseline gap-1.5">
+                  <span className="readout text-[13px] text-[var(--alac-accent)]">{r.relevance ?? "--"}</span>
+                  <WhyRole role={{ ...r, title: r.title }} label="" />
+                </span>
+              </td>
+              <td className="px-2 py-2 align-top text-[13.5px]">
+                {r.url ? (
+                  <a href={r.url} target="_blank" rel="noreferrer" className="link">{r.title}</a>
+                ) : (
+                  r.title
+                )}
+                {!r.qualified ? (
+                  <span className="ml-2 chip min-h-[20px] px-1.5 text-[10px]" title="Recorded, but not a role ALAC would be engaged on">
+                    Not ALAC
+                  </span>
+                ) : null}
+              </td>
+              <td className="px-2 py-2 align-top text-[12px] text-[var(--alac-text-3)]">
+                {place(r.location) ?? "--"}
+              </td>
+              <td className="px-2 py-2 align-top text-[12px] text-[var(--alac-text-2)]">
+                {r.salary_text ?? "--"}
+              </td>
+              <td className="readout px-2 py-2 align-top text-[12px] text-[var(--alac-text-3)]">
+                {formatDate(r.first_seen ?? r.posted_at) ?? "undated"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

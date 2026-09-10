@@ -20,42 +20,44 @@ export const dynamic = "force-dynamic";
 // read only here by design, not by omission: the operating instructions place
 // them under the Master TAM and say not to change them.
 
+// Every label a person reads is Title Case. The values are database enums
+// and never change; only the drawn label does.
 const PRIORITIES = [
-  { value: "", label: "Any priority" },
+  { value: "", label: "Any Priority" },
   { value: "priority_1", label: "Priority 1" },
   { value: "priority_2", label: "Priority 2" },
   { value: "priority_3", label: "Priority 3" },
-  { value: "unscored", label: "UNSCORED" },
+  { value: "unscored", label: "Unscored" },
 ];
 
 const PREP = [
-  { value: "", label: "Any progress" },
-  { value: "NOT STARTED", label: "Not started" },
-  { value: "IN RESEARCH", label: "In research" },
-  { value: "READY FOR QC", label: "Needs review" },
+  { value: "", label: "Any Progress" },
+  { value: "NOT STARTED", label: "Not Started" },
+  { value: "IN RESEARCH", label: "Researching" },
+  { value: "READY FOR QC", label: "Pending Review" },
   { value: "APPROVED", label: "Approved" },
-  { value: "HOLD", label: "Hold" },
+  { value: "HOLD", label: "On Hold" },
 ];
 
 // Section 9. Separate from progress on purpose: how far the research got and
 // whether the account should be worked at all are different questions.
 const DISPOSITIONS = [
-  { value: "", label: "Active and on hold" },
+  { value: "", label: "Active And On Hold" },
   { value: "Active", label: "Active" },
-  { value: "Hold", label: "On hold" },
+  { value: "Hold", label: "On Hold" },
   { value: "Nurture", label: "Nurture" },
   { value: "Disqualified", label: "Disqualified" },
   { value: "Archived", label: "Archived" },
 ];
 
 const MOTIONS = [
-  { value: "", label: "Any approach" },
-  { value: "TBD", label: "Not decided" },
-  { value: "LIVE LEAD", label: "Live lead" },
-  { value: "GENERAL BD", label: "New business" },
-  { value: "MPC WEDGE", label: "Lead with a candidate" },
+  { value: "", label: "Any Approach" },
+  { value: "TBD", label: "Not Decided" },
+  { value: "LIVE LEAD", label: "Live Lead" },
+  { value: "GENERAL BD", label: "New Business" },
+  { value: "MPC WEDGE", label: "Lead With A Candidate" },
   { value: "NURTURE", label: "Nurture" },
-  { value: "HOLD", label: "Hold" },
+  { value: "HOLD", label: "On Hold" },
 ];
 
 export default async function QueuePage({
@@ -205,7 +207,7 @@ export default async function QueuePage({
             defaultChecked={onlyNext}
             className="h-4 w-4 accent-[var(--alac-accent)]"
           />
-          Next week only
+          Next Week Only
         </label>
         <Button type="submit" variant="primary">Apply</Button>
         {filtered ? <Link href="/queue" className="btn btn-ghost">Clear</Link> : null}
@@ -260,7 +262,7 @@ export default async function QueuePage({
                         accountId={a.id}
                         field="next_week"
                         value={a.next_week ? "1" : "0"}
-                        options={[{ value: "0", label: "no" }, { value: "1", label: "this week" }]}
+                        options={[{ value: "0", label: "No" }, { value: "1", label: "This Week" }]}
                       />
                     </td>
                     <td className="px-4 py-2.5 align-top">

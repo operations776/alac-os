@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { getOrgId, signalHeat, heatCounts } from "@/lib/server/queries/desk";
 import {
-  Card, EmptyState, GaugeRow, NoticeLine, PageHeader, Stat, formatDate,
+  Card, EmptyState, GaugeRow, NoticeLine, PageHeader, Stat, formatDate, formatFigure,
 } from "@/components/ui/primitives";
 import { HEAT_COMPONENTS, HeatDelta } from "@/components/ui/desk";
 import { DESK } from "@/config/desk.mjs";
@@ -261,9 +261,9 @@ export default async function SignalsPage({
                             {CATEGORY_LABEL[s.category] ?? s.category.replace(/_/g, " ")}
                           </span>
                         ) : null}
-                        {s.the_number ? (
+                        {formatFigure(s.the_number) ? (
                           <span className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]">
-                            {s.the_number}
+                            {formatFigure(s.the_number)}
                           </span>
                         ) : null}
                         {s.recommended_move ? (

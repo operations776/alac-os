@@ -7,6 +7,7 @@
 
 import assert from "node:assert/strict";
 import { parseCells, serialToISO, colIdx } from "../src/lib/server/import/xlsx.mjs";
+import { formatFigure } from "../src/lib/server/import/figure.mjs";
 
 let run = 0;
 const test = (name, fn) => {
@@ -67,6 +68,25 @@ test("excel serial dates", () => {
 test("entities are unescaped", () => {
   const c = parseCells('<c r="A1" t="inlineStr"><is><t>R&amp;D &lt;lead&gt;</t></is></c>');
   assert.equal(c[0], "R&D <lead>");
+});
+
+// A spreadsheet cell typed as a number arrives as a raw double, so 46058871
+// is the string "4.6058871E7". That went onto the signal card verbatim.
+test("a numeric workbook cell is written the way a person would", () => {
+  assert.equal(formatFigure("4.6058871E7"), "$46M");
+  assert.equal(formatFigure("46058871"), "$46M");
+  assert.equal(formatFigure("8.2E8"), "$820M");
+  assert.equal(formatFigure("1.5E9"), "$1.5B");
+  assert.equal(formatFigure("250"), "250");
+});
+
+test("a figure already written for a reader is left exactly as typed", () => {
+  // These were written deliberately and are not the importer's to reformat.
+  assert.equal(formatFigure("$46M"), "$46M");
+  assert.equal(formatFigure("12 hires"), "12 hires");
+  assert.equal(formatFigure("Series B"), "Series B");
+  assert.equal(formatFigure(""), null);
+  assert.equal(formatFigure(null), null);
 });
 
 console.log(`\n${run} checks passed`);

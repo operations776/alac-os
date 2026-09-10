@@ -120,7 +120,7 @@ export function OrgMap({
                   ))}
                 </select>
                 <button type="submit" className="ml-1 text-[11.5px] text-[var(--alac-accent)]">
-                  set
+                  Set
                 </button>
               </form>
 

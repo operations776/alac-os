@@ -69,7 +69,7 @@ export function PinControl({
             <select name="band" defaultValue={pinnedBand ?? systemBand ?? "now"} className="field">
               <option value="now">Top 25</option>
               <option value="next">Next 25</option>
-              <option value="bench">Bench, off the list</option>
+              <option value="bench">Bench, Off The List</option>
             </select>
           </label>
 
@@ -92,11 +92,11 @@ export function PinControl({
           <label className="flex flex-col gap-1.5 text-[13px] text-[var(--alac-text-2)]">
             Why
             <select name="reason" defaultValue={pinReason ?? ""} className="field">
-              <option value="">No reason given</option>
+              <option value="">No Reason Given</option>
               <option value="Strategic">Strategic</option>
               <option value="Relationship">Relationship</option>
-              <option value="Client direction">Client direction</option>
-              <option value="Owner judgment">Owner judgment</option>
+              <option value="Client direction">Client Direction</option>
+              <option value="Owner judgment">Owner Judgment</option>
               <option value="Other">Other</option>
             </select>
           </label>
