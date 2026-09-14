@@ -4,6 +4,14 @@
     {
       "path": "/api/cron/verify-roles",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/recurring",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/slack",
+      "schedule": "30 13 * * *"
     }
   ]
 }

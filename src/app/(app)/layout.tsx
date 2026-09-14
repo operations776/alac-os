@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/shell/nav";
+import { TeamBar } from "@/components/ops/layout/team-bar";
 import { currentSession } from "@/lib/server/auth";
 import { signOutAction } from "@/app/signin/actions";
 
@@ -36,6 +37,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         tabIndex={-1}
         className="surface-wash min-w-0 flex-1 lg:h-dvh lg:overflow-y-auto"
       >
+        <TeamBar />
         {children}
       </main>
     </div>

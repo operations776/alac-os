@@ -26,18 +26,24 @@
     "refresh": "node scripts/signals-predictleads.mjs --apply && node scripts/jobs-pull.mjs --apply && node scripts/map-market.mjs",
     "rescore": "node scripts/rescore-roles.mjs",
     "seed:candidates": "node scripts/seed-candidates.mjs",
-    "verify:roles": "node scripts/verify-roles.mjs"
+    "verify:roles": "node scripts/verify-roles.mjs",
+    "sync:ops": "node scripts/sync-ops.mjs",
+    "import:ops": "node scripts/import-mission-control.mjs",
+    "import:sops": "node scripts/import-sops.mjs"
   },
   "dependencies": {
+    "@dnd-kit/core": "6.3.1",
     "@neondatabase/serverless": "^1.1.0",
     "@types/pg": "^8.21.0",
+    "clsx": "2.1.1",
     "lucide-react": "1.28.0",
     "next": "16.2.12",
     "openai": "^6.42.0",
     "pg": "^8.23.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

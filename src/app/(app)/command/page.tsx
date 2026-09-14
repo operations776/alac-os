@@ -12,6 +12,7 @@ import { Dismiss } from "@/components/ui/dismiss";
 import { DISMISS_REASONS } from "@/config/dismiss-reasons.mjs";
 import { setMark } from "../queue/[id]/tracker";
 import { acceptRecommendation, declineRecommendation } from "../queue/[id]/portfolio";
+import { TeamToday } from "@/components/ops/team-today";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,8 @@ export default async function CommandPage() {
           </>
         ) : null}
       </p>
+
+      <TeamToday />
 
       {/* 1. WHAT MATTERS. Five at most, none below the bar. */}
       <div className="mb-7">

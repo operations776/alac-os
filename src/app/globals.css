@@ -676,3 +676,81 @@ body {
     transform: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Operations bridge
+
+   The operations screens (projects, board, content, GTM, requisitions) came
+   from Mission Control, which named its tokens by role: --surface, --border,
+   --text-muted, a brand-* scale and the dark: variant. Rather than rewrite
+   two thousand class names, those names are defined here in terms of the
+   --alac-* set, so every ported screen wears this identity and follows the
+   theme toggle with no second palette to keep in step.
+   ------------------------------------------------------------------------- */
+
+/* dark: follows the app's theme attribute, not the OS. Dark is the default. */
+@custom-variant dark (&:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *));
+
+:root {
+  --surface: var(--alac-surface);
+  --surface-sunken: var(--alac-ground);
+  --surface-raised: var(--alac-surface);
+  --surface-hover: var(--alac-surface-2);
+  --border: var(--alac-line);
+  --border-strong: var(--alac-line-strong);
+  --text: var(--alac-text);
+  --text-primary: var(--alac-text);
+  --text-secondary: var(--alac-text-2);
+  --text-muted: var(--alac-text-3);
+  --text-faint: var(--alac-text-3);
+  --accent: var(--alac-accent);
+  --accent-tint: var(--alac-accent-soft);
+  --ease: var(--alac-ease);
+  --radius-btn: var(--alac-radius-sm);
+  --radius-card: var(--alac-radius);
+}
+
+@theme inline {
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  /* The violet accent as a scale. Low steps are tinted surfaces, high steps
+     are text, so a chip written bg-brand-50 text-brand-700 reads in both
+     themes. */
+  --color-brand-50: color-mix(in oklab, var(--alac-accent) 9%, var(--alac-surface));
+  --color-brand-100: color-mix(in oklab, var(--alac-accent) 16%, var(--alac-surface));
+  --color-brand-200: color-mix(in oklab, var(--alac-accent) 32%, var(--alac-surface));
+  --color-brand-300: var(--alac-accent-light);
+  --color-brand-400: var(--alac-accent);
+  --color-brand-500: var(--alac-accent);
+  --color-brand-600: var(--alac-accent);
+  --color-brand-700: var(--alac-accent-light);
+  --color-brand-800: var(--alac-accent-light);
+  --color-brand-900: var(--alac-accent-pale);
+  --color-brand-950: color-mix(in oklab, var(--alac-accent) 12%, var(--alac-ground));
+}
+
+@layer components {
+  .section-label {
+    font-family: var(--font-mono), ui-monospace, "Courier New", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--alac-text-3);
+  }
+
+  .hud-label {
+    font-family: var(--font-mono), ui-monospace, "Courier New", monospace;
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--alac-text-3);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--alac-line-strong) transparent;
+  }
+}

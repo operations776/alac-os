@@ -166,3 +166,23 @@ fetchers are written to fill it.
 ## Phase 2, after 13 Aug
 
 Live signal ingestion from funding and job-board sources. Instantly, HeyReach, and Recruiterflow write-back. Scheduled cron re-scoring. Multi-user roles and invitations. Sequences and send tracking. Feedback loop: rejection notes and manual overrides fed back as few-shot examples so the engine learns the operator's judgement.
+
+## Operations merge, 14 Sep
+
+Mission Control, the team's operating board, merged in so Adrian runs the desk and the company from one app. Source: the Mission Control handoff package, phases 2 to 4 of its merge guide, done as one app, one database, two schemas (its Strategy B).
+
+| ID | Ticket | Status |
+| --- | --- | --- |
+| ALAC-114 | Fold the 75 Mission Control migrations into `0025_mission_control.sql` in the `mc` schema: policies and grants out, `auth.uid()` to `mc.uid()`, `auth.users` to `public.users`, client document links and a first-name lookup scrubbed. Its 595 checks pass against the fold with public proven untouched (592 plus the 3 SOP seed checks, now `import:sops`) | done |
+| ALAC-115 | `opsQuery` and `asPerson` in `db.ts`, PostgREST-shaped types, actor set for triggers; `requirePerson(floor)` replaces RLS; plain pg when `DATABASE_URL` is local | done |
+| ALAC-116 | Port the reads and the three action domains (work, content, GTM and requisitions) from supabase-js to SQL, same exports | done |
+| ALAC-117 | Screens: ops board, my work, company board, projects, calendar, files, content and analytics and voice, GTM and review and analytics, requisitions, team, recurring, SOPs, ideas, archive, settings, on the bridge tokens | done |
+| ALAC-118 | One rail: Desk, Team, Growth, Admin groups; notifications, search and new task on every page | done |
+| ALAC-119 | Crons: recurring work and the Slack outbox drain, both refusing to run without `CRON_SECRET` | done |
+| ALAC-120 | Invite creates the login with a temporary password; password change and sign out on desk auth | done |
+| ALAC-121 | Content drafting on OpenAI with an `agent_runs` claim | done |
+| ALAC-122 | `sync:ops` (Outlook and Drive inbox), `import:ops` (live Mission Control data), `import:sops` | done |
+| ALAC-123 | Seam: start GTM work from a company page, keyed on Record ID through `gtm_accounts.external_id`, and link back | done |
+| ALAC-125 | Comments on tasks always failed: `task_audience` existed in two overloads from the source schema, so every two argument call was ambiguous. `0026` drops the old one. Also a Send button, since the comment box was keyboard only | done |
+| ALAC-126 | CI build failed on every route that imports db.ts: the Neon client was built at import and CI has no DATABASE_URL. Built on first query instead | done |
+| ALAC-124 | Apply `0025` to Neon, run `import:ops --apply` with Adrian's Mission Control connection string, set `SLACK_BOT_TOKEN` in Vercel, sign up test with two people | todo |

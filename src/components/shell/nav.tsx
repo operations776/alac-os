@@ -3,14 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Flame,
-  LayoutGrid,
-  ListChecks,
-  LogOut,
-  Users,
-  Briefcase,
-  UserSearch,
+  Archive,
   BookOpen,
+  Briefcase,
+  CalendarDays,
+  Columns3,
+  FileText,
+  Flame,
+  FolderOpen,
+  LayoutDashboard,
+  LayoutGrid,
+  Lightbulb,
+  ListChecks,
+  ListTodo,
+  LogOut,
+  PenLine,
+  Repeat,
+  Settings,
+  Target,
+  UserSearch,
+  Users,
+  UsersRound,
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import { Logo } from "./logo";
@@ -22,26 +35,61 @@ import { ThemeToggle } from "./theme-toggle";
 // the board is the picture, the queue is where the work happens, signals say
 // what changed, performance is the Thursday review.
 //
-// `exact` exists for any row that is a parent of another. It is false
-// everywhere here because no two routes nest, but it stays because the moment
-// one does, a prefix match lights up both rows and the rail stops telling you
-// where you are.
+// `exact` exists for any row that is a parent of another. /settings is one:
+// without it a prefix match lights up Settings and Team together and the rail
+// stops telling you where you are.
 //
 // The channel index numbers that used to sit in the left column are gone with
 // the terminal theme: a Material navigation drawer marks its selected item
 // with a tonal pill, which is a stronger signal than a lit digit and does not
 // need a second column to track down.
-const NAV = [
-  // His order, his words: open roles and talent are the product, the rest
-  // supports them. Who to target is still a route; it left the rail because
-  // he said he does not need it right now.
-  { href: "/command", label: "Today", Icon: LayoutGrid, exact: false },
-  { href: "/roles", label: "Open roles", Icon: Briefcase, exact: false },
-  { href: "/talent", label: "Talent", Icon: UserSearch, exact: false },
-  { href: "/queue", label: "Companies", Icon: ListChecks, exact: false },
-  { href: "/signals", label: "What changed", Icon: Flame, exact: false },
-  { href: "/people", label: "Your network", Icon: Users, exact: false },
-  { href: "/how", label: "How it works", Icon: BookOpen, exact: false },
+const NAV: { label?: string; links: { href: string; label: string; Icon: typeof Flame; exact: boolean }[] }[] = [
+  {
+    label: "Desk",
+    links: [
+      { href: "/command", label: "Today", Icon: LayoutGrid, exact: false },
+      { href: "/roles", label: "Open roles", Icon: Briefcase, exact: false },
+      { href: "/talent", label: "Talent", Icon: UserSearch, exact: false },
+      { href: "/queue", label: "Companies", Icon: ListChecks, exact: false },
+      { href: "/signals", label: "What changed", Icon: Flame, exact: false },
+      { href: "/people", label: "Your network", Icon: Users, exact: false },
+    ],
+  },
+  // The operating board, merged in from Mission Control. Grouped by business
+  // function in the order the business flows: operations runs the company,
+  // marketing fills the funnel, BD works it, delivery executes the won work.
+  {
+    label: "Team",
+    links: [
+      { href: "/ops", label: "Command center", Icon: LayoutDashboard, exact: false },
+      { href: "/my-work", label: "My work", Icon: ListTodo, exact: false },
+      { href: "/board", label: "Company board", Icon: Columns3, exact: false },
+      { href: "/calendar", label: "Calendar", Icon: CalendarDays, exact: false },
+    ],
+  },
+  {
+    label: "Growth",
+    links: [
+      { href: "/content", label: "Content", Icon: PenLine, exact: false },
+      { href: "/gtm", label: "GTM execution", Icon: Target, exact: false },
+      { href: "/requisitions", label: "Requisitions", Icon: FileText, exact: false },
+    ],
+  },
+  {
+    label: "Admin",
+    links: [
+      { href: "/settings/team", label: "Team", Icon: UsersRound, exact: false },
+      { href: "/settings/recurring", label: "Recurring", Icon: Repeat, exact: false },
+      { href: "/sops", label: "SOPs", Icon: BookOpen, exact: false },
+      { href: "/ideas", label: "Ideas", Icon: Lightbulb, exact: false },
+      { href: "/files", label: "Files", Icon: FolderOpen, exact: false },
+      { href: "/archive", label: "Archive", Icon: Archive, exact: false },
+      // /settings is the parent of /settings/team and /settings/recurring,
+      // which is exactly the case exact exists for.
+      { href: "/settings", label: "Settings", Icon: Settings, exact: true },
+      { href: "/how", label: "How it works", Icon: BookOpen, exact: false },
+    ],
+  },
 ];
 
 /**
@@ -76,9 +124,16 @@ export function Nav({
 
       <nav
         aria-label="Primary"
-        className="flex gap-0.5 overflow-x-auto px-3 py-3 lg:flex-col lg:overflow-visible"
+        className="flex gap-0.5 overflow-x-auto px-3 py-3 lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto"
       >
-        {NAV.map(({ href, label, Icon, exact }) => {
+        {NAV.map((group) => (
+          <div key={group.label} className="flex shrink-0 gap-0.5 lg:flex-col lg:mt-4 lg:first:mt-0">
+            {group.label ? (
+              <div className="placard hidden px-3 pb-1 text-[10px] text-[var(--alac-text-3)] lg:block">
+                {group.label}
+              </div>
+            ) : null}
+        {group.links.map(({ href, label, Icon, exact }) => {
           const active = exact
             ? pathname === href
             : pathname === href || pathname.startsWith(`${href}/`);
@@ -87,7 +142,7 @@ export function Nav({
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`placard relative flex min-h-[42px] shrink-0 items-center gap-3 whitespace-nowrap rounded-[var(--alac-radius-sm)] px-3 text-[11px] transition-colors ${
+              className={`placard relative flex min-h-[36px] shrink-0 items-center gap-3 whitespace-nowrap rounded-[var(--alac-radius-sm)] px-3 text-[11px] transition-colors ${
                 active
                   ? "bg-[var(--alac-accent-soft)] text-[var(--alac-accent)]"
                   : "text-[var(--alac-text-3)] hover:bg-[var(--alac-surface-2)] hover:text-[var(--alac-text)]"
@@ -106,15 +161,13 @@ export function Nav({
             </Link>
           );
         })}
+          </div>
+        ))}
       </nav>
 
-      <div className="mt-auto hidden flex-col gap-4 px-5 pb-5 pt-6 lg:flex">
-        <p className="text-[12px] leading-relaxed text-[var(--alac-text-3)]">
-          Priority and final score come from the Master TAM. Heat is computed
-          here, and every number opens its own arithmetic.
-        </p>
+      <div className="hidden flex-col px-5 pb-5 pt-3 lg:flex">
 
-        <div className="border-t border-[var(--alac-line)] pt-4">
+        <div className="border-t border-[var(--alac-line)] pt-3">
           <ThemeToggle />
           <div className="mt-2 truncate text-[13px] text-[var(--alac-text-2)]">{userName}</div>
           <div className="placard mt-1 text-[10px] text-[var(--alac-text-3)]">{userRole}</div>
