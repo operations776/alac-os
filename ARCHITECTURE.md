@@ -13,6 +13,8 @@ ALAC OS is a **business development intelligence layer** for ALAC HR Solutions. 
 
 It exists to remove decision fatigue. The measure of success is that Adrian opens it and executes, rather than opening it and deciding.
 
+**It is also the team's operating board.** Mission Control, the project, task, content, GTM execution and requisition board the six person team runs the company from, is merged in (section 11), so the desk that decides and the board that executes live behind one sign in.
+
 **What it is not.** Not an ATS. Not a CRM. It does not track candidates through a pipeline, does not manage submittals or placements, does not send outreach, and does not store candidate records. SourceWhale is the system of record for execution. This boundary is a product decision and a legal one, see section 9.
 
 ## 2. Stack
@@ -48,6 +50,8 @@ Multi-tenant from birth even though ALAC is the only tenant on day one. Retrofit
 - The unpooled connection string is read by exactly one module, `src/lib/server/db.ts`, marked `server-only`. It never reaches a client component.
 
 This is a deliberate trade. Database policies fail closed, which is stronger, and they were the plan while the database was Supabase. With Neon and a two to three person tenant, the honest engineering choice is one enforcement point in code that is actually correct, rather than a JWT plumbing exercise finished the night before a demo.
+
+**The one exception is the operations workspace** (section 11). Its tables live in the `mc` schema, belong to one team, and carry no `org_id`. The gate there is the verified session resolving to an `mc.people` row, checked in `src/lib/server/ops/context.ts` before any ops read or write.
 
 ## 4. The ten data laws
 
@@ -123,6 +127,9 @@ src/lib/server/ai/       openai.ts prompts pricing.ts run.ts           (server o
 src/lib/server/import/   tam.ts connections.ts match.ts
 src/config/              brand.ts icp.ts
 migrations/              numbered SQL, applied by npm run migrate, tracked in schema_migrations
+src/lib/server/ops/      the operations workspace: context.ts (session to person, role floor), queries.ts, actions/ (work, content, gtm), result.ts
+src/app/(app)/(ops)/     the operations screens: ops board, my-work, board, projects, content, gtm, requisitions, settings, sops, ideas, archive, calendar, files
+src/components/ops/      the operations components, on the bridge tokens at the end of globals.css
 scripts/                 migrate.mjs import-tam.mjs import-connections.mjs score.mjs verify-ai.mjs
 e2e/                     Playwright specs, written here, run by Daniyal
 ```
@@ -151,6 +158,11 @@ Provisioned automatically by the Neon integration and pulled with `vercel env pu
 | `PROSPEO_API_KEY` | no | reveal button | People search and on-demand email reveal. The reveal runs in a server action, so this one is in Vercel. |
 | `APIFY_TOKEN` | no | wider pull | LinkedIn org ids and the monthly wider jobs pull. Scripts only. |
 | `SOURCEWHALE_API_KEY` | no | phase 2 | Read-oriented sync. See section 9. Unset: the CSV bridge covers the same code path. |
+| `SLACK_BOT_TOKEN` | no | for Slack delivery | Bot token the `/api/cron/slack` drain posts with. Unset: the route returns 503, messages stay queued in `mc.slack_outbox`, in-app notifications are unaffected. Also check `mc.slack_settings.is_connected`: false drops every DM before it is queued. |
+| `NEXT_PUBLIC_MARKETING_ASSETS_URL` | yes | no | The marketing Drive folder the Content board links to. The client's own link, so it lives in Vercel, not in this public repo. Unset: the link does not render. |
+| `NEXT_PUBLIC_SOP_FOLDER_URL` | yes | no | The SOP folder in Drive the SOPs page links to. Unset: the link does not render. |
+| `TEAM_TZ` | no | `sync:ops` only | Zone the Outlook wall clock times are read in, default America/New_York. Script only, not in Vercel. |
+| `MC_DATABASE_URL` | no | `import:ops` only | The live Mission Control Supabase Postgres, read once to copy its data into `mc`. Local only, never in Vercel, never committed. |
 | `CRON_SECRET` | no | for the nightly check | Bearer token Vercel Cron sends to `/api/cron/verify-roles`. Unset: the route returns 503 and refuses to run, rather than leaving a URL anyone can hit that makes hundreds of outbound requests. |
 
 ## 9. The SourceWhale boundary
@@ -168,3 +180,28 @@ Therefore: **Adrian requests written confirmation from his SourceWhale account e
 ## 10. Speed
 
 Server response under 300ms p75. Lists virtualize past 200 rows. `/portfolio` renders at most 100 rows. `/accounts` pages server side over roughly 8,300 records and never ships the full table to the browser.
+
+## 11. The operations workspace (Mission Control, merged)
+
+Mission Control was a separate Next.js and Supabase app: projects and tasks, a company board, the content studio, the GTM execution pipeline, requisitions, SOPs, ideas, recurring work and Slack notifications. Its handoff (`docs/handoff` in that repo) is required reading before changing anything here, especially its gotchas and decisions.
+
+**Its database came across whole.** `migrations/0025_mission_control.sql` is generated by `scripts/build-mc-schema.mjs` from its 75 migrations, applied in order inside the `mc` schema. The roughly sixty functions and triggers that carry its behaviour (activity history, notify(), review tasks, GTM gates and capacity, recurrence, terminal states) are unchanged, and its 595 check suite passes against the folded schema alongside the desk tables, with public proven untouched. Do not hand edit the generated migration: fix the generator, and put any schema change in a new numbered migration.
+
+What changed on the way in:
+
+| Supabase | Here |
+| --- | --- |
+| RLS policies | Gone. Role floors are enforced in each action with `requirePerson(floor)`, following the policy table in the port notes: member for work tables, admin for people, functions, integrations and settings, own rows for notifications and comments. |
+| `auth.uid()` | `mc.uid()`, read from `app.user_id`. `asPerson(userId, fn)` in `db.ts` sets it inside the write transaction, so triggers attribute history and never notify people of their own action. A write outside `asPerson` has no actor: history reads "Someone". |
+| `auth.users` | `public.users`. `mc.people.id` references it, and the `on_user_created` trigger provisions the person, accepting a pending invitation, the same function Supabase Auth used to call. One human, one row, for the desk and the board. |
+| PostgREST shapes | `opsQuery` returns timestamps as ISO strings, dates as YYYY-MM-DD and numerics as numbers, the shape the ported screens were written against. Ops code uses `opsQuery` and `asPerson`, never `sql`. |
+| Storage bucket | Gone. Content assets are links. |
+| Invite by email | An admin invite creates the login with a temporary password shown once. There is no outbound email. |
+| Anthropic drafting | OpenAI through `src/lib/server/ai/`, claimed in `agent_runs` first. |
+| Google Sheets sync | Not ported. The desk already imports the Desk Command Center workbook, so the mirror would be a second copy of the same sheet. |
+
+**Seams to the desk.** A company on the desk (`tam_accounts`) and a GTM account (`mc.gtm_accounts`) are one company when `gtm_accounts.external_id` equals the desk's Record ID. That column is unique, so starting GTM work from a company page is an upsert, never a duplicate. Never match on company name.
+
+**Every ops table name needs the schema.** The connection's search path is `public`, and `public.people` (the warm network) and `public.outreach_drafts` (the desk's drafts) share names with ops tables. An unqualified name there is a silent wrong-table bug.
+
+**Local database.** `db.ts` talks plain pg when `DATABASE_URL` points at localhost, so the whole app, desk and board, runs against a local Postgres. That is where schema and trigger changes are exercised, never first on Neon.

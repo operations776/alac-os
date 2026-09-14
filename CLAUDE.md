@@ -12,6 +12,10 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 
 `tam_accounts` is the account queue, keyed on Record ID. `heat_signals` is the signal log, six components out of 100 plus the delta against the account's TAM score. `performance_weeks` is one row per SourceWhale week, carrying the counters and the Thursday choke point analysis. **The list is the owner's.** Top 25 and Next 25 are `pinned_band`, set by Adrian; the ranking (`work_band`, written by `map-market` every refresh) only recommends, and `account_desk.recommended_for` is the gap between the two. `effective_band` applies the cascade (`CASCADE` in `src/config/desk.mjs`): Hold and Nurture leave the working list and keep their place, Disqualified and Archived leave every list. Every board query filters `disposition = 'Active'`. `nextMove()` in `src/lib/scoring/next-move.mjs` turns the view's inputs into one instruction per company, derived on read, in his Kanban's vocabulary. Noise limits live in `DESK`: five signals at heat 50+, five live leads a day from the top tenth of roles by `relevance`, everything else one click away. The performance snapshot is a rollup. `people` is the warm network, matched to accounts by normalized company name and independent of the TAM.
 
+## The operations workspace, in one paragraph
+
+Mission Control, the team's board (projects, tasks, content, GTM execution, requisitions, SOPs, ideas, recurring work, Slack), is merged in. Its whole database lives in the `mc` schema, generated into `0025_mission_control.sql` by `scripts/build-mc-schema.mjs`, and its triggers own history, notifications, gates and recurrence exactly as they did on Supabase. Ops code reads with `opsQuery` and writes with `asPerson(userId, fn)`, which sets `mc.uid()` so triggers know the actor; permissions are `requirePerson(floor)` in `src/lib/server/ops/context.ts`, because there is no RLS here. `mc.people.id` is `public.users.id`. ARCHITECTURE.md section 11 has the rest.
+
 ## Workflow
 
 1. Pick a ticket from `TICKETS.md`. One ticket, small commits.
@@ -23,7 +27,7 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 ## Hard rules
 
 - **Transaction rule.** Any write touching two or more tables runs inside one transaction, via the `tx()` helper. Sequential autocommit writes are a bug even when they pass.
-- **Tenant scoping is an argument.** Every function in `src/lib/server/queries/` takes `orgId` first, and it comes from the verified session, never from a request body or URL. Route handlers and pages never build SQL themselves.
+- **Tenant scoping is an argument.** Every function in `src/lib/server/queries/` takes `orgId` first, and it comes from the verified session, never from a request body or URL. Route handlers and pages never build SQL themselves. The exception is the `mc` schema, one team's board with no `org_id`: its gate is `requirePerson()`, and its data access lives in `src/lib/server/ops/`.
 - **Only `src/lib/server/db.ts` reads a connection string.** It is `server-only`. Nothing else touches `DATABASE_URL`.
 - **Migrations first.** Numbered SQL in `migrations/`, applied with `npm run migrate` over the unpooled URL, before the code that reads them.
 - **Race guards are unique constraints.** Insert with conflict handling. Never check-then-insert.
@@ -32,6 +36,8 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 - **Rates live in `pricing.ts` only.** Changing `OPENAI_MODEL` means changing `MODEL_RATES` in the same commit, or the cost meter lies.
 - **Env var rule.** A new env var lands in the `ARCHITECTURE.md` table AND the Vercel config in the same commit as the code that reads it.
 - **Two scores, and only one of them is ours.** `tam_accounts.priority` and `final_score` are source data finalized in the Master TAM: never computed, never written by the app, never manually promoted. The heat score is the computed one, six components out of 100, and its breakdown is always shown next to the total.
+- **Qualify every ops table.** `mc.people`, never `people`: `public.people` is the warm network and `public.outreach_drafts` is the desk's, so an unqualified name reads the wrong table without an error.
+- **Ops writes go through `asPerson`.** A write without it has no actor, so history says "Someone" and the person who acted gets notified about their own change.
 - **Client data never enters this repo.** It is public. No real company names, contact names, emails, or the suppression list in any committed file, fixture, or test. Importers read from `ALAC_DATA_DIR`.
 - **Branding lives in `src/config/brand.ts` only.**
 - **No em dashes** in code, copy, comments, or commit messages. Commas, colons, periods.
@@ -71,6 +77,9 @@ Detail lives in `ARCHITECTURE.md` (system), `DESIGN.md` (UI contract), and `AI.m
 | `npm run verify:roles` | Check the roles the screens show are still open, against the employer page. Same code as the Check postings button and the nightly cron. `--all` ignores the 3 day window |
 | `npm run rescore` | Recompute role relevance for every stored role. Free, no network |
 | `npm run test:unit` | xlsx, heat, outreach, PredictLeads and next-move checks. Fast, no database, no network |
+| `npm run sync:ops` | Load calendar and Drive files Claude wrote to `ALAC_DATA_DIR/sync/inbox/` into the ops workspace. Idempotent |
+| `npm run import:ops` | One time copy of the live Mission Control data from `MC_DATABASE_URL`. Plan only without `--apply` |
+| `npm run import:sops` | Load the SOP library from `ALAC_DATA_DIR/sops.json` |
 | `npm run test:e2e` | Playwright. **Daniyal runs this, not Claude.** Write the specs, hand him the verification step. |
 
 ## Reference
