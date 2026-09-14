@@ -103,3 +103,12 @@ Two calls came with the operations workspace. Both claim an `agent_runs` row (ki
 | `task_draft` (prompt `task_draft.v1`) | `draftTasks` in `src/lib/server/ops/actions/ai-tasks.ts` | What someone typed or dictated, plus the team, functions and projects by id | Tasks under a strict JSON schema: title, notes, assignee, function, project, priority, due date, due time | The deterministic parser in `src/lib/ops/task-parse.ts` drafts instead, and the dialog says so |
 
 The grounding rule applies to `task_draft`: any person, function or project id the model returns that was not in the request is nulled and counted, and the review list says what was cleared. The description is treated as content, never as instructions. Nothing is written until the person reviews the drafts and presses Create.
+
+Email drafting is automatic in two places. Both save what they write and never send anything: a person reads, edits and sends.
+
+| Feature | Where | Input | Output | No key |
+| --- | --- | --- | --- | --- |
+| `gtm_email` (prompt `gtm_email.v1`, `SYSTEM` in `src/lib/server/ai/gtm-email.ts`) | `generateProspectEmails` in `src/lib/server/ops/actions/gtm-emails.ts`, run in the background when a prospect is added and on first open of their outreach; Draft all on the account page | The GTM account, the prospect, its evidence, the research link, the sender | Three subject and body options under a strict schema, saved to empty slots only; final copy prefilled from option one when empty | "AI drafting is off", nothing written |
+| desk message | `autoDraftMessage` / `redraftMessage` in `src/app/(app)/queue/[id]/tracker.ts`, run when the Message dialog opens with nothing saved | The same context `npm run draft` builds, from `src/lib/server/ai/outreach-context.mjs` | `writeFirstMessage`, saved with `custom = false`; Redraft replaces only an unedited, unsent draft | "AI drafting is off", the box stays empty for manual writing |
+
+Both are grounded: an option or message that names a company, person, number or date absent from its context is rejected, retried once for GTM, and counted as failed. Measured on gpt-4.1-mini: about $0.002 per prospect (three options) and $0.001 per desk message.

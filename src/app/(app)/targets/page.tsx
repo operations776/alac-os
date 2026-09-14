@@ -8,6 +8,9 @@ import { DESK, PORTFOLIO_RULES } from "@/config/desk.mjs";
 import { Row } from "@/components/ui/clickable";
 
 export const dynamic = "force-dynamic";
+// The Message dialog drafts on open: research plus up to two model attempts
+// can take half a minute, past the default function limit.
+export const maxDuration = 60;
 
 // Who to target, in the order to work them.
 //

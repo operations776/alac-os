@@ -202,3 +202,4 @@ Daniyal's review after using the merged app.
 | ALAC-133 | Demo data and the team: `seed:demo` writes a fictional live week across board, content, GTM and requisitions, every row ledgered in `mc.demo_rows` so `--remove` takes out exactly that; team from `ALAC_DATA_DIR/team.json` | done |
 | ALAC-134 | Light theme only: toggle removed, the root layout fixes the theme | done |
 | ALAC-135 | Recurring and file actions refuse non-admins, matching their pages | done |
+| ALAC-136 | Emails draft themselves and are saved: GTM prospect options on add and on open, Draft all per account, desk messages on opening Message; grounded, never overwrite what a person wrote or sent, never sent by the app. `npm run draft` no longer overwrites a custom or sent message | done |

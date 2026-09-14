@@ -5,6 +5,10 @@ import {
 } from '@/lib/server/ops/queries'
 import { AccountClient } from './account-client'
 
+// Drafting a prospect's three emails takes up to two model calls, and Draft all
+// runs them one after another, well past the default function limit.
+export const maxDuration = 300
+
 export default async function GtmAccountPage({
   params,
 }: { params: Promise<{ id: string }> }) {

@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { asPerson } from "@/lib/server/db";
+import { generateProspectEmails } from "./gtm-emails";
 import { requirePerson } from "@/lib/server/ops/context";
 import { type Result, wrote, fail, flushSlack, setClause } from "@/lib/server/ops/result";
 import { atLeast } from "@/lib/ops/constants";
@@ -241,10 +243,10 @@ export async function addGtmContact(input: {
 }): Promise<Result> {
   try {
     const { me } = await requirePerson("member");
-    await asPerson(me.id, (q) => q(
+    const [added] = await asPerson(me.id, (q) => q<Id>(
       `insert into mc.gtm_contacts
          (account_id, name, title, linkedin_url, seniority, hiring_for, rationale, created_by)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
       [
         input.account_id,
         input.name.trim(),
@@ -256,6 +258,17 @@ export async function addGtmContact(input: {
         me.id,
       ],
     ));
+    // Draft the prospect's three emails after the response, so adding a
+    // prospect never waits on the model. A failure is logged and the panel's
+    // own generate and the manual path still work.
+    after(async () => {
+      try {
+        const r = await generateProspectEmails(input.account_id, added.id);
+        if (!r.ok) console.error(`gtm_email: contact ${added.id}: ${r.error}`);
+      } catch (e) {
+        console.error(`gtm_email: contact ${added.id}:`, e);
+      }
+    });
     revalidatePath(`/gtm/${input.account_id}`);
     return { ok: true };
   } catch (e) { return fail(e); }
