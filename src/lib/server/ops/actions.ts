@@ -3,3 +3,4 @@
 export * from "./actions/work";
 export * from "./actions/content";
 export * from "./actions/gtm";
+export * from "./actions/ai-tasks";

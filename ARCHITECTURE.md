@@ -205,3 +205,7 @@ What changed on the way in:
 **Every ops table name needs the schema.** The connection's search path is `public`, and `public.people` (the warm network) and `public.outreach_drafts` (the desk's drafts) share names with ops tables. An unqualified name there is a silent wrong-table bug.
 
 **Local database.** `db.ts` talks plain pg when `DATABASE_URL` points at localhost, so the whole app, desk and board, runs against a local Postgres. That is where schema and trigger changes are exercised, never first on Neon.
+
+**Reminders.** `mc.run_reminders()` (migration 0027) is the one definition of who gets reminded about what, sent through `notify()` so preferences and Slack apply, and logged in `mc.reminder_log` under a unique key so a rule fires once per person per item per day. It runs from the daily `/api/cron/reminders` and, because Hobby cron is daily, from `mc.run_reminders_if_due()` after a page render, which claims a ten minute window with one atomic update. The team timezone lives in `mc.reminder_state`.
+
+**Demo data.** `npm run seed:demo -- --apply` writes a fictional working week; every row it or its triggers create is recorded in `mc.demo_rows`, and `--remove` deletes exactly those. Team members come from `ALAC_DATA_DIR/team.json` and are never removed. Reminders do not skip demo rows, so keep `mc.slack_settings.is_connected` false while demo data is loaded if Slack is configured.

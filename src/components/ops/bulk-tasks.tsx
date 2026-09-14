@@ -1,44 +1,41 @@
 'use client'
 
 /**
- * Paste a plan, review it, save it.
+ * Describe the work, check the drafts, create them.
  *
- * Breaking a project into tasks happens in a chat window, and retyping
- * fifteen of them by hand is enough friction that people keep the plan in
- * the chat instead. So the paste is the input.
+ * Plans get said out loud or typed as a paragraph, not entered field by field,
+ * so the input is a description, written or dictated, and the model does the
+ * filing. With no OpenAI key the pattern parser drafts instead and the banner
+ * says so.
  *
- * The review step is not ceremony: a parser reading somebody's prose will
- * get names, dates and functions wrong sometimes, and finding that out after
- * fifteen tasks exist is worse than fixing one row before saving. Nothing is
- * written until Save all.
+ * The review step is not ceremony: prose read by a model will sometimes get a
+ * name, a Friday or a function wrong, and fixing one row before creating is
+ * cheaper than finding it on the board. Nothing is written until Create.
  */
-import { useMemo, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { Plus, X } from 'lucide-react'
+import { useEffect, useState, useTransition } from 'react'
+import { Mic, Plus, Sparkles, X } from 'lucide-react'
 import { Button, Input, Label, Select, Textarea } from '@/components/ops/ui/primitives'
-import { parseTasks, type ParsedTask } from '@/lib/ops/task-parse'
-import { createTask } from '@/lib/server/ops/actions'
+import { createDraftedTasks, draftTasks, type DraftTask } from '@/lib/server/ops/actions'
+import { useDictation } from '@/components/ops/use-dictation'
 import { PRIORITIES, PRIORITY } from '@/lib/ops/constants'
 import { cn } from '@/lib/ops/utils'
-import type { Person, Project } from '@/types/ops'
+import type { Person, Priority, Project } from '@/types/ops'
 
 interface Fn { id: string; key: string; name: string }
 
-const EXAMPLE = `Task: Build candidate campaign
-Function: Delivery
-Project: Director of Operations Search
-Who: Adrian
-Priority: High
-Due: Today
-Notes: Complete talent mapping before campaign creation
+const MAX_CHARS = 4000
 
-Task: Research Program Manager
-Function: Business Development
-Who: Darwin
-Priority: High`
+const PLACEHOLDER = `Describe the work. One task or a whole plan: who, what, by when.
+
+e.g. Darwin, finish the Program Manager research by Friday. I need the candidate campaign built before the 3pm call tomorrow, it's urgent.`
+
+const BLANK: DraftTask = {
+  title: '', notes: null, assignee_id: null, function_id: null, project_id: null,
+  priority: 'normal', due_date: null, due_time: null, problems: [],
+}
 
 export function BulkTasks({
-  open, onClose, people, projects, functions, me,
+  open, onClose, people, projects, functions,
 }: {
   open: boolean
   onClose: () => void
@@ -47,86 +44,79 @@ export function BulkTasks({
   functions: Fn[]
   me: Person
 }) {
-  const router = useRouter()
-  const [saving, start] = useTransition()
+  const [drafting, startDraft] = useTransition()
+  const [creating, startCreate] = useTransition()
   const [text, setText] = useState('')
-  const [rows, setRows] = useState<ParsedTask[] | null>(null)
+  const [drafts, setDrafts] = useState<DraftTask[] | null>(null)
+  const [source, setSource] = useState<{ kind: 'ai' | 'parser'; note?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState<number | null>(null)
+  const [done, setDone] = useState<string | null>(null)
+  const voice = useDictation(text, setText)
 
-  const parse = () => {
-    const parsed = parseTasks(text)
-    if (!parsed.length) {
-      setError('Nothing recognisable in that. Each task needs at least a title.')
-      return
-    }
-    setError(null)
-    setRows(parsed)
+  const close = () => {
+    voice.stop()
+    setText(''); setDrafts(null); setSource(null); setError(null); setDone(null)
+    onClose()
   }
 
-  const edit = (i: number, patch: Partial<ParsedTask>) =>
-    setRows((r) => r!.map((row, n) => (n === i ? { ...row, ...patch } : row)))
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
-  const drop = (i: number) => setRows((r) => r!.filter((_, n) => n !== i))
-
-  // Resolved once, here, so a name that matches nobody is visible in the
-  // review rather than silently becoming unassigned on save.
-  const resolve = useMemo(() => ({
-    person: (name?: string) => name
-      ? people.find((p) => p.name.toLowerCase().startsWith(name.trim().toLowerCase()))?.id
-      : undefined,
-    project: (name?: string) => name
-      ? projects.find((p) => p.name.toLowerCase().includes(name.trim().toLowerCase()))?.id
-      : undefined,
-    fn: (key?: string) => key
-      ? functions.find((f) => f.key === key)?.id
-      : undefined,
-  }), [people, projects, functions])
-
-  const saveAll = () => start(async () => {
+  const draft = () => {
+    if (!text.trim() || drafting) return
+    voice.stop()
     setError(null)
-    const usable = (rows ?? []).filter((r) => r.title.trim())
-    if (!usable.length) { setError('Nothing left to save.'); return }
+    startDraft(async () => {
+      const res = await draftTasks(text)
+      if (!res.ok) { setError(res.error); return }
+      if (!res.data?.tasks.length) {
+        setError('Nothing to draft in that. Say what needs doing, and by whom.')
+        return
+      }
+      setDrafts(res.data.tasks)
+      setSource({ kind: res.data.source, note: res.data.note })
+    })
+  }
 
-    let made = 0
-    for (const r of usable) {
-      const res = await createTask({
-        title: r.title.trim(),
-        project_id: resolve.project(r.project),
-        function_id: resolve.fn(r.function_key),
-        assignee_id: resolve.person(r.who) ?? me.id,
-        priority: r.priority ?? 'normal',
-        due_date: r.due ?? undefined,
-        notes: r.notes ?? undefined,
-      })
-      if (res.ok) made++
-    }
-    setSaved(made)
-    setRows(null)
-    setText('')
-    router.refresh()
-    // Left open briefly so the count is seen, then closed.
-    setTimeout(() => { setSaved(null); onClose() }, 1600)
+  const edit = (i: number, patch: Partial<DraftTask>) =>
+    setDrafts((d) => d!.map((row, n) => (n === i ? { ...row, ...patch } : row)))
+
+  const usable = (drafts ?? []).filter((d) => d.title.trim())
+
+  const create = () => startCreate(async () => {
+    setError(null)
+    if (!usable.length) { setError('Every row needs a title.'); return }
+    const res = await createDraftedTasks(usable)
+    if (!res.ok) { setError(res.error); return }
+    const created = res.data?.created ?? 0
+    const skipped = res.data?.skipped ?? 0
+    setDone(`Created ${created} task${created === 1 ? '' : 's'}.` +
+      (skipped ? ` Skipped ${skipped} with no title.` : ''))
+    if (created === usable.length) setTimeout(close, 1200)
   })
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/30 p-6"
-         onClick={onClose}>
-      <div className="w-full max-w-4xl rounded-md bg-[var(--surface-raised)] shadow-xl"
+    <div className="anim-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-6"
+         onClick={close}>
+      <div role="dialog" aria-modal="true" aria-labelledby="describe-tasks-title"
+           className="anim-pop w-full max-w-4xl rounded-md border border-[var(--border)] bg-[var(--surface-raised)] shadow-xl"
            onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div>
-            <p className="text-sm font-semibold">Add several tasks</p>
+            <p id="describe-tasks-title" className="text-sm font-semibold">Describe tasks</p>
             <p className="text-[11px] text-[var(--text-muted)]">
-              Paste a plan, check what it read, then save.
+              Write it or say it. Check the drafts, then create.
             </p>
           </div>
-          <button onClick={onClose} aria-label="Close"
-                  className="rounded-[3px] p-1 hover:bg-[var(--surface-hover)]">
-            <X className="h-4 w-4" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={close} aria-label="Close">
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </Button>
         </div>
 
         <div className="space-y-3 p-4">
@@ -136,133 +126,157 @@ export function BulkTasks({
               {error}
             </p>
           )}
-          {saved !== null && (
-            <p className="rounded-[3px] border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
-              {saved} task{saved === 1 ? '' : 's'} added.
+          {done && (
+            <p role="status"
+               className="rounded-[3px] border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {done}
             </p>
           )}
 
-          {!rows ? (
+          {drafting ? (
+            <div className="space-y-2" aria-busy="true" aria-label="Drafting tasks">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="rounded-md border border-[var(--border)] p-2.5">
+                  <div className="skeleton h-8 w-3/5 rounded-[3px]" />
+                  <div className="mt-2 flex gap-2">
+                    <div className="skeleton h-8 w-1/4 rounded-[3px]" />
+                    <div className="skeleton h-8 w-1/5 rounded-[3px]" />
+                    <div className="skeleton h-8 w-1/6 rounded-[3px]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !drafts ? (
             <>
-              <Label htmlFor="bulk-paste">Paste your tasks</Label>
+              <Label htmlFor="describe-tasks">What needs doing</Label>
               <Textarea
-                id="bulk-paste"
-                rows={12}
-                className="w-full font-mono text-[11px]"
+                id="describe-tasks"
+                autoFocus
+                rows={9}
+                maxLength={MAX_CHARS}
+                className="w-full text-[13px] leading-relaxed"
                 value={text}
-                placeholder={EXAMPLE}
+                placeholder={PLACEHOLDER}
                 onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); draft() }
+                }}
               />
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={parse} disabled={!text.trim()}>
-                  Read these
+              {voice.error && (
+                <p role="alert" className="text-[11px] text-amber-700 dark:text-amber-400">{voice.error}</p>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="primary" size="sm" onClick={draft} disabled={!text.trim()}>
+                  <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} /> Draft tasks
                 </Button>
-                <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+                {/* A disabled button swallows hover, so the reason sits on its wrapper. */}
+                <span title={voice.supported ? undefined : 'Voice needs Chrome or Edge'}>
+                  <Button
+                    size="sm"
+                    variant={voice.listening ? 'danger' : 'secondary'}
+                    disabled={!voice.supported}
+                    aria-pressed={voice.listening}
+                    aria-label={voice.listening ? 'Stop dictation' : 'Dictate'}
+                    onClick={voice.listening ? voice.stop : voice.start}
+                  >
+                    <Mic className={cn('h-3.5 w-3.5', voice.listening && 'motion-safe:animate-pulse')}
+                         strokeWidth={1.5} />
+                    {voice.listening ? 'Listening' : 'Dictate'}
+                  </Button>
+                </span>
+                <Button size="sm" variant="ghost" onClick={close}>Cancel</Button>
+                <span className="ml-auto text-[10px] text-[var(--text-muted)]">
+                  {text.length}/{MAX_CHARS} · Ctrl+Enter to draft
+                </span>
               </div>
             </>
           ) : (
             <>
+              {source && (
+                <p className={cn(
+                  'rounded-[3px] border px-2.5 py-1.5 text-[11px]',
+                  source.kind === 'ai'
+                    ? 'border-[var(--border-strong)] text-[var(--text-secondary)]'
+                    : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300',
+                )}>
+                  {source.kind === 'ai'
+                    ? `Drafted by AI. Check every row before creating.${source.note ? ` ${source.note}` : ''}`
+                    : source.note}
+                </p>
+              )}
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  {rows.length} task{rows.length === 1 ? '' : 's'} read. Fix anything
-                  wrong before saving.
+                  {drafts.length} draft{drafts.length === 1 ? '' : 's'}. Fix anything wrong before creating.
                 </p>
-                <Button size="xs" variant="ghost" onClick={() => setRows(null)}>
-                  Back to the paste
+                <Button size="xs" variant="ghost" onClick={() => { setDrafts(null); setSource(null) }}>
+                  Back to the description
                 </Button>
               </div>
 
-              <div className="max-h-[52vh] space-y-2 overflow-y-auto">
-                {rows.map((r, i) => (
-                  <div key={i}
-                       className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-2.5">
+              <div className="rise-list max-h-[52vh] space-y-2 overflow-y-auto">
+                {drafts.map((d, i) => (
+                  <div key={i} className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-2.5">
                     <div className="grid gap-2 sm:grid-cols-12">
-                      <div className="sm:col-span-5">
+                      <div className="sm:col-span-6">
                         <Label>Task</Label>
-                        <Input className="w-full" value={r.title}
+                        <Input value={d.title} maxLength={200}
                                onChange={(e) => edit(i, { title: e.target.value })} />
                       </div>
                       <div className="sm:col-span-3">
-                        <Label>Function</Label>
-                        <Select className="w-full" value={r.function_key ?? ''}
-                                onChange={(e) => edit(i, { function_key: e.target.value || undefined })}>
-                          <option value="">None</option>
-                          {functions.map((f) => (
-                            <option key={f.id} value={f.key}>{f.name}</option>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="sm:col-span-2">
                         <Label>Who</Label>
-                        <Select
-                          className="w-full"
-                          value={resolve.person(r.who) ?? ''}
-                          onChange={(e) => edit(i, {
-                            who: people.find((p) => p.id === e.target.value)?.name,
-                          })}
-                        >
-                          <option value="">{me.name}</option>
-                          {people.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
+                        <Select className="w-full" value={d.assignee_id ?? ''}
+                                onChange={(e) => edit(i, { assignee_id: e.target.value || null })}>
+                          <option value="">Unassigned</option>
+                          {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </Select>
                       </div>
-                      <div className="sm:col-span-2">
+                      <div className="sm:col-span-3">
                         <Label>Priority</Label>
-                        <Select className="w-full" value={r.priority ?? 'normal'}
-                                onChange={(e) => edit(i, {
-                                  priority: e.target.value as ParsedTask['priority'],
-                                })}>
-                          {PRIORITIES.map((p) => (
-                            <option key={p} value={p}>{PRIORITY[p].label}</option>
-                          ))}
+                        <Select className="w-full" value={d.priority}
+                                onChange={(e) => edit(i, { priority: e.target.value as Priority })}>
+                          {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY[p].label}</option>)}
                         </Select>
                       </div>
-                      <div className="sm:col-span-4">
-                        <Label>Project</Label>
-                        <Select
-                          className="w-full"
-                          value={resolve.project(r.project) ?? ''}
-                          onChange={(e) => edit(i, {
-                            project: projects.find((p) => p.id === e.target.value)?.name,
-                          })}
-                        >
-                          <option value="">None</option>
-                          {projects.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
+                      <div className="sm:col-span-3">
+                        <Label>Function</Label>
+                        <Select className="w-full" value={d.function_id ?? ''}
+                                onChange={(e) => edit(i, { function_id: e.target.value || null })}>
+                          <option value="">Default</option>
+                          {functions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                         </Select>
+                      </div>
+                      <div className="sm:col-span-3">
+                        <Label>Project</Label>
+                        <Select className="w-full" value={d.project_id ?? ''}
+                                onChange={(e) => edit(i, { project_id: e.target.value || null })}>
+                          <option value="">None</option>
+                          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </Select>
+                      </div>
+                      <div className="sm:col-span-3">
+                        <Label>Due</Label>
+                        <Input type="date" value={d.due_date ?? ''}
+                               onChange={(e) => edit(i, { due_date: e.target.value || null })} />
                       </div>
                       <div className="sm:col-span-2">
-                        <Label>Due</Label>
-                        <Input type="date" className="w-full" value={r.due ?? ''}
-                               onChange={(e) => edit(i, { due: e.target.value || undefined })} />
+                        <Label>Time</Label>
+                        <Input type="time" value={d.due_time ?? ''}
+                               onChange={(e) => edit(i, { due_time: e.target.value || null })} />
                       </div>
-                      <div className="sm:col-span-5">
-                        <Label>Notes</Label>
-                        <Input className="w-full" value={r.notes ?? ''}
-                               onChange={(e) => edit(i, { notes: e.target.value || undefined })} />
-                      </div>
-                      <div className="flex items-end sm:col-span-1">
-                        <button onClick={() => drop(i)}
-                                title="Drop this one"
-                                className="rounded-[3px] p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-rose-600">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                      <div className="flex items-end justify-end sm:col-span-1">
+                        <Button variant="ghost" size="icon" title="Remove this row" aria-label="Remove this row"
+                                onClick={() => setDrafts((r) => r!.filter((_, n) => n !== i))}>
+                          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        </Button>
                       </div>
                     </div>
-
-                    {/* What the parser could not read, on the row it affects. */}
-                    {(r.problems.length > 0 || (r.who && !resolve.person(r.who))) && (
-                      <p className={cn(
-                        'mt-1.5 text-[10px]',
-                        'text-amber-700 dark:text-amber-400',
-                      )}>
-                        {[...r.problems,
-                          r.who && !resolve.person(r.who)
-                            ? `No "${r.who}" on the team, it will go to you`
-                            : '',
-                        ].filter(Boolean).join(' · ')}
+                    {d.notes && (
+                      <p className="mt-1.5 whitespace-pre-line text-[11px] text-[var(--text-muted)]">{d.notes}</p>
+                    )}
+                    {d.problems.length > 0 && (
+                      <p className="mt-1.5 text-[10px] text-amber-700 dark:text-amber-400">
+                        {d.problems.join(' · ')}
                       </p>
                     )}
                   </div>
@@ -270,14 +284,14 @@ export function BulkTasks({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
-                <Button size="sm" onClick={saveAll} disabled={saving || !rows.length}>
-                  {saving ? 'Saving…' : `Save all ${rows.length}`}
+                <Button variant="primary" size="sm" onClick={create}
+                        disabled={creating || !usable.length || Boolean(done)}>
+                  {creating ? 'Creating...' : `Create ${usable.length} task${usable.length === 1 ? '' : 's'}`}
                 </Button>
-                <Button size="sm" variant="ghost"
-                        onClick={() => setRows([...rows, { title: '', problems: [] }])}>
-                  <Plus className="h-3 w-3" /> Add a row
+                <Button size="sm" variant="ghost" onClick={() => setDrafts([...drafts, { ...BLANK }])}>
+                  <Plus className="h-3 w-3" strokeWidth={1.5} /> Add a row
                 </Button>
-                <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button size="sm" variant="ghost" onClick={close}>Cancel</Button>
               </div>
             </>
           )}

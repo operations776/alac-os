@@ -336,6 +336,18 @@ export async function getNotifications(limit = 40): Promise<Notification[]> {
       [me.id, limit]));
 }
 
+/** The bell's badge. Counted in full, the list it sits on is capped. */
+export async function getUnreadNotificationCount(): Promise<number> {
+  const me = await getMe();
+  if (!me) return 0;
+  return read("getUnreadNotificationCount", 0, async () => {
+    const [row] = await opsQuery<{ n: number }>(
+      "select count(*)::int as n from mc.notifications where person_id = $1 and read_at is null",
+      [me.id]);
+    return row?.n ?? 0;
+  });
+}
+
 export async function getNotificationPreferences(): Promise<NotificationPreference[]> {
   const me = await getMe();
   if (!me) return [];

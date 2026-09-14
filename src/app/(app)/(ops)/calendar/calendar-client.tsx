@@ -127,7 +127,7 @@ export function CalendarClient({
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
               {c.label}
               {!c.last_synced_at && (
-                <span className="text-[10px] text-[var(--text-muted)]">, not synced</span>
+                <span className="text-[10px] text-[var(--text-muted)]">(not synced)</span>
               )}
             </span>
           ))}

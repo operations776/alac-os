@@ -186,3 +186,19 @@ Mission Control, the team's operating board, merged in so Adrian runs the desk a
 | ALAC-125 | Comments on tasks always failed: `task_audience` existed in two overloads from the source schema, so every two argument call was ambiguous. `0026` drops the old one. Also a Send button, since the comment box was keyboard only | done |
 | ALAC-126 | CI build failed on every route that imports db.ts: the Neon client was built at import and CI has no DATABASE_URL. Built on first query instead | done |
 | ALAC-124 | Apply `0025` to Neon, run `import:ops --apply` with Adrian's Mission Control connection string, set `SLACK_BOT_TOKEN` in Vercel, sign up test with two people | todo |
+
+## Operations polish, 14 Sep
+
+Daniyal's review after using the merged app.
+
+| ID | Ticket | Status |
+| --- | --- | --- |
+| ALAC-127 | The rail as four sections, Team, Desk, Growth, Admin, each opening to its pages; Admin only for owners and admins, and the admin pages redirect everyone else. Home is the command center | done |
+| ALAC-128 | Due times on tasks: in new task, the task dialog, rows and cards | done |
+| ALAC-129 | Reminders: tasks due soon, due today and overdue, GTM next actions, requisition decisions, unpublished content past date, once per person per item per day, through notify(); daily cron plus a claimed run at most every 10 minutes on page load; the bell polls every minute | done |
+| ALAC-130 | Smooth drag on every board: optimistic move, a lifted overlay that lands, no snap back while the server confirms, animated return on refusal | done |
+| ALAC-131 | One button family on the desk's .btn; the keycap never overflows; every popup opens centered with a rise, no side drawers; skeletons on every operations page | done |
+| ALAC-132 | Describe tasks: type or dictate, AI drafts (parser without a key), review and create in one transaction | done |
+| ALAC-133 | Demo data and the team: `seed:demo` writes a fictional live week across board, content, GTM and requisitions, every row ledgered in `mc.demo_rows` so `--remove` takes out exactly that; team from `ALAC_DATA_DIR/team.json` | done |
+| ALAC-134 | Light theme only: toggle removed, the root layout fixes the theme | done |
+| ALAC-135 | Recurring and file actions refuse non-admins, matching their pages | done |

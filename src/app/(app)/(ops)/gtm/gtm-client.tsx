@@ -3,10 +3,6 @@
 import { createContext, useContext, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import {
-  DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
-  useSensor, useSensors, type DragStartEvent,
-} from '@dnd-kit/core'
 import { AlertTriangle, Building2, ExternalLink, Plus, Target, Users } from 'lucide-react'
 import {
   Avatar, Button, EmptyState, Input, Label, Panel, Select,
@@ -20,6 +16,7 @@ import {
 import type { DuplicateHit } from '@/lib/server/ops/actions'
 import { DuplicateWarning } from '@/components/ops/duplicate-warning'
 import { BulkBar, SelectBox, useSelection } from '@/components/ops/board-selection'
+import { BoardDnd, DragCard, DropColumn, MoveError } from '@/components/ops/dnd'
 import { atLeast, GTM_OUTCOME, GTM_STAGE, GTM_STAGES, PRIORITIES, PRIORITY, SOURCE_LINKS } from '@/lib/ops/constants'
 import { useKanban } from '@/lib/ops/kanban'
 import { SourceLink } from '@/components/ops/source-link'
@@ -58,17 +55,12 @@ export function GtmClient({
   const [, start] = useTransition()
   const [adding, setAdding] = useState(false)
   const [who, setWho] = useState('')
-  const [dragging, setDragging] = useState<GtmAccountRow | null>(null)
 
   const [company, setCompany] = useState('')
   const [website, setWebsite] = useState('')
   const [researcher, setResearcher] = useState('')
   const [priority, setPriority] = useState<Priority>('normal')
   const [signal, setSignal] = useState('')
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-  )
 
   // One shared implementation across every board (Phase 25): the same
   // validation, the same optimistic lifecycle, the same failure handling.
@@ -96,10 +88,12 @@ export function GtmClient({
     onMovedSelection: () => selection.clear(),
   })
 
-  const visible = useMemo(() => {
-    const out = kanban.view
-    return out
-  }, [kanban.view, who])
+  // The person filter was wired to nothing. An account is someone's when they
+  // own it or research it: both are working it.
+  const visible = useMemo(
+    () => who ? kanban.view.filter((a) => a.owner_id === who || a.researcher_id === who) : kanban.view,
+    [kanban.view, who],
+  )
 
 
   /**
@@ -304,28 +298,15 @@ export function GtmClient({
         </div>
       )}
 
-      {kanban.error && (
-          <div
-            role="alert"
-            className="mb-2 flex items-start justify-between gap-3 rounded-[3px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300"
-          >
-            <span>{kanban.error}</span>
-            <button
-              type="button"
-              onClick={kanban.dismissError}
-              className="shrink-0 rounded-[3px] px-1 font-medium hover:underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
+        <MoveError message={kanban.error} onDismiss={kanban.dismissError} />
 
-        <DndContext
+        <BoardDnd
           id="gtm-board"
-          sensors={sensors}
-          onDragStart={(e: DragStartEvent) =>
-            setDragging(visible.find((a) => a.id === e.active.id) ?? null)}
           onDragEnd={kanban.onDragEnd}
+          overlay={(id) => {
+            const a = visible.find((x) => x.id === id)
+            return a && <Card account={a} />
+          }}
         >
           <div className="scrollbar-thin flex min-h-0 flex-1 gap-2.5 overflow-x-auto pb-3">
             {GTM_STAGES.map((stage) => (
@@ -338,14 +319,7 @@ export function GtmClient({
             ))}
           </div>
 
-          <DragOverlay dropAnimation={null}>
-            {dragging && (
-              <div className="w-56 rotate-2 opacity-90">
-                <Card account={dragging} />
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
+        </BoardDnd>
         </Now.Provider>
       </Selection.Provider>
         </>
@@ -362,8 +336,6 @@ function Column({
   /** The stage's WIP limit, when it has one. */
   cap?: number
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: stage })
-
   return (
     <div className="flex w-56 shrink-0 flex-col">
       <div className="mb-1.5 flex items-center gap-1.5 px-1" title={GTM_STAGE[stage].hint}>
@@ -393,28 +365,17 @@ function Column({
         )}
       </div>
 
-      <div
-        ref={setNodeRef} data-column={stage}
-        className={cn(
-          'scrollbar-thin flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5',
-          'min-h-[60vh] max-h-[calc(100vh-13rem)]',
-          'transition-colors', isOver && 'drop-target',
-        )}
+      <DropColumn
+        id={stage}
+        className="scrollbar-thin min-h-[60vh] max-h-[calc(100vh-13rem)] flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5"
       >
-        {accounts.map((a) => <Draggable key={a.id} account={a} />)}
+        {accounts.map((a) => (
+          <DragCard key={a.id} id={a.id}><Card account={a} /></DragCard>
+        ))}
         {!accounts.length && (
-          <p className="py-4 text-center text-[10px] text-[var(--text-muted)]">, </p>
+          <p className="py-4 text-center text-[10px] text-[var(--text-muted)]">-</p>
         )}
-      </div>
-    </div>
-  )
-}
-
-function Draggable({ account }: { account: GtmAccountRow }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: account.id })
-  return (
-    <div ref={setNodeRef} data-card={account.id} {...listeners} {...attributes} className={cn(isDragging && 'dragging')}>
-      <Card account={account} />
+      </DropColumn>
     </div>
   )
 }

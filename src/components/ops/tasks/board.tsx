@@ -6,20 +6,16 @@
  */
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import {
-  DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
-  useSensor, useSensors, type DragEndEvent, type DragStartEvent,
-} from '@dnd-kit/core'
 import { Plus } from 'lucide-react'
 import { Avatar } from '@/components/ops/ui/primitives'
 import {
   ClientBadge, DueDate, OverdueBadge, PriorityBadge, RecurringBadge,
 } from '@/components/ops/badges'
+import { BoardDnd, DragCard, DropColumn, MoveError } from '@/components/ops/dnd'
 import { updateTask } from '@/lib/server/ops/actions'
 import { STATUS, STATUSES, priorityStyle } from '@/lib/ops/constants'
-import { cn, formatDateShort, isOverdue } from '@/lib/ops/utils'
+import { useKanban } from '@/lib/ops/kanban'
+import { cn, formatDateShort, formatTime, isOverdue } from '@/lib/ops/utils'
 import type { TaskRow, TaskStatus } from '@/types/ops'
 
 export function Board({
@@ -32,46 +28,27 @@ export function Board({
   /** Off on a project board, where every card belongs to the same project. */
   showProject?: boolean
 }) {
-  const router = useRouter()
-  const [, start] = useTransition()
-  const [dragging, setDragging] = useState<TaskRow | null>(null)
-  const [moved, setMoved] = useState<Record<string, TaskStatus>>({})
-
-  // A small activation distance keeps clicks from becoming drags.
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-  )
-
-  const shown = useMemo(
-    () => tasks.map((t) => (moved[t.id] ? { ...t, status: moved[t.id] } : t)),
-    [tasks, moved],
-  )
-
-  function onDragEnd(e: DragEndEvent) {
-    setDragging(null)
-    const id = String(e.active.id)
-    const to = e.over?.id ? (String(e.over.id) as TaskStatus) : null
-    const task = shown.find((t) => t.id === id)
-    if (!to || !task || task.status === to || !STATUSES.includes(to)) return
-
-    setMoved((m) => ({ ...m, [id]: to }))
-    start(async () => {
-      const r = await updateTask(id, { status: to })
-      if (!r.ok) {
-        setMoved((m) => { const n = { ...m }; delete n[id]; return n })
-      }
-      router.refresh()
-    })
-  }
+  // The same optimistic lifecycle as every other board: the card stays where
+  // it was dropped unless the server refuses, and then it says why.
+  const kanban = useKanban<TaskRow, TaskStatus>({
+    rows: tasks,
+    field: 'status',
+    stages: STATUSES,
+    save: (id, stage) => updateTask(id, { status: stage }),
+  })
+  const shown = kanban.view
 
   return (
-    <DndContext
+    <BoardDnd
       id="project-board"
-      sensors={sensors}
-      onDragStart={(e: DragStartEvent) =>
-        setDragging(shown.find((t) => t.id === e.active.id) ?? null)}
-      onDragEnd={onDragEnd}
+      onDragEnd={kanban.onDragEnd}
+      overlay={(id) => {
+        const t = shown.find((x) => x.id === id)
+        return t && <Card task={t} onOpen={() => {}} clientFor={clientFor}
+                          showProject={showProject} />
+      }}
     >
+      <MoveError message={kanban.error} onDismiss={kanban.dismissError} />
       <div className="grid h-full grid-cols-5 gap-2.5">
         {STATUSES.map((s) => (
           <Column
@@ -85,16 +62,7 @@ export function Board({
           />
         ))}
       </div>
-
-      <DragOverlay dropAnimation={null}>
-        {dragging && (
-          <div className="w-64 rotate-2 opacity-90">
-            <Card task={dragging} onOpen={() => {}} clientFor={clientFor}
-                  showProject={showProject} />
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+    </BoardDnd>
   )
 }
 
@@ -108,8 +76,6 @@ function Column({
   clientFor?: Map<string, string>
   showProject: boolean
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: status })
-
   return (
     <div className="flex min-w-0 flex-col">
       <div className="mb-1.5 flex items-center gap-1.5 px-1">
@@ -129,38 +95,19 @@ function Column({
         )}
       </div>
 
-      <div
-        ref={setNodeRef}
-        className={cn(
-          'scrollbar-thin min-h-24 flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5',
-          'transition-colors',
-          isOver && 'drop-target',
-        )}
+      <DropColumn
+        id={status}
+        className="scrollbar-thin min-h-24 flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5"
       >
         {tasks.map((t) => (
-          <Draggable key={t.id} task={t} onOpen={onOpen} clientFor={clientFor}
-                     showProject={showProject} />
+          <DragCard key={t.id} id={t.id}>
+            <Card task={t} onOpen={onOpen} clientFor={clientFor} showProject={showProject} />
+          </DragCard>
         ))}
         {!tasks.length && (
           <p className="py-4 text-center text-[10px] text-[var(--text-muted)]">Empty</p>
         )}
-      </div>
-    </div>
-  )
-}
-
-function Draggable({
-  task, onOpen, clientFor, showProject,
-}: {
-  task: TaskRow
-  onOpen: (t: TaskRow) => void
-  clientFor?: Map<string, string>
-  showProject: boolean
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id })
-  return (
-    <div ref={setNodeRef} {...listeners} {...attributes} className={cn(isDragging && 'dragging')}>
-      <Card task={task} onOpen={onOpen} clientFor={clientFor} showProject={showProject} />
+      </DropColumn>
     </div>
   )
 }
@@ -222,7 +169,12 @@ function Card({
             ? <span className="text-[10px] text-[var(--text-muted)]">
                 {task.done_at ? formatDateShort(task.done_at) : 'Done'}
               </span>
-            : <DueDate date={task.due_date} />}
+            : <>
+                <DueDate date={task.due_date} />
+                {task.due_time && (
+                  <span className="ml-1 text-[10px] tabular text-[var(--text-muted)]">{formatTime(task.due_time)}</span>
+                )}
+              </>}
         </div>
       </div>
     </article>

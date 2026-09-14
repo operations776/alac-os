@@ -127,9 +127,9 @@ export function MetricsDrawer({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} aria-hidden />
+      <div className="anim-backdrop fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <aside
-        className="fixed right-0 top-0 z-50 flex h-screen w-full max-w-md flex-col border-l border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
+        className="anim-pop fixed inset-0 z-50 m-auto flex h-fit max-h-[88dvh] w-[calc(100%-32px)] max-w-lg flex-col overflow-hidden rounded-[var(--alac-radius)] border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
         role="dialog" aria-label="Update analytics"
       >
         <div className="flex items-start gap-2 border-b border-[var(--border)] px-4 py-3">
@@ -149,7 +149,7 @@ export function MetricsDrawer({
           </button>
         </div>
 
-        <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4">
           {persist.error && (
             <div role="alert"
                  className="mb-3 flex items-start justify-between gap-3 rounded-[3px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300">

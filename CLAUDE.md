@@ -79,6 +79,7 @@ Mission Control, the team's board (projects, tasks, content, GTM execution, requ
 | `npm run test:unit` | xlsx, heat, outreach, PredictLeads and next-move checks. Fast, no database, no network |
 | `npm run sync:ops` | Load calendar and Drive files Claude wrote to `ALAC_DATA_DIR/sync/inbox/` into the ops workspace. Idempotent |
 | `npm run import:ops` | One time copy of the live Mission Control data from `MC_DATABASE_URL`. Plan only without `--apply` |
+| `npm run seed:demo` | Fictional demo week plus the team from `ALAC_DATA_DIR/team.json`. Plan only without `--apply`; `--remove` takes out exactly the demo rows |
 | `npm run import:sops` | Load the SOP library from `ALAC_DATA_DIR/sops.json` |
 | `npm run test:e2e` | Playwright. **Daniyal runs this, not Claude.** Write the specs, hand him the verification step. |
 

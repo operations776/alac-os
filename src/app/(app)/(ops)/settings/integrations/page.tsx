@@ -1,13 +1,12 @@
 /** Integrations, what's connected, and what's still needed. */
-import { redirect } from 'next/navigation'
+import { requireAdminPage } from '@/lib/server/ops/context'
 import {
-  getCalendars, getIntegrations, getMe, getPeople,
+  getCalendars, getIntegrations, getPeople,
 } from '@/lib/server/ops/queries'
 import { IntegrationsClient } from './integrations-client'
 
 export default async function IntegrationsPage() {
-  const me = await getMe()
-  if (!me) redirect('/signin')
+  await requireAdminPage()
 
   const [integrations, calendars, people] = await Promise.all([
     getIntegrations(), getCalendars(), getPeople(),

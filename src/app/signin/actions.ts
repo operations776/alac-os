@@ -24,7 +24,7 @@ export async function signInAction(
     return { error: "That email and password do not match." };
   }
 
-  redirect("/dashboard");
+  redirect("/ops");
 }
 
 export async function signOutAction() {

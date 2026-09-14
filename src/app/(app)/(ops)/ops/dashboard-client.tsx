@@ -79,7 +79,7 @@ export function DashboardClient({
   const clear = !view.overdue.length && !view.today.length && !view.waiting.length
 
   return (
-    <div className="mx-auto max-w-6xl p-5">
+    <div className="rise mx-auto max-w-6xl p-5">
       <div className="mb-5">
         <h1 className="text-xl font-semibold tracking-tight">
           {clock?.hello ?? 'Hello'}, {firstName(me.name)}

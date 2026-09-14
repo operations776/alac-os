@@ -13,7 +13,7 @@ import { Check, ListChecks, MessageSquare } from 'lucide-react'
 import { Avatar } from '@/components/ops/ui/primitives'
 import { DueDate, PriorityDot, RecurringBadge, StatusBadge } from '@/components/ops/badges'
 import { updateTask } from '@/lib/server/ops/actions'
-import { cn } from '@/lib/ops/utils'
+import { cn, formatTime } from '@/lib/ops/utils'
 import type { TaskRow as Task } from '@/types/ops'
 
 export function TaskRow({
@@ -110,8 +110,13 @@ export function TaskRow({
         )}
       </div>
 
-      <div className="w-20 shrink-0 text-right">
+      <div className="w-28 shrink-0 whitespace-nowrap text-right">
         <DueDate date={task.due_date} done={done} icon={false} />
+        {task.due_date && task.due_time && (
+          <span className="ml-1 text-2xs tabular text-[var(--text-muted)]">
+            {formatTime(task.due_time)}
+          </span>
+        )}
       </div>
     </div>
   )

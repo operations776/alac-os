@@ -245,8 +245,6 @@ export const NOTIFY = {
   task_assigned:         { label: 'Assigned to me',        group: 'My work' },
   task_review_requested: { label: 'Ready for review',      group: 'My work' },
   task_blocked:          { label: 'Something got blocked', group: 'My work' },
-  task_due_soon:         { label: 'Due soon',              group: 'My work' },
-  task_overdue:          { label: 'Overdue',               group: 'My work' },
   task_started:          { label: 'Someone started my task', group: 'Work I asked for' },
   task_completed:        { label: 'Someone finished my task', group: 'Work I asked for' },
   comment_mention:       { label: 'Mentioned in a comment', group: 'Conversation' },
@@ -255,10 +253,13 @@ export const NOTIFY = {
   content_published:     { label: 'Content published',      group: 'Content' },
   gtm_review:            { label: 'GTM needs review',       group: 'GTM' },
   recurring_created:     { label: 'Recurring task created', group: 'Automation' },
+  // One kind for every reminder mc.run_reminders() sends. task_due_soon and
+  // task_overdue are in the enum but nothing sends them, so they are not offered.
+  reminder:              { label: 'Due tasks, GTM next actions, requisitions and content', group: 'Reminders' },
 } as Record<NotifyKind, { label: string; group: string }>
 
 export const NOTIFY_GROUPS = [
-  'My work', 'Work I asked for', 'Conversation', 'Content', 'GTM', 'Automation',
+  'My work', 'Work I asked for', 'Conversation', 'Content', 'GTM', 'Automation', 'Reminders',
 ]
 
 // --- GTM ---------------------------------------------------------------------------

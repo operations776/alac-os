@@ -276,13 +276,13 @@ function Lightbox({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-8"
+      className="anim-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-8"
     >
       <button onClick={onClose} aria-label="Close"
               className="absolute right-4 top-4 text-white/70 hover:text-white">
         <X className="h-5 w-5" />
       </button>
-      <div onClick={(e) => e.stopPropagation()} className="max-h-full max-w-4xl">
+      <div onClick={(e) => e.stopPropagation()} className="anim-pop max-h-full max-w-4xl">
         {isImage && url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt={a.display_name || a.file_name}

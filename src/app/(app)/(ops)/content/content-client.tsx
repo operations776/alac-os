@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  createContext, useContext, useMemo, useState, useTransition,
-} from 'react'
-import { useRouter } from 'next/navigation'
-import {
-  DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
-  useSensor, useSensors, type DragStartEvent,
-} from '@dnd-kit/core'
+import { createContext, useContext, useMemo, useState } from 'react'
 import { Plus, Sparkles } from 'lucide-react'
 import { Avatar, Button, Select } from '@/components/ops/ui/primitives'
 import { PlatformIcon } from '@/components/ops/platform-icon'
@@ -15,6 +8,7 @@ import { ContentDrawer } from './content-drawer'
 import { NewContent } from '@/components/ops/new-content'
 import { WorkspaceTabs } from '@/components/ops/workspace-tabs'
 import { BulkBar, SelectBox, useSelection } from '@/components/ops/board-selection'
+import { BoardDnd, DragCard, DropColumn, MoveError } from '@/components/ops/dnd'
 import { moveContent, updateContent } from '@/lib/server/ops/actions'
 import {
   CONTENT_KIND, CONTENT_STATUS, CONTENT_STATUSES, PLATFORM, PLATFORMS, SOURCE_LINKS,
@@ -35,17 +29,10 @@ export function ContentClient({
   voice: VoiceProfile | null
   pillars: ContentPillar[]
 }) {
-  const router = useRouter()
-  const [, start] = useTransition()
   const [open, setOpen] = useState<ContentRow | null>(null)
   const [platform, setPlatform] = useState<Platform | ''>('')
   const [who, setWho] = useState('')
-  const [dragging, setDragging] = useState<ContentRow | null>(null)
   const [adding, setAdding] = useState(false)
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-  )
 
   // One shared implementation across every board (Phase 25): the same
   // validation, the same optimistic lifecycle, the same failure handling.
@@ -131,29 +118,16 @@ export function ContentClient({
 
       {/* A refused move must say why. Without this the card simply springs
           back to its old column and the board looks broken. */}
-      {kanban.error && (
-        <div
-          role="alert"
-          className="mb-2 flex items-start justify-between gap-3 rounded-[3px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300"
-        >
-          <span>{kanban.error}</span>
-          <button
-            type="button"
-            onClick={kanban.dismissError}
-            className="shrink-0 rounded-[3px] px-1 font-medium hover:underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      <MoveError message={kanban.error} onDismiss={kanban.dismissError} />
 
       <Selection.Provider value={selection}>
-      <DndContext
+      <BoardDnd
         id="content-board"
-        sensors={sensors}
-        onDragStart={(e: DragStartEvent) =>
-          setDragging(visible.find((c) => c.id === e.active.id) ?? null)}
         onDragEnd={kanban.onDragEnd}
+        overlay={(id) => {
+          const c = visible.find((x) => x.id === id)
+          return c && <Card item={c} onOpen={() => {}} />
+        }}
       >
         <div className="scrollbar-thin flex min-h-0 flex-1 gap-2.5 overflow-x-auto pb-3">
           {CONTENT_STATUSES.map((s) => (
@@ -166,14 +140,7 @@ export function ContentClient({
           ))}
         </div>
 
-        <DragOverlay dropAnimation={null}>
-          {dragging && (
-            <div className="w-56 rotate-2 opacity-90">
-              <Card item={dragging} onOpen={() => {}} />
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+      </BoardDnd>
       </Selection.Provider>
 
       <ContentDrawer
@@ -195,8 +162,6 @@ function Column({
   items: ContentRow[]
   onOpen: (c: ContentRow) => void
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: status })
-
   return (
     <div className="flex w-60 shrink-0 flex-col">
       <div className="mb-1.5 flex items-center gap-1.5 px-1">
@@ -205,30 +170,19 @@ function Column({
         <span className="text-[10px] tabular text-[var(--text-muted)]">{items.length}</span>
       </div>
 
-      <div
-        ref={setNodeRef} data-column={status}
-        className={cn(
-          'scrollbar-thin flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5 transition-colors',
-          'min-h-[60vh] max-h-[calc(100vh-13rem)]',
-          isOver && 'drop-target',
-        )}
+      <DropColumn
+        id={status}
+        className="scrollbar-thin min-h-[60vh] max-h-[calc(100vh-13rem)] flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5"
       >
         {items.map((c) => (
-          <Draggable key={c.id} item={c} onOpen={onOpen} />
+          <DragCard key={c.id} id={c.id}>
+            <Card item={c} onOpen={onOpen} />
+          </DragCard>
         ))}
         {!items.length && (
           <p className="py-4 text-center text-[10px] text-[var(--text-muted)]">Empty</p>
         )}
-      </div>
-    </div>
-  )
-}
-
-function Draggable({ item, onOpen }: { item: ContentRow; onOpen: (c: ContentRow) => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: item.id })
-  return (
-    <div ref={setNodeRef} data-card={item.id} {...listeners} {...attributes} className={cn(isDragging && 'dragging')}>
-      <Card item={item} onOpen={onOpen} />
+      </DropColumn>
     </div>
   )
 }

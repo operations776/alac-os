@@ -1,5 +1,5 @@
 /**
- * Task detail. Slides over the current view so you keep your place, and every
+ * Task detail. Opens centered over the current view so you keep your place, and every
  * field saves on its own, no save button to forget.
  */
 'use client'
@@ -79,7 +79,9 @@ function Body({
   // blur against the `task` prop instead compares against the row as it was
   // when the drawer opened, which goes stale the moment anything saves, and
   // a stale match skips the write, losing the edit.
-  const lastSaved = useRef({ title: task.title, notes: task.notes ?? '' })
+  const initialTime = task.due_time?.slice(0, 5) ?? ''
+  const [dueTime, setDueTime] = useState(initialTime)
+  const lastSaved = useRef({ title: task.title, notes: task.notes ?? '', dueTime: initialTime })
 
   const persist = useSave({ onSaved: onReload })
   const { saved } = persist
@@ -89,9 +91,9 @@ function Body({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} aria-hidden />
+      <div className="anim-backdrop fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <aside
-        className="fixed right-0 top-0 z-50 flex h-screen w-full max-w-md flex-col border-l border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
+        className="anim-pop fixed inset-0 z-50 m-auto flex h-fit max-h-[88dvh] w-[calc(100%-32px)] max-w-xl flex-col overflow-hidden rounded-[var(--alac-radius)] border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
         role="dialog"
         aria-label="Task"
       >
@@ -128,7 +130,7 @@ function Body({
           </div>
         </div>
 
-        <div className="scrollbar-thin flex-1 overflow-y-auto">
+        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-4 p-4">
             {persist.error && (
               <div
@@ -210,13 +212,36 @@ function Body({
                   </p>
                 )}
               </div>
-              <div>
+              <div className="col-span-2">
                 <Label>Due</Label>
-                <Input
-                  type="date"
-                  value={toDateInput(task.due_date)}
-                  onChange={(e) => save({ due_date: e.target.value || null })}
-                />
+                <div className="flex gap-1">
+                  <Input
+                    className="min-w-0 flex-1"
+                    type="date"
+                    value={toDateInput(task.due_date)}
+                    onChange={(e) => {
+                      // Clearing the date clears the time, here and in the database.
+                      if (!e.target.value) { setDueTime(''); lastSaved.current.dueTime = '' }
+                      save({ due_date: e.target.value || null })
+                    }}
+                  />
+                  <Input
+                    className="w-32"
+                    type="time"
+                    value={dueTime}
+                    disabled={!task.due_date}
+                    aria-label="Due time, optional"
+                    title={task.due_date ? 'Optional time' : 'Pick a date first'}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    // Saved on blur: the native input fires a change per segment typed.
+                    onBlur={() => {
+                      if (dueTime === lastSaved.current.dueTime) return
+                      const next = dueTime
+                      void persist.save(() => updateTask(task.id, { due_time: next || null }))
+                        .then((ok) => { if (ok) lastSaved.current.dueTime = next })
+                    }}
+                  />
+                </div>
               </div>
               <div className="col-span-2">
                 <Label>Project</Label>

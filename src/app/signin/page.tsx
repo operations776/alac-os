@@ -16,7 +16,7 @@ export default async function SignInPage() {
   // Already signed in: no reason to show the form again. This used to send
   // people to /dashboard, which stopped existing when the desk command center
   // replaced the portfolio model, so signing in landed on a 404.
-  if (await currentSession()) redirect("/command");
+  if (await currentSession()) redirect("/ops");
 
   return (
     <main className="surface-wash flex min-h-dvh items-center justify-center px-5 py-10">

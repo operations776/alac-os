@@ -148,7 +148,7 @@ export function ArchiveClient({
                                 style={{ backgroundColor: fnOf[i.function_id].color }} />
                           {fnOf[i.function_id].name}
                         </span>
-                      ) : <span className="text-[var(--text-muted)]">, </span>}
+                      ) : <span className="text-[var(--text-muted)]">-</span>}
                     </td>
                     <td className="px-4 py-2">
                       {i.owner_id ? (
@@ -156,7 +156,7 @@ export function ArchiveClient({
                           <Avatar id={i.owner_id} name={nameOf[i.owner_id] ?? '?'} size="xs" />
                           {nameOf[i.owner_id] ?? 'Unknown'}
                         </span>
-                      ) : <span className="text-[var(--text-muted)]">, </span>}
+                      ) : <span className="text-[var(--text-muted)]">-</span>}
                     </td>
                     <td className="px-4 py-2 text-right">
                       {i.kind === 'task' ? (

@@ -1,5 +1,5 @@
 /**
- * New task. One dialog, four fields, ⌘↵ to save.
+ * New task. One dialog, four fields, Ctrl or Cmd + Enter to save.
  *
  * Creating work must never cost more than a keystroke and a sentence, or
  * people stop recording it.
@@ -9,7 +9,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
-import { Button, Input, Label, Select, Textarea } from '@/components/ops/ui/primitives'
+import { Button, Input, Kbd, Label, Select, Textarea } from '@/components/ops/ui/primitives'
 import { createTask } from '@/lib/server/ops/actions'
 import { PRIORITIES, PRIORITY } from '@/lib/ops/constants'
 import { toDateString } from '@/lib/ops/utils'
@@ -44,6 +44,7 @@ export function NewTask({
   const [who, setWho] = useState(me?.id ?? '')
   const [priority, setPriority] = useState<Priority>('normal')
   const [due, setDue] = useState('')
+  const [dueTime, setDueTime] = useState('')
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
@@ -65,6 +66,7 @@ export function NewTask({
         assignee_id: who || null,
         priority,
         due_date: due || null,
+        due_time: (due && dueTime) || null,
       })
       if (!r.ok) { setError(r.error); return }
       onClose()
@@ -74,14 +76,14 @@ export function NewTask({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[12vh]"
+      className="anim-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[12vh]"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="New task"
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
+        className="anim-pop w-full max-w-lg overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center border-b border-[var(--border)] px-4 py-2.5">
@@ -151,10 +153,18 @@ export function NewTask({
                 ))}
               </Select>
             </div>
-            <div>
+            <div className="col-span-2">
               <Label>Due</Label>
               <div className="flex gap-1">
-                <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+                <Input className="min-w-0 flex-1" type="date" value={due} onChange={(e) => {
+                  setDue(e.target.value)
+                  // A time means nothing without its date.
+                  if (!e.target.value) setDueTime('')
+                }} />
+                <Input className="w-32" type="time" value={dueTime} disabled={!due}
+                       aria-label="Due time, optional"
+                       title={due ? 'Optional time' : 'Pick a date first'}
+                       onChange={(e) => setDueTime(e.target.value)} />
                 <Button size="sm" variant="subtle"
                         onClick={() => setDue(toDateString(new Date()))}>
                   Today
@@ -184,7 +194,7 @@ export function NewTask({
 
         <div className="flex items-center justify-between border-t border-[var(--border)] px-4 py-2.5">
           <span className="text-[10px] text-[var(--text-muted)]">
-            <kbd className="rounded border border-[var(--border-strong)] px-1">⌘↵</kbd> to save
+            <Kbd k="↵" /> to save
           </span>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>

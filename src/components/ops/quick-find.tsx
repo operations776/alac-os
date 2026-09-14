@@ -1,4 +1,4 @@
-/** ⌘K. Jump to a project, or to one of the six pages. */
+/** Ctrl K (⌘K on a Mac). Jump to a project, or to one of the six pages. */
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -7,11 +7,12 @@ import {
   CalendarDays, FolderKanban, LayoutDashboard, ListTodo, Repeat, Search, Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/ops/utils'
+import { Kbd } from '@/components/ops/ui/primitives'
 import { DEPARTMENT } from '@/lib/ops/constants'
 import type { Project } from '@/types/ops'
 
 const PAGES = [
-  { href: '/',                   label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/ops',                label: 'Dashboard', icon: LayoutDashboard },
   { href: '/my-work',            label: 'My Work',   icon: ListTodo },
   { href: '/projects',           label: 'Projects',  icon: FolderKanban },
   { href: '/calendar',           label: 'Calendar',  icon: CalendarDays },
@@ -61,14 +62,14 @@ export function QuickFind({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[12vh]"
+      className="anim-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh]"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Find"
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
+        className="anim-pop w-full max-w-lg overflow-hidden rounded-lg border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-[var(--border)] px-3">
@@ -88,11 +89,9 @@ export function QuickFind({
               }
             }}
             placeholder="Find a project or page…"
-            className="h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
+            className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
           />
-          <kbd className="rounded border border-[var(--border-strong)] px-1 text-[10px] text-[var(--text-muted)]">
-            ESC
-          </kbd>
+          <Kbd k="Esc" mod={false} />
         </div>
 
         <div className="scrollbar-thin max-h-80 overflow-y-auto py-1">

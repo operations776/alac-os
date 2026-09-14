@@ -72,7 +72,7 @@ export function MyWorkClient({
     groups.overdue.length + groups.today.length + groups.soon.length + groups.later.length
 
   return (
-    <div className="mx-auto max-w-4xl p-5">
+    <div className="rise mx-auto max-w-4xl p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">

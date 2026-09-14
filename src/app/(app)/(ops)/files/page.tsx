@@ -1,11 +1,10 @@
 /** Files, the ALAC Google Drive, indexed. */
-import { redirect } from 'next/navigation'
-import { getDriveFiles, getIntegrations, getMe, getProjects } from '@/lib/server/ops/queries'
+import { requireAdminPage } from '@/lib/server/ops/context'
+import { getDriveFiles, getIntegrations, getProjects } from '@/lib/server/ops/queries'
 import { FilesClient } from './files-client'
 
 export default async function FilesPage() {
-  const me = await getMe()
-  if (!me) redirect('/signin')
+  await requireAdminPage()
 
   const [files, projects, integrations] = await Promise.all([
     getDriveFiles(), getProjects(), getIntegrations(),
