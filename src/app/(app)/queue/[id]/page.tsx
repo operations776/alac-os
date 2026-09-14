@@ -28,6 +28,8 @@ import { setSourceWhale, setDisposition } from "./org";
 import { requestEnrichment, removeFromList } from "./portfolio";
 import { nextPullAt } from "@/config/desk.mjs";
 import { setMark } from "./tracker";
+import { startGtm } from "./gtm";
+import { gtmForRecord } from "@/lib/server/ops/seams";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +85,7 @@ export default async function QueueAccountPage({
   const account = await accountById(orgId, id);
   if (!account) notFound();
 
-  const [signals, people, targets, roles, pkg, brief, drafts, notes, marks, moves, touches] = await Promise.all([
+  const [signals, people, targets, roles, pkg, brief, drafts, notes, marks, moves, touches, gtm] = await Promise.all([
     signalsForAccount(orgId, account.id),
     peopleForAccount(orgId, account.id),
     targetsForAccount(orgId, account.id),
@@ -95,6 +97,7 @@ export default async function QueueAccountPage({
     marksForAccount(orgId, account.id),
     movesForAccount(orgId, account.id),
     touchesForAccount(orgId, account.id),
+    gtmForRecord(account.record_id),
   ]);
 
   // Everyone known at this company, sorted into the six organizational
@@ -153,6 +156,18 @@ export default async function QueueAccountPage({
                 {account.effective_band === "now" ? "Work now" : account.effective_band === "next" ? "Up next" : "Backlog"}
               </span>
             ) : null}
+            {/* The hand off to the team board: once GTM work starts here it
+                is one company on both sides, keyed on the Record ID. */}
+            {gtm ? (
+              <Link href={`/gtm/${gtm.id}`} className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]">
+                In GTM: {gtm.stage.replace(/_/g, " ")}{gtm.owner_name ? `, ${gtm.owner_name}` : ""}
+              </Link>
+            ) : (
+              <form action={startGtm}>
+                <input type="hidden" name="accountId" value={account.id} />
+                <button type="submit" className="chip hover:text-[var(--alac-accent)]">Start GTM work</button>
+              </form>
+            )}
             {account.next_week ? (
               <span className="chip bg-[var(--alac-accent-soft)] text-[var(--alac-accent-light)]">
                 Next week
