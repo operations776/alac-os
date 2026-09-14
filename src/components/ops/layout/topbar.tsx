@@ -3,8 +3,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Search } from 'lucide-react'
-import { Avatar, Button } from '@/components/ops/ui/primitives'
+import { Plus, Search, Sparkles } from 'lucide-react'
+import { Avatar, Button, Kbd } from '@/components/ops/ui/primitives'
 import { QuickFind } from '@/components/ops/quick-find'
 import { NewTask } from '@/components/ops/new-task'
 import { BulkTasks } from '@/components/ops/bulk-tasks'
@@ -25,7 +25,7 @@ export function Topbar({
   const [addOpen, setAddOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
 
-  // ⌘K finds; "n" starts a new task without reaching for the mouse.
+  // Ctrl K (⌘K on a Mac) finds; "n" starts a new task without reaching for the mouse.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -48,25 +48,29 @@ export function Topbar({
   return (
     <>
       <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4">
+        {/* A search field in look, a button in behaviour. min-w-0 on the
+            trigger and its label lets the label truncate; the icon and the
+            keycap never shrink, so nothing can spill out of the box. */}
         <button
           onClick={() => setFindOpen(true)}
-          className="flex h-7 min-w-0 flex-1 items-center sm:max-w-72 gap-2 rounded-md border border-[var(--border-strong)] bg-[var(--surface-sunken)] px-2.5 text-xs text-[var(--text-muted)] transition-colors hover:border-brand-400"
+          className="flex h-7 min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-[var(--alac-radius-sm)] border border-[var(--border-strong)] bg-[var(--surface-sunken)] px-2.5 text-xs text-[var(--text-muted)] transition-colors hover:border-brand-400 sm:max-w-80"
         >
-          <Search className="h-3.5 w-3.5" />
-          <span className="flex-1 truncate text-left">Find a project or task</span>
-          <kbd className="rounded border border-[var(--border-strong)] bg-[var(--surface)] px-1 text-[10px]">⌘K</kbd>
+          <Search className="h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate text-left">Find a project or task</span>
+          <Kbd k="K" className="hidden sm:inline-flex" />
         </button>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <Button size="sm" variant="primary" onClick={() => setAddOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             New task
           </Button>
-          {/* Pasting a whole plan is a different job from writing one task,
+          {/* Describing a whole plan is a different job from writing one task,
               so it gets its own entry rather than hiding inside the form. */}
           <Button size="sm" variant="ghost" onClick={() => setBulkOpen(true)}
-                  title="Paste several tasks at once" className="hidden sm:inline-flex">
-            Paste tasks
+                  title="Describe several tasks at once" className="hidden sm:inline-flex">
+            <Sparkles className="h-3.5 w-3.5" />
+            Describe tasks
           </Button>
           <NotificationBell notifications={notifications} />
           <Link href="/settings" className="rounded-full hover:ring-2 hover:ring-brand-400">

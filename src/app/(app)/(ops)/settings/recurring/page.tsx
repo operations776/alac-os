@@ -1,13 +1,12 @@
 /** Recurring work, the things that come back every week or month. */
-import { redirect } from 'next/navigation'
+import { requireAdminPage } from '@/lib/server/ops/context'
 import {
-  getMe, getPeople, getProjects, getRecurring, getSops,
+  getPeople, getProjects, getRecurring, getSops,
 } from '@/lib/server/ops/queries'
 import { RecurringClient } from './recurring-client'
 
 export default async function RecurringPage() {
-  const me = await getMe()
-  if (!me) redirect('/signin')
+  const me = await requireAdminPage()
 
   const [rules, people, projects, sops] = await Promise.all([
     getRecurring(), getPeople(), getProjects(), getSops(),

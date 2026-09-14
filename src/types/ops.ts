@@ -94,6 +94,8 @@ export interface Task {
   priority: Priority
   assignee_id: string | null
   due_date: string | null
+  /** 'HH:MM:SS'. Null means due any time that day. */
+  due_time: string | null
   department: Department
   function_id: string
   blocked_reason: string | null
@@ -348,7 +350,7 @@ export type NotifyKind =
   | 'task_assigned' | 'task_started' | 'task_review_requested' | 'task_blocked'
   | 'task_completed' | 'task_due_soon' | 'task_overdue' | 'comment_mention'
   | 'comment_reply' | 'content_review' | 'content_published' | 'gtm_review'
-  | 'recurring_created'
+  | 'recurring_created' | 'reminder'
 
 export interface Notification {
   id: string

@@ -11,7 +11,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Image as ImageIcon, Link2, Plus, X } from 'lucide-react'
 import {
-  Button, Input, Label, Panel, PanelHeader, Select, Textarea,
+  Button, Input, Kbd, Label, Panel, PanelHeader, Select, Textarea,
 } from '@/components/ops/ui/primitives'
 import { PlatformIcon } from '@/components/ops/platform-icon'
 import { createContentFull } from '@/lib/server/ops/actions'
@@ -339,7 +339,7 @@ export function NewContent({
           </Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
           <span className="ml-auto text-[10px] text-[var(--text-muted)]">
-            <kbd className="rounded border border-[var(--border-strong)] px-1">⌘↵</kbd> to save
+            <Kbd k="↵" /> to save
           </span>
         </div>
       </div>

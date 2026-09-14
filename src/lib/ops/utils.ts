@@ -81,6 +81,13 @@ export function formatDue(value: string | null | undefined): string {
   })
 }
 
+/** '14:30:00' or '14:30' to '2:30 PM'. Empty for no time. */
+export function formatTime(value: string | null | undefined): string {
+  if (!value) return ''
+  const [h, m] = value.split(':').map(Number)
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+}
+
 export function formatDate(value: string | Date | null | undefined): string {
   const d = toLocalDate(value)
   if (!d) return '-'

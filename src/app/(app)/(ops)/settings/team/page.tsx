@@ -1,11 +1,10 @@
 /** Team administration, invite, assign roles, manage state. */
-import { redirect } from 'next/navigation'
-import { getFunctions, getInvitations, getMe, getPeople } from '@/lib/server/ops/queries'
+import { requireAdminPage } from '@/lib/server/ops/context'
+import { getFunctions, getInvitations, getPeople } from '@/lib/server/ops/queries'
 import { TeamClient } from './team-client'
 
 export default async function TeamPage() {
-  const me = await getMe()
-  if (!me) redirect('/signin')
+  const me = await requireAdminPage()
 
   const [people, functions, invitations] = await Promise.all([
     getPeople(), getFunctions(), getInvitations(),

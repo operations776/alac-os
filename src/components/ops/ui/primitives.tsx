@@ -13,26 +13,33 @@ import { cn, initials as toInitials, avatarColor } from '@/lib/ops/utils'
 // --- Button -----------------------------------------------------------------
 
 /**
- * Buttons follow the brand kit: near-square 3px corners, and a white fill on
- * the primary action so it reads against the near-black canvas. Uppercase
- * with wide tracking is reserved for `lg`, the page-level action, applying it
- * to the small buttons that fill a dense board would be noise.
+ * Buttons are the desk's `.btn` family from globals.css, so an operations
+ * screen and a desk screen share one control: a rectangle with a mono,
+ * uppercase, tracked label. Primary is the light fill, secondary is outlined,
+ * ghost is the accent, danger is red, subtle is an outlined surface.
+ *
+ * `.btn` is sized for a page-level action (40px). A dense board needs smaller
+ * controls, so every size restates height, padding, type size and tracking.
+ * `.btn` lives in @layer components, so these utilities win without
+ * !important, and `min-h-0` releases its min-height so a call site's own
+ * `h-*` still lands. Disabled and focus come from `.btn:disabled` and the
+ * global focus-visible ring.
  */
 const BUTTON_VARIANTS = {
-  primary:  'bg-[var(--alac-text)] text-[var(--alac-ground)] hover:opacity-90 disabled:opacity-50',
-  secondary:'bg-transparent text-[var(--text-primary)] border border-[var(--border-strong)] hover:border-[color:var(--accent)]/45 hover:bg-[var(--surface-hover)]',
-  ghost:    'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
-  danger:   'bg-[var(--alac-red-deep)] text-white hover:bg-[var(--alac-red)]',
-  subtle:   'bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+  primary:   'btn-primary',
+  secondary: 'btn-secondary',
+  ghost:     'btn-ghost',
+  danger:    'btn-danger',
+  subtle:    'border-[var(--alac-line)] bg-[var(--alac-surface-2)] text-[var(--alac-text-2)] hover:border-[var(--alac-line-strong)] hover:text-[var(--alac-text)]',
 } as const
 
 const BUTTON_SIZES = {
-  xs: 'h-6 px-2 text-2xs gap-1 rounded-[3px]',
-  sm: 'h-7 px-2.5 text-xs gap-1.5 rounded-[3px]',
-  md: 'h-8 px-3 text-[13px] gap-1.5 rounded-[3px]',
-  lg: 'h-10 px-6 text-[13px] font-semibold uppercase tracking-[0.06em] gap-2 rounded-[3px]',
-  icon: 'h-7 w-7 rounded-[3px]',
-  'icon-sm': 'h-6 w-6 rounded-[3px]',
+  xs: 'h-6 px-2 gap-1 text-[10px] tracking-[0.08em]',
+  sm: 'h-7 px-2.5 gap-1.5 text-[10px] tracking-[0.1em]',
+  md: 'h-8 px-3 gap-1.5 text-[11px] tracking-[0.1em]',
+  lg: 'h-10 px-5 gap-2 text-xs tracking-[0.12em]',
+  icon: 'h-7 w-7 px-0',
+  'icon-sm': 'h-6 w-6 px-0',
 } as const
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -45,10 +52,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center font-medium whitespace-nowrap',
-        'transition-colors disabled:pointer-events-none disabled:opacity-50',
+        'btn min-h-0 leading-none',
         BUTTON_VARIANTS[variant],
         BUTTON_SIZES[size],
+        // An icon-only ghost is a close or overflow control, not an action:
+        // it stays quiet until hovered rather than wearing the accent.
+        variant === 'ghost' && (size === 'icon' || size === 'icon-sm') &&
+          'text-[var(--alac-text-3)] hover:text-[var(--alac-text)]',
         className,
       )}
       {...props}
@@ -56,6 +66,39 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ),
 )
 Button.displayName = 'Button'
+
+// --- Kbd --------------------------------------------------------------------
+
+const noSubscribe = () => () => {}
+function isMac() {
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } }
+  return /mac|iphone|ipad/i.test(nav.userAgentData?.platform || nav.platform || '')
+}
+
+/**
+ * A keycap for a shortcut that needs the platform modifier: "Ctrl K" on
+ * Windows and Linux, "⌘K" on a Mac. The server cannot know the platform, so
+ * it renders the Ctrl form and the client swaps after hydration (the server
+ * snapshot keeps the first client render identical, so there is no mismatch).
+ * `mod={false}` renders the key alone, for Esc and the like. It never shrinks
+ * or wraps, so it cannot be what overflows a crowded row.
+ */
+export function Kbd({
+  k, mod = true, className,
+}: { k: string; mod?: boolean; className?: string }) {
+  const mac = React.useSyncExternalStore(noSubscribe, isMac, () => false)
+  return (
+    <kbd
+      className={cn(
+        'inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-[3px] border border-[var(--border-strong)]',
+        'bg-[var(--surface-sunken)] px-1.5 font-mono text-[10px] leading-none text-[var(--text-muted)]',
+        className,
+      )}
+    >
+      {mod ? (mac ? `⌘${k}` : `Ctrl ${k}`) : k}
+    </kbd>
+  )
+}
 
 // --- Badge ------------------------------------------------------------------
 

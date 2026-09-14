@@ -27,6 +27,8 @@ export interface TaskInput {
   priority?: Priority;
   assignee_id?: string | null;
   due_date?: string | null;
+  /** 'HH:MM'. The database clears it whenever due_date is cleared. */
+  due_time?: string | null;
   blocked_reason?: string | null;
   estimate_hours?: number | null;
   department?: Department;
@@ -36,7 +38,7 @@ export interface TaskInput {
 
 const TASK_COLUMNS = [
   "title", "notes", "project_id", "function_id", "status", "priority",
-  "assignee_id", "due_date", "blocked_reason", "estimate_hours", "department",
+  "assignee_id", "due_date", "due_time", "blocked_reason", "estimate_hours", "department",
 ] as const;
 
 export async function createTask(input: TaskInput): Promise<Result<{ id: string }>> {
@@ -47,8 +49,8 @@ export async function createTask(input: TaskInput): Promise<Result<{ id: string 
       const [row] = await q<{ id: string }>(
         `insert into mc.tasks
            (title, notes, project_id, status, priority, assignee_id, due_date,
-            function_id, department, estimate_hours, created_by)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            function_id, department, estimate_hours, created_by, due_time)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          returning id`,
         [
           input.title.trim(),
@@ -62,6 +64,7 @@ export async function createTask(input: TaskInput): Promise<Result<{ id: string 
           input.department ?? "operations",
           input.estimate_hours ?? null,
           me.id,
+          input.due_time ?? null,
         ],
       );
 
@@ -507,7 +510,7 @@ export async function duplicateRecurring(id: string): Promise<Result> {
 
 export async function toggleRecurring(id: string, active: boolean): Promise<Result> {
   try {
-    const { me } = await requirePerson("viewer");
+    const { me } = await requirePerson("admin");
     const rows = await asPerson(me.id, (q) =>
       q("update mc.recurring_tasks set is_active = $2 where id = $1 returning id", [id, active]),
     );
@@ -519,8 +522,9 @@ export async function toggleRecurring(id: string, active: boolean): Promise<Resu
 
 export async function deleteRecurring(id: string): Promise<Result> {
   try {
-    const { me } = await requirePerson("viewer");
-    await asPerson(me.id, (q) => q("delete from mc.recurring_tasks where id = $1", [id]));
+    const { me } = await requirePerson("admin");
+    const gone = await asPerson(me.id, (q) => q("delete from mc.recurring_tasks where id = $1 returning id", [id]));
+    { const w = wrote(gone, "recurring task"); if (!w.ok) return w; }
     revalidatePath("/settings/recurring");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -553,7 +557,7 @@ export async function attachDriveFile(
   fileId: string, projectId: string | null,
 ): Promise<Result> {
   try {
-    const { me } = await requirePerson("viewer");
+    const { me } = await requirePerson("admin");
     const rows = await asPerson(me.id, (q) =>
       q("update mc.drive_files set project_id = $2 where id = $1 returning id", [fileId, projectId]),
     );
@@ -574,7 +578,7 @@ export async function attachDriveFile(
  */
 export async function removeDriveFile(fileId: string): Promise<Result> {
   try {
-    const { me } = await requirePerson("viewer");
+    const { me } = await requirePerson("admin");
     const [row] = await asPerson(me.id, (q) =>
       q<{ project_id: string | null }>(
         "delete from mc.drive_files where id = $1 returning project_id", [fileId]),

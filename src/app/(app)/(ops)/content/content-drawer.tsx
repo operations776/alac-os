@@ -141,9 +141,9 @@ function Body({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} aria-hidden />
+      <div className="anim-backdrop fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <aside
-        className="fixed right-0 top-0 z-50 flex h-screen w-full max-w-lg flex-col border-l border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
+        className="anim-pop fixed inset-0 z-50 m-auto flex h-fit max-h-[88dvh] w-[calc(100%-32px)] max-w-2xl flex-col overflow-hidden rounded-[var(--alac-radius)] border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
         role="dialog"
         aria-label="Content"
       >
@@ -175,7 +175,7 @@ function Body({
           </div>
         </div>
 
-        <div className="scrollbar-thin flex-1 overflow-y-auto">
+        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-4 p-4">
             <textarea
               value={title}

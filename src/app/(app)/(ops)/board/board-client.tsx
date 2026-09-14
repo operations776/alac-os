@@ -8,13 +8,9 @@
 'use client'
 
 import {
-  createContext, useContext, useEffect, useMemo, useRef, useState, useTransition,
+  createContext, useContext, useEffect, useMemo, useRef, useState,
 } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable,
-  useSensor, useSensors, type DragStartEvent,
-} from '@dnd-kit/core'
 import { FolderKanban, LayoutGrid, Plus, Rows3 } from 'lucide-react'
 import { Avatar, Button, Select } from '@/components/ops/ui/primitives'
 import { DueDate, OverdueBadge, PriorityBadge, RecurringBadge } from '@/components/ops/badges'
@@ -22,11 +18,12 @@ import { TaskDrawer } from '@/components/ops/tasks/task-drawer'
 import { useDrawer } from '@/components/ops/tasks/use-drawer'
 import { NewTask } from '@/components/ops/new-task'
 import { BulkBar, SelectBox, useSelection } from '@/components/ops/board-selection'
+import { BoardDnd, DragCard, DropColumn, MoveError } from '@/components/ops/dnd'
 import { moveTasks, updateTask } from '@/lib/server/ops/actions'
 import { STATUS, STATUSES } from '@/lib/ops/constants'
 import { useKanban } from '@/lib/ops/kanban'
 import { ProjectLane } from './project-lane'
-import { cn, isOverdue } from '@/lib/ops/utils'
+import { cn, formatTime, isOverdue } from '@/lib/ops/utils'
 import type {
   OrgFunction, Person, ProjectRow, TaskRow, TaskStatus,
 } from '@/types/ops'
@@ -43,7 +40,6 @@ export function CompanyBoard({
   functions: OrgFunction[]
 }) {
   const router = useRouter()
-  const [, start] = useTransition()
   const drawer = useDrawer()
 
   // Notifications link to /board?task=<id>. Tasks live in a drawer rather
@@ -81,13 +77,6 @@ export function CompanyBoard({
   if (seenUrlLane !== urlLane) { setSeenUrlLane(urlLane); setOwnLane(null) }
   const setLane = (l: Lane) => setOwnLane(l)
   const [adding, setAdding] = useState(false)
-  const [dragging, setDragging] = useState<TaskRow | null>(null)
-  // Applied on drop; cleared once the server confirms.
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-  )
-
   // One shared implementation across every board (Phase 25): the same
   // validation, the same optimistic lifecycle, the same failure handling.
   const selection = useSelection()
@@ -269,21 +258,7 @@ export function CompanyBoard({
       <FnColors.Provider value={fnColors}>
       {/* A refused move must say why. Without this the card simply springs
           back to its old column and the board looks broken. */}
-      {kanban.error && (
-        <div
-          role="alert"
-          className="mb-2 flex items-start justify-between gap-3 rounded-[3px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300"
-        >
-          <span>{kanban.error}</span>
-          <button
-            type="button"
-            onClick={kanban.dismissError}
-            className="shrink-0 rounded-[3px] px-1 font-medium hover:underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      <MoveError message={kanban.error} onDismiss={kanban.dismissError} />
 
       {/* Projects group the same tasks rather than holding their own, so
           this is a view of the board, not a separate place. */}
@@ -299,12 +274,13 @@ export function CompanyBoard({
           onNew={() => router.push('/projects?new=1')}
         />
       ) : (
-      <DndContext
+      <BoardDnd
         id="company-board"
-        sensors={sensors}
-        onDragStart={(e: DragStartEvent) =>
-          setDragging(visible.find((t) => t.id === e.active.id) ?? null)}
         onDragEnd={kanban.onDragEnd}
+        overlay={(id) => {
+          const t = visible.find((x) => x.id === id)
+          return t && <Card task={t} onOpen={() => {}} />
+        }}
       >
         <div className="scrollbar-thin min-h-0 flex-1 space-y-4 overflow-y-auto pb-4">
           {lanes.length === 0 ? (
@@ -338,14 +314,7 @@ export function CompanyBoard({
           ))}
         </div>
 
-        <DragOverlay dropAnimation={null}>
-          {dragging && (
-            <div className="w-56 rotate-2 opacity-90">
-              <Card task={dragging} onOpen={() => {}} />
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+      </BoardDnd>
       )}
       </FnColors.Provider>
       </Selection.Provider>
@@ -383,8 +352,6 @@ function Column({
   tasks: TaskRow[]
   onOpen: (t: TaskRow) => void
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id })
-
   return (
     <div className="flex min-w-0 flex-col">
       <div className="mb-1 flex items-center gap-1.5 px-1">
@@ -396,33 +363,22 @@ function Column({
         <span className="text-[10px] tabular text-[var(--text-muted)]">{tasks.length}</span>
       </div>
 
-      <div
-        ref={setNodeRef} data-column={id}
-        className={cn(
-          // A tall column must not push its own cards below the fold: capped to the
-        // viewport and scrolled internally, every card stays reachable to drag.
-        // min-h keeps an empty column a full-size drop target.
-        'scrollbar-thin flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5 transition-colors',
-        'min-h-[60vh] max-h-[calc(100vh-13rem)]',
-          isOver && 'drop-target',
-        )}
+      {/* A tall column must not push its own cards below the fold: capped to
+          the viewport and scrolled internally, every card stays reachable to
+          drag. min-h keeps an empty column a full-size drop target. */}
+      <DropColumn
+        id={id}
+        className="scrollbar-thin min-h-[60vh] max-h-[calc(100vh-13rem)] flex-1 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface)] p-1.5"
       >
         {tasks.map((t) => (
-          <Draggable key={t.id} task={t} onOpen={onOpen} />
+          <DragCard key={t.id} id={t.id}>
+            <Card task={t} onOpen={onOpen} />
+          </DragCard>
         ))}
         {!tasks.length && (
-          <p className="py-3 text-center text-[10px] text-[var(--text-muted)]">, </p>
+          <p className="py-3 text-center text-[10px] text-[var(--text-muted)]">-</p>
         )}
-      </div>
-    </div>
-  )
-}
-
-function Draggable({ task, onOpen }: { task: TaskRow; onOpen: (t: TaskRow) => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id })
-  return (
-    <div ref={setNodeRef} data-card={task.id} {...listeners} {...attributes} className={cn(isDragging && 'dragging')}>
-      <Card task={task} onOpen={onOpen} />
+      </DropColumn>
     </div>
   )
 }
@@ -501,9 +457,12 @@ function Card({ task, onOpen }: { task: TaskRow; onOpen: (t: TaskRow) => void })
             {task.assignee
               ? <Avatar id={task.assignee.id} name={task.assignee.name}
                         src={task.assignee.avatar_url} size="xs" />
-              : <span className="text-[10px] text-[var(--text-muted)]">, </span>}
+              : <span className="text-[10px] text-[var(--text-muted)]">-</span>}
             <div className="ml-auto">
               {!done && <DueDate date={task.due_date} icon={false} />}
+              {!done && task.due_time && (
+                <span className="ml-1 text-[10px] tabular text-[var(--text-muted)]">{formatTime(task.due_time)}</span>
+              )}
             </div>
           </div>
         </div>

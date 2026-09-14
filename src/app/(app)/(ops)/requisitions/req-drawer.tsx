@@ -115,10 +115,10 @@ export function RequisitionDrawer({
   const grade = REQ_GRADE[req.live_grade ?? 'C']
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30"
+    <div className="anim-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
          onClick={onClose}>
       <div
-        className="h-full w-full max-w-xl overflow-y-auto bg-[var(--surface-raised)] shadow-xl"
+        className="anim-pop max-h-[88dvh] w-full max-w-2xl overflow-y-auto rounded-[var(--alac-radius)] border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-raised)] px-4 py-3">

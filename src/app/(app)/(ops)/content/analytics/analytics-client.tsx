@@ -703,7 +703,7 @@ function Perf({ value, pct }: { value?: number | null; pct?: boolean }) {
     <td className="whitespace-nowrap px-4 py-2 text-right tabular">
       {typeof value === 'number'
         ? pct ? `${value.toFixed(2)}%` : value.toLocaleString()
-        : <span className="text-[var(--text-muted)]">, </span>}
+        : <span className="text-[var(--text-muted)]">-</span>}
     </td>
   )
 }

@@ -754,3 +754,24 @@ body {
     scrollbar-color: var(--alac-line-strong) transparent;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Layers in the operations screens
+
+   The same three answers as the Motion section above, applied to the ported
+   dialogs and drawers: a backdrop that fades, a dialog that rises, a drawer
+   that slides in from the edge it lives on. Reduced motion gets them still.
+   ------------------------------------------------------------------------- */
+
+@keyframes drawer-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.anim-backdrop { animation: overlay-in 160ms var(--alac-ease) both; }
+.anim-pop { animation: panel-in 200ms var(--alac-ease) both; }
+.anim-drawer { animation: drawer-in 220ms var(--alac-ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-backdrop, .anim-pop, .anim-drawer { animation: none; }
+}

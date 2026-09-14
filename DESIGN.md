@@ -14,7 +14,7 @@ This replaced a Material You theme (light, tonal purple, pill shaped, 24px radii
 
 ## 2. Colour
 
-Dark only. There is no light theme, and the navy scale is what makes that legible rather than flat.
+Light only. The root layout fixes `data-theme="light"` and the toggle is gone, so the light tokens in globals.css are the palette. The dark values below are retired and unreachable; they stay only as the record of what they were.
 
 | Role | Token | Value | Use |
 | --- | --- | --- | --- |

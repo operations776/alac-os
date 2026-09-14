@@ -18,9 +18,60 @@
  */
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import type { DragEndEvent } from '@dnd-kit/core'
+
+/** The house ease, shared by the drop animation and a refused card's return. */
+export const MOVE_EASE = 'cubic-bezier(0.2, 0, 0, 1)'
+export const MOVE_MS = 200
+
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/**
+ * Put refused cards back where they came from, visibly.
+ *
+ * `commit` moves them in the DOM synchronously. Each card's rect is read
+ * before and after, and a fixed-position copy travels the difference while the
+ * real card waits hidden. A copy rather than a transform on the card itself,
+ * because the columns scroll and would clip a card sliding in from next door.
+ * Cards are found by the `data-card` attribute DragCard puts on them.
+ */
+function returnHome(ids: string[], commit: () => void) {
+  const find = (id: string) =>
+    document.querySelector<HTMLElement>(`[data-card="${CSS.escape(id)}"]`)
+  const before = ids.map((id) => [id, find(id)?.getBoundingClientRect()] as const)
+  commit()
+  if (prefersReducedMotion()) return
+
+  for (const [id, from] of before) {
+    const node = find(id)
+    if (!node || !from) continue
+    const to = node.getBoundingClientRect()
+    const dx = from.left - to.left
+    const dy = from.top - to.top
+    if (!dx && !dy) continue
+
+    const ghost = node.cloneNode(true) as HTMLElement
+    ghost.removeAttribute('data-card')
+    ghost.inert = true
+    Object.assign(ghost.style, {
+      position: 'fixed', left: `${to.left}px`, top: `${to.top}px`,
+      width: `${to.width}px`, height: `${to.height}px`,
+      margin: '0', zIndex: '999', pointerEvents: 'none',
+    })
+    document.body.appendChild(ghost)
+    node.style.visibility = 'hidden'
+    ghost.animate(
+      [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+      { duration: MOVE_MS, easing: MOVE_EASE },
+    ).finished.finally(() => { ghost.remove(); node.style.visibility = '' })
+  }
+}
 
 /** A record that lives in a column. */
 export interface Movable {
@@ -137,7 +188,7 @@ export function useKanban<T extends Movable, S extends string>({
       return next
     })
 
-    void (async () => {
+    startTransition(async () => {
       // One action for the group where the board provides one. Otherwise the
       // moves go sequentially, slower, but never silently dropped.
       let r: MoveResult = { ok: true }
@@ -149,16 +200,29 @@ export function useKanban<T extends Movable, S extends string>({
           if (!one.ok) { r = one; break }
         }
       }
-      for (const gid of group) {
-        // A newer move for this card started while this one was in flight.
-        // Leave its optimistic entry alone; this response is obsolete.
-        if (seq.current[gid] !== tickets[gid]) continue
-        setPending((p) => { const n = { ...p }; delete n[gid]; return n })
+      // A newer move for a card started while this one was in flight: leave
+      // its optimistic entry alone, this response is obsolete for it.
+      const live = group.filter((gid) => seq.current[gid] === tickets[gid])
+      const settle = () => setPending((p) => {
+        const n = { ...p }
+        for (const gid of live) delete n[gid]
+        return n
+      })
+
+      if (r.ok) {
+        if (group.length > 1) onMovedSelection?.()
+        // The entry is cleared in the SAME transition as the refresh, so the
+        // card holds its new column until the refreshed rows commit with it.
+        // Clearing it first (as this did) showed the stale rows for a round
+        // trip: the card snapped back to its old column, then jumped again.
+        startTransition(() => { settle(); router.refresh() })
+      } else {
+        // Refused: back at once, animated, with the reason.
+        returnHome(live, () => flushSync(settle))
+        setError(r.error ?? 'That move could not be saved.')
+        startTransition(() => router.refresh())
       }
-      if (r.ok && group.length > 1) onMovedSelection?.()
-      if (!r.ok) setError(r.error ?? 'That move could not be saved.')
-      router.refresh()
-    })()
+    })
   }, [view, field, stages, save, saveMany, router, selectedIds, onMovedSelection])
 
   return {

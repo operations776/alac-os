@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Nav } from "@/components/shell/nav";
 import { TeamBar } from "@/components/ops/layout/team-bar";
 import { currentSession } from "@/lib/server/auth";
+import { currentPerson } from "@/lib/server/ops/context";
 import { signOutAction } from "@/app/signin/actions";
 
 /**
@@ -16,6 +17,10 @@ import { signOutAction } from "@/app/signin/actions";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await currentSession();
   if (!session) redirect("/signin");
+  // The team role decides what the rail shows: Admin is for owners and admins.
+  const person = await currentPerson();
+  const teamRole = person?.me.role ?? "member";
+  const isAdmin = teamRole === "owner" || teamRole === "admin";
 
   return (
     <div className="flex min-h-dvh flex-col bg-[var(--alac-ground)] lg:flex-row">
@@ -24,7 +29,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </a>
       <Nav
         userName={session.fullName || session.email}
-        userRole={session.role}
+        userRole={teamRole}
+        isAdmin={isAdmin}
         signOut={signOutAction}
       />
       {/* The navy wash carries the whole atmosphere now. The blurred shapes

@@ -92,3 +92,14 @@ Cached input bills at roughly 10 percent of standard, and the Batch API at rough
 ## 6. Cost expectation
 
 The reasoning pass at 150 accounts, roughly 2,500 input and 400 output tokens each, on Terra: about 0.375M input and 0.06M output, so roughly **$1.50 per full portfolio run**. A weekly cadence is a few dollars a month. This is not a system that needs a credit meter, but `agent_runs` records tokens and cost per run anyway, because "cheap" is a claim that should be checkable.
+
+## 7. Operations calls
+
+Two calls came with the operations workspace. Both claim an `agent_runs` row (kind `draft_message`, the feature named in `params`) before the model is called, and both work without a key.
+
+| Feature | Where | Input | Output | No key |
+| --- | --- | --- | --- | --- |
+| `content_generate` | `src/app/api/content/generate/route.ts` | The voice profile and one content brief | A draft for one platform | 503 with a plain sentence, no invented text |
+| `task_draft` (prompt `task_draft.v1`) | `draftTasks` in `src/lib/server/ops/actions/ai-tasks.ts` | What someone typed or dictated, plus the team, functions and projects by id | Tasks under a strict JSON schema: title, notes, assignee, function, project, priority, due date, due time | The deterministic parser in `src/lib/ops/task-parse.ts` drafts instead, and the dialog says so |
+
+The grounding rule applies to `task_draft`: any person, function or project id the model returns that was not in the request is nulled and counted, and the review list says what was cleared. The description is treated as content, never as instructions. Nothing is written until the person reviews the drafts and presses Create.
