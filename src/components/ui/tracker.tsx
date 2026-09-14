@@ -1,9 +1,17 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Check, Copy, MessageSquare, Send } from "lucide-react";
+import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, Copy, MessageSquare, RefreshCw, Send } from "lucide-react";
 import { Dialog } from "./dialog";
-import { addNote, saveMessage } from "@/app/(app)/queue/[id]/tracker";
+import { Bar } from "./skeleton";
+import {
+  addNote,
+  autoDraftMessage,
+  redraftMessage,
+  saveMessage,
+  type DraftState,
+} from "@/app/(app)/queue/[id]/tracker";
 
 // The parts of the tracker that need a browser: a note box that clears after
 // saving, and a message dialog. Marks and sent flags are plain forms and live
@@ -39,6 +47,10 @@ export function NoteForm({ accountId }: { accountId: string }) {
 /**
  * Write or edit a message to one person, and record whether it was sent.
  *
+ * Opened with nothing saved, it drafts one with the grounded writer and saves
+ * it first, so the box arrives filled. Drafting off or a rejected draft leaves
+ * the box empty for writing by hand, and says why.
+ *
  * The person need not be connected or even sourced. The only fact the desk
  * records is what he wrote and whether he sent it; sending itself happens in
  * LinkedIn or email, by him.
@@ -62,6 +74,45 @@ export function MessageButton({
   const [state, action, pending] = useActionState(saveMessage, { ok: false, n: 0 });
   const [copied, setCopied] = useState(false);
   const [text, setText] = useState(body ?? "");
+  const [drafting, setDrafting] = useState(false);
+  // What the writer last produced, to tell an edited box from an untouched one.
+  const [aiText, setAiText] = useState<string | null>(null);
+  const [aiLine, setAiLine] = useState<string | null>(null);
+  const tried = useRef(false);
+  const router = useRouter();
+  const channelRef = useRef<HTMLSelectElement>(null);
+
+  async function draft(run: typeof autoDraftMessage) {
+    setDrafting(true);
+    let res: DraftState;
+    try {
+      res = await run(accountId, person, channelRef.current?.value ?? channel);
+    } catch {
+      res = { ok: false, error: "Drafting failed. Write it by hand, or try Redraft." };
+    }
+    setDrafting(false);
+    if (res.ok && res.body) {
+      setText(res.body);
+      setAiText(res.ai ? res.body : null);
+      setAiLine([res.ai ? "Drafted by AI, edit before sending." : null, res.note].filter(Boolean).join(" ") || null);
+    } else {
+      setAiLine(res.error ?? "No draft");
+    }
+  }
+
+  function openDialog() {
+    setOpen(true);
+    // Once per mount: a saved body, a sent message or an earlier try never drafts.
+    if (!body && !sentAt && !tried.current) {
+      tried.current = true;
+      void draft(autoDraftMessage);
+    }
+  }
+
+  function redraft() {
+    if (text.trim() && text !== aiText && !confirm("Replace what is in the box with a new draft?")) return;
+    void draft(redraftMessage);
+  }
 
   async function copy() {
     await navigator.clipboard.writeText(text);
@@ -76,7 +127,7 @@ export function MessageButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openDialog}
         title={sent ? `Sent ${new Date(sentAt as string).toLocaleDateString()}` : `Write to ${person}`}
         className={
           sent
@@ -90,7 +141,12 @@ export function MessageButton({
 
       <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          // A draft was saved while the dialog was open. Refresh after it
+          // closes, never during, so the list shows it without dropping input.
+          if (aiText) router.refresh();
+        }}
         title={`Message ${person}`}
         sub={sent ? `Sent ${new Date(sentAt as string).toLocaleString()}. Editing keeps that date.` : "Saved here, sent by you. Nothing leaves this page."}
       >
@@ -102,12 +158,26 @@ export function MessageButton({
               Channel{" "}
               {/* Keyed, so a save that changes the channel remounts the
                   field rather than leaving the value it first mounted with. */}
-              <select key={channel} name="channel" defaultValue={channel} className="field ml-1 w-auto">
+              <select ref={channelRef} key={channel} name="channel" defaultValue={channel} className="field ml-1 w-auto">
                 <option value="linkedin">LinkedIn</option>
                 <option value="email">Email</option>
               </select>
             </label>
           </div>
+          {drafting ? (
+            <div
+              role="status"
+              aria-label="Drafting the message"
+              className="field flex min-h-[204px] flex-col gap-2.5 py-3"
+            >
+              <Bar w="30%" />
+              <Bar />
+              <Bar w="92%" />
+              <Bar w="80%" />
+              <Bar />
+              <Bar w="60%" />
+            </div>
+          ) : (
           <textarea
             name="body"
             rows={9}
@@ -119,17 +189,24 @@ export function MessageButton({
             aria-label="Message body"
             className="field resize-y font-[inherit]"
           />
+          )}
+          {aiLine ? <p className="text-[12.5px] text-[var(--alac-text-3)]">{aiLine}</p> : null}
           <div className="flex flex-wrap items-center gap-2">
-            <button type="submit" name="sent" value="0" disabled={pending} className="btn btn-secondary">
+            <button type="submit" name="sent" value="0" disabled={pending || drafting} className="btn btn-secondary">
               Save draft
             </button>
-            <button type="submit" name="sent" value="1" disabled={pending} className="btn btn-primary">
+            <button type="submit" name="sent" value="1" disabled={pending || drafting} className="btn btn-primary">
               <Send size={16} strokeWidth={1.5} /> Save and mark sent
             </button>
             <button type="button" onClick={copy} className="btn btn-ghost">
               {copied ? <Check size={16} strokeWidth={1.5} /> : <Copy size={16} strokeWidth={1.5} />}
               {copied ? "Copied" : "Copy"}
             </button>
+            {!sent ? (
+              <button type="button" onClick={redraft} disabled={pending || drafting} className="btn btn-ghost">
+                <RefreshCw size={16} strokeWidth={1.5} /> {drafting ? "Drafting" : "Redraft"}
+              </button>
+            ) : null}
             {state.ok ? (
               <span className="text-[12.5px] text-[var(--alac-good)]">Saved</span>
             ) : state.error ? (

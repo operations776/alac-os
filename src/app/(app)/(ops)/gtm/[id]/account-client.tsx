@@ -22,6 +22,7 @@ import {
 } from '@/lib/ops/constants'
 import {
   ProspectOutreach, outreachState, type ProspectDraft,
+  DraftAllEmails,
 } from '@/components/ops/gtm/prospect-outreach'
 import { cn, formatDate, relative } from '@/lib/ops/utils'
 import type {
@@ -277,6 +278,7 @@ export function AccountClient({
                           Select all
                         </Button>
                       )}
+                      {contacts.length > 0 && <DraftAllEmails accountId={account.id} />}
                       <Button size="xs" variant="ghost"
                               onClick={() => setAddingContact((a) => !a)}>
                         <Plus className="h-3 w-3" />

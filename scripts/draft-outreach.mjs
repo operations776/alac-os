@@ -16,6 +16,7 @@
 import { config } from "dotenv";
 import pg from "pg";
 import { writeFirstMessage } from "../src/lib/server/ai/outreach.mjs";
+import { buildOutreachContext } from "../src/lib/server/ai/outreach-context.mjs";
 import { researchCompany, exaAvailable } from "../src/lib/server/integrations/exa.mjs";
 import OpenAI from "openai";
 import { DEFAULT_MODEL } from "../src/lib/server/ai/rates.mjs";
@@ -57,26 +58,6 @@ const client = new pg.Pool({
   connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
   max: 6,
 });
-
-/**
- * How relevant a known contact is to a recruiting approach.
- *
- * Ranking on the decision maker flag alone does not work: nearly every senior
- * contact carries it, so they tie, and the tiebreak is alphabetical. At
- * Acme Aerospace that put a Head of Marketing at the top of a company hiring twenty
- * engineers. Marketing does not own the requisition.
- *
- * Mirrors the SQL in targetsForAccount. The two must agree, or the person the
- * message is written to differs from the person shown at the top of the screen.
- */
-function warmRank(p) {
-  const t = String(p.title ?? "").toLowerCase();
-  if (/talent|recruit|people ops|head of people/.test(t)) return 95;
-  if (/engineer|technical|cto|chief technology/.test(t)) return 88;
-  if (/chief|founder|ceo|coo|president/.test(t)) return 82;
-  if (/program|product|operations/.test(t)) return 74;
-  return p.is_decision_maker ? 70 : 55;
-}
 
 /**
  * Expand a thin signal into something worth reading.
@@ -215,43 +196,11 @@ const run = async () => {
     for (const a of accounts) {
       console.log(`\n=== ${a.company_name} ===`);
 
-      const [signals, roles, targets, warm, stats] = await Promise.all([
-        client.query(
-          `select id, what_happened, the_number, signal_date, source::text as source, detail
-             from heat_signals where org_id=$1 and account_id=$2
-            order by heat_score desc nulls last limit 3`,
-          [orgId, a.id],
-        ),
-        client.query(
-          `select title, location, job_function, posted_at from account_roles
-            where org_id=$1 and account_id=$2 and qualified
-            order by posted_at desc nulls last limit 12`,
-          [orgId, a.id],
-        ),
-        client.query(
-          `select id, full_name, title, linkedin_url, is_warm, rank_score
-             from account_targets where org_id=$1 and account_id=$2
-            order by rank_score desc nulls last`,
-          [orgId, a.id],
-        ),
-        client.query(
-          `select full_name, title, linkedin_url, is_decision_maker
-             from people where org_id=$1 and account_id=$2
-            order by is_decision_maker desc limit 8`,
-          [orgId, a.id],
-        ),
-        // Counted over every qualified role, because the roles query above is
-        // capped at 12 for the prompt and a count off that sample would state
-        // "12 open roles" for a company with 44.
-        client.query(
-          `select count(*)::int as total,
-                  count(distinct location) filter (where location is not null)::int as sites,
-                  count(distinct job_function) filter (where job_function is not null)::int as fns,
-                  array_agg(distinct location) filter (where location is not null) as locations
-             from account_roles where org_id=$1 and account_id=$2 and qualified`,
-          [orgId, a.id],
-        ),
-      ]);
+      // The same reads the desk's Message dialog makes, from one module.
+      const ctx = await buildOutreachContext(
+        (text, params) => client.query(text, params).then((r) => r.rows),
+        orgId, a, PERSON,
+      );
 
       // Research once and reuse it for both outputs, because the same articles
       // answer both questions and Exa charges per search.
@@ -266,7 +215,7 @@ const run = async () => {
       }
 
       // ---- 1. explain what changed, for the thin ones only ----------------
-      for (const s of signals.rows) {
+      for (const s of ctx.signals) {
         // A workbook signal is already well written by a human, and a signal
         // already detailed does not need doing twice.
         if (s.source === "workbook" || s.detail) continue;
@@ -284,51 +233,15 @@ const run = async () => {
       }
 
       // ---- 2. the message, to the best contact ----------------------------
-      // Warm contacts first: someone who will recognise the sender is a better
-      // first message than a stranger with a better title.
-      const pool = [
-        ...warm.rows.map((w) => ({
-          full_name: w.full_name,
-          title: w.title,
-          linkedin_url: w.linkedin_url,
-          is_warm: true,
-          rank: warmRank(w),
-          id: null,
-        })),
-        ...targets.rows.map((t) => ({
-          full_name: t.full_name,
-          title: t.title,
-          linkedin_url: t.linkedin_url,
-          is_warm: t.is_warm,
-          rank: t.rank_score ?? 0,
-          id: t.id,
-        })),
-      ].sort((x, y) => y.rank - x.rank);
-
-      const person = PERSON
-        ? pool.find((p) => p.full_name.toLowerCase().includes(PERSON.toLowerCase()))
-        : pool[0];
+      // Warm contacts first, ranked in buildOutreachContext.
+      const person = ctx.person;
 
       if (!person) {
         console.log("  no contact to write to, skipped");
         continue;
       }
 
-      const out = await writeFirstMessage({
-        company: { name: a.company_name, domain: a.domain, employees: a.employee_count },
-        person,
-        signals: signals.rows,
-        roles: roles.rows,
-        warmContacts: warm.rows,
-        roleStats: stats.rows[0]
-          ? {
-              total: Number(stats.rows[0].total),
-              sites: Number(stats.rows[0].sites),
-              functions: Number(stats.rows[0].fns),
-              locations: stats.rows[0].locations ?? [],
-            }
-          : null,
-      });
+      const out = await writeFirstMessage(ctx.input);
       cost += out.cost ?? 0;
 
       if (!out.message) {
@@ -345,7 +258,8 @@ const run = async () => {
            body=excluded.body, opening_line=excluded.opening_line,
            why_this_angle=excluded.why_this_angle, facts_used=excluded.facts_used,
            sources=excluded.sources, model=excluded.model, drafted_at=now(),
-           approved=false`,
+           approved=false
+         where not outreach_drafts.custom and outreach_drafts.sent_at is null`,
         [
           orgId, a.id, person.id, person.full_name,
           out.message.message, out.message.opening_line, out.message.why_this_angle,

@@ -13,13 +13,19 @@
  * are read-mostly and the finalized copy is where the editing happens, and
  * "use as final" copies rather than links, because refining the final must
  * never rewrite the option it came from.
+ *
+ * The three options are now written by the model (generateProspectEmails):
+ * in the background when a prospect is added, or here when the panel opens on
+ * a prospect with none. The option 1 text also seeds an empty final, so there
+ * is always something to review. Manual editing stays exactly as it was.
  */
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy, ExternalLink, Link2 } from 'lucide-react'
+import { Check, Copy, ExternalLink, Link2, RefreshCw, Sparkles } from 'lucide-react'
 import { Button, Input, Label, Textarea } from '@/components/ops/ui/primitives'
 import {
-  draftForContact, saveFinalCopy, saveVariation, setResearchUrl, copyVariationToFinal,
+  draftForContact, saveFinalCopy, saveVariation, setResearchUrl,
+  generateProspectEmails, generateAccountEmails, countPersonWrittenOptions,
 } from '@/lib/server/ops/actions'
 import { cn } from '@/lib/ops/utils'
 
@@ -62,26 +68,71 @@ export function ProspectOutreach({
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
 
+  const [note, setNote] = useState<string | null>(null)
+  const [drafting, startDrafting] = useTransition()
+
   const variations = draft?.variations ?? []
   const current = variations.find((v) => v.slot === slot)
+  const writtenCount = variations.filter((v) => v.slot <= 3 && v.body?.trim()).length
 
   // Edited locally, saved on purpose: a half-typed sentence must not become
-  // the copy somebody sends.
+  // the copy somebody sends. When the saved text changes underneath (the
+  // model filled the slot, or a save landed), the box follows it, unless the
+  // person has unsaved typing there, which always wins.
+  const savedOpt = { subject: current?.subject ?? '', body: current?.body ?? '' }
   const [opt, setOpt] = useState({ subject: '', body: '' })
-  const [optSlot, setOptSlot] = useState(0)
-  if (optSlot !== slot) {
-    setOptSlot(slot)
-    setOpt({ subject: current?.subject ?? '', body: current?.body ?? '' })
+  const [optBase, setOptBase] = useState({ slot: 0, subject: '', body: '' })
+  const optDirty = opt.subject.trim() !== optBase.subject || opt.body.trim() !== optBase.body
+  if (optBase.slot !== slot || optBase.subject !== savedOpt.subject || optBase.body !== savedOpt.body) {
+    const keepTyping = optBase.slot === slot && optDirty
+    setOptBase({ slot, ...savedOpt })
+    if (!keepTyping) setOpt(savedOpt)
   }
 
-  const [fin, setFin] = useState({
-    subject: draft?.final_subject ?? '',
-    body: draft?.final_body ?? '',
+  const savedFin = { subject: draft?.final_subject ?? '', body: draft?.final_body ?? '' }
+  const [fin, setFin] = useState(savedFin)
+  const [finBase, setFinBase] = useState({ id: draft?.id ?? '', ...savedFin })
+  const finDirty = fin.subject.trim() !== finBase.subject || fin.body.trim() !== finBase.body
+  if (finBase.id !== (draft?.id ?? '') || finBase.subject !== savedFin.subject
+      || finBase.body !== savedFin.body) {
+    const keepTyping = finBase.id === (draft?.id ?? '') && finDirty
+    setFinBase({ id: draft?.id ?? '', ...savedFin })
+    if (!keepTyping) setFin(savedFin)
+  }
+
+  /** Ask the model for the options. Only empty slots unless regenerating. */
+  const generate = (regenerate: boolean) => startDrafting(async () => {
+    setError(null)
+    setNote(null)
+    const r = await generateProspectEmails(accountId, contactId, { regenerate })
+    if (!r.ok) { setError(r.error); return }
+    if (r.data?.failed) {
+      setNote(`${3 - r.data.failed} of 3 options drafted. ${r.data.failed} failed the fact check and was not saved: regenerate, or write it by hand.`)
+    }
+    router.refresh()
   })
-  const [finFor, setFinFor] = useState(draft?.id ?? '')
-  if (finFor !== (draft?.id ?? '')) {
-    setFinFor(draft?.id ?? '')
-    setFin({ subject: draft?.final_subject ?? '', body: draft?.final_body ?? '' })
+
+  // A prospect opened with no options drafts them once. The ref, not state,
+  // guards it: a failed attempt must not retry on every render.
+  const autoTried = useRef(false)
+  useEffect(() => {
+    if (autoTried.current || writtenCount > 0) return
+    autoTried.current = true
+    generate(false)
+    // Mount only: later refreshes are the result of this call, not a reason to repeat it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const regenerate = async () => {
+    if (draft?.id && writtenCount > 0) {
+      const edited = await countPersonWrittenOptions(draft.id)
+      const n = edited.ok ? edited.data?.count ?? 0 : writtenCount
+      if (n > 0 && !confirm(
+        `${n === 1 ? 'One option was' : `${n} options were`} written or edited by a person. ` +
+        'Replace all three? The finalized email is not changed.',
+      )) return
+    }
+    generate(true)
   }
 
   const [research, setResearch] = useState(draft?.research_url ?? '')
@@ -130,6 +181,7 @@ export function ProspectOutreach({
           {error}
         </p>
       )}
+      {note && <p className="text-[11px] text-[var(--text-secondary)]">{note}</p>}
 
       {/* Research, the source the personalisation comes from. */}
       <section>
@@ -195,8 +247,24 @@ export function ProspectOutreach({
               </button>
             )
           })}
+          <Button size="xs" variant="ghost" className="ml-auto" disabled={drafting}
+                  onClick={() => void regenerate()}>
+            {writtenCount > 0
+              ? <><RefreshCw className="h-3 w-3" strokeWidth={1.5} /> Regenerate</>
+              : <><Sparkles className="h-3 w-3" strokeWidth={1.5} /> Draft emails</>}
+          </Button>
         </div>
 
+        {drafting ? (
+          <div aria-busy="true" aria-label="Drafting three email options" className="space-y-2">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="space-y-2 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3">
+                <div className="skeleton h-7 w-3/5 rounded-[3px]" />
+                <div className="skeleton h-20 w-full rounded-[3px]" />
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="space-y-2 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3">
           <div>
             <Label htmlFor={`opt-subject-${contactId}`}>Subject</Label>
@@ -226,6 +294,7 @@ export function ProspectOutreach({
               })))}>
               Save email {slot}
             </Button>
+            <SaveState dirty={optDirty} saved={!!current?.body?.trim()} />
             <Button size="xs" variant="ghost" onClick={() => insertResearch('opt')}>
               <Link2 className="h-3 w-3" /> Insert research link
             </Button>
@@ -257,6 +326,7 @@ export function ProspectOutreach({
             )}
           </div>
         </div>
+        )}
       </section>
 
       {/* The final, built from the strongest parts. */}
@@ -291,6 +361,7 @@ export function ProspectOutreach({
               })))}>
               Save final email
             </Button>
+            <SaveState dirty={finDirty} saved={!!draft?.final_body?.trim()} />
             <Button size="xs" variant="ghost" onClick={() => insertResearch('fin')}>
               <Link2 className="h-3 w-3" /> Insert research link
             </Button>
@@ -313,5 +384,55 @@ export function ProspectOutreach({
         </div>
       </section>
     </div>
+  )
+}
+
+/** Whether what is on screen is what is stored, said next to the save button. */
+function SaveState({ dirty, saved }: { dirty: boolean; saved: boolean }) {
+  if (dirty) return <span className="text-[10px] text-amber-600 dark:text-amber-400">Unsaved changes</span>
+  if (saved) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--text-muted)]">
+        <Check className="h-2.5 w-2.5" strokeWidth={1.5} /> Saved
+      </span>
+    )
+  }
+  return null
+}
+
+/**
+ * Draft every prospect on an account that is missing options, from the
+ * account page. Sequential on the server, so it takes a while on a big
+ * account; the counts that come back are the honest ones.
+ */
+export function DraftAllEmails({ accountId }: { accountId: string }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [message, setMessage] = useState<{ text: string; bad: boolean } | null>(null)
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <Button size="xs" variant="secondary" disabled={pending}
+              onClick={() => start(async () => {
+                setMessage(null)
+                const r = await generateAccountEmails(accountId)
+                if (!r.ok) { setMessage({ text: r.error, bad: true }); return }
+                const { ok, skipped, failed, errors } = r.data ?? { ok: 0, skipped: 0, failed: 0, errors: [] }
+                setMessage({
+                  text: `${ok} drafted, ${skipped} already had options, ${failed} failed${errors.length ? `: ${errors.join('; ')}` : ''}`,
+                  bad: failed > 0,
+                })
+                router.refresh()
+              })}>
+        <Sparkles className="h-3 w-3" strokeWidth={1.5} />
+        {pending ? 'Drafting emails' : 'Draft all emails'}
+      </Button>
+      {message && (
+        <span role={message.bad ? 'alert' : 'status'}
+              className={cn('text-[11px]', message.bad ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-secondary)]')}>
+          {message.text}
+        </span>
+      )}
+    </span>
   )
 }

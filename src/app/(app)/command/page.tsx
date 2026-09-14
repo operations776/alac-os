@@ -15,6 +15,9 @@ import { acceptRecommendation, declineRecommendation } from "../queue/[id]/portf
 import { TeamToday } from "@/components/ops/team-today";
 
 export const dynamic = "force-dynamic";
+// The Message dialog drafts on open: research plus up to two model attempts
+// can take half a minute, past the default function limit.
+export const maxDuration = 60;
 
 // TODAY. Four questions, in his words, and nothing else:
 //   What matters?            up to five signals that clear the bar

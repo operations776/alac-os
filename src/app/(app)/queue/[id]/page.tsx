@@ -32,6 +32,9 @@ import { startGtm } from "./gtm";
 import { gtmForRecord } from "@/lib/server/ops/seams";
 
 export const dynamic = "force-dynamic";
+// The Message dialog drafts on open: research plus up to two model attempts
+// can take half a minute, past the default function limit.
+export const maxDuration = 60;
 
 const SW_STATES = [
   "Not Added", "Added", "Active Campaign", "Paused", "Replied",
