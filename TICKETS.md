@@ -184,4 +184,5 @@ Mission Control, the team's operating board, merged in so Adrian runs the desk a
 | ALAC-122 | `sync:ops` (Outlook and Drive inbox), `import:ops` (live Mission Control data), `import:sops` | done |
 | ALAC-123 | Seam: start GTM work from a company page, keyed on Record ID through `gtm_accounts.external_id`, and link back | done |
 | ALAC-125 | Comments on tasks always failed: `task_audience` existed in two overloads from the source schema, so every two argument call was ambiguous. `0026` drops the old one. Also a Send button, since the comment box was keyboard only | done |
+| ALAC-126 | CI build failed on every route that imports db.ts: the Neon client was built at import and CI has no DATABASE_URL. Built on first query instead | done |
 | ALAC-124 | Apply `0025` to Neon, run `import:ops --apply` with Adrian's Mission Control connection string, set `SLACK_BOT_TOKEN` in Vercel, sign up test with two people | todo |

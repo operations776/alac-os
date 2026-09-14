@@ -31,9 +31,22 @@ function required(name: string): string {
  *
  *   const rows = await sql`select * from accounts where org_id = ${orgId}`;
  */
-export const sql = /@(localhost|127\.0\.0\.1)(:\d+)?\//.test(process.env.DATABASE_URL ?? "")
-  ? localSql()
-  : neon(required("DATABASE_URL"));
+//
+// Built on first use, not at import. `next build` imports every route to
+// collect page data, and CI builds with no DATABASE_URL, so a client built at
+// import failed the build on routes that never query during it.
+let client: ReturnType<typeof neon> | undefined;
+function getSql(): ReturnType<typeof neon> {
+  client ??= /@(localhost|127\.0\.0\.1)(:\d+)?\//.test(process.env.DATABASE_URL ?? "")
+    ? localSql()
+    : neon(required("DATABASE_URL"));
+  return client;
+}
+
+export const sql = Object.assign(
+  (strings: TemplateStringsArray, ...values: unknown[]) => getSql()(strings, ...values),
+  { query: (...args: Parameters<ReturnType<typeof neon>["query"]>) => getSql().query(...args) },
+) as unknown as ReturnType<typeof neon>;
 
 /**
  * The same interface over plain pg, for a local Postgres. The Neon HTTP driver
