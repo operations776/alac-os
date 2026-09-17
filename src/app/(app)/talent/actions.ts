@@ -43,7 +43,10 @@ function classify(text: string) {
  * a strong engineer with no clearance in a cleared market is a good candidate
  * and a weak MPC.
  */
-function mpcScore(c: { title: string | null; clearance: string | null; domains: string | null; summary: string | null }) {
+function mpcScore(c: {
+  title: string | null; clearance: string | null; domains: string | null;
+  summary: string | null; transcript?: string | null;
+}) {
   let s = 40;
   const lvl = levelOf(c.title ?? "");
   s += lvl.rank * 8;
@@ -51,6 +54,9 @@ function mpcScore(c: { title: string | null; clearance: string | null; domains: 
   const domainCount = (c.domains ?? "").split(",").filter(Boolean).length;
   s += Math.min(15, domainCount * 5);
   if ((c.summary ?? "").length > 400) s += 5;
+  // A screened candidate is a more marketable one: you know what they want
+  // and can answer a client's questions without going back to them.
+  if ((c.transcript ?? "").length > 200) s += 5;
   return Math.max(0, Math.min(100, s));
 }
 
@@ -62,25 +68,31 @@ export async function addCandidate(_prev: CandidateState, formData: FormData): P
   if (!name) return { error: "The candidate needs a name" };
 
   const summary = String(formData.get("summary") ?? "").trim().slice(0, 20000);
+  // A call runs long, so the cap is generous. It is evidence, kept whole.
+  const transcript = String(formData.get("transcript") ?? "").trim().slice(0, 200000);
   const title = String(formData.get("title") ?? "").trim().slice(0, 200) || null;
   const company = String(formData.get("company") ?? "").trim().slice(0, 200) || null;
   const geography = String(formData.get("geography") ?? "").trim().slice(0, 200) || null;
   const linkedin = String(formData.get("linkedin") ?? "").trim().slice(0, 300) || null;
   const comp = String(formData.get("comp") ?? "").trim().slice(0, 100) || null;
 
-  const auto = classify(`${title ?? ""} ${summary}`);
+  // The transcript is read by the classifier too: a clearance or a programme
+  // is usually said on the call and written down nowhere else.
+  const auto = classify(`${title ?? ""} ${summary} ${transcript}`);
   const clearance = String(formData.get("clearance") ?? "").trim().slice(0, 100) || auto.clearance;
   const domains = String(formData.get("domains") ?? "").trim().slice(0, 500) || auto.domains;
 
-  const score = mpcScore({ title, clearance, domains, summary });
+  const score = mpcScore({ title, clearance, domains, summary, transcript });
 
   const rows = (await sql`
     insert into candidates
       (org_id, full_name, title, company, location, linkedin_url, summary,
-       domains, geography, clearance, comp_target, mpc_score)
+       domains, geography, clearance, comp_target, mpc_score,
+       transcript, transcript_at)
     values
       (${orgId}, ${name}, ${title}, ${company}, ${geography}, ${linkedin}, ${summary || null},
-       ${domains}, ${geography}, ${clearance}, ${comp}, ${score})
+       ${domains}, ${geography}, ${clearance}, ${comp}, ${score},
+       ${transcript || null}, ${transcript ? new Date().toISOString() : null})
     returning id
   `) as { id: string }[];
 
@@ -154,8 +166,9 @@ export async function updateCandidate(_prev: CandidateState, formData: FormData)
   const domains = String(formData.get("domains") ?? "").trim().slice(0, 500) || null;
   const comp = String(formData.get("comp") ?? "").trim().slice(0, 100) || null;
   const summary = String(formData.get("summary") ?? "").trim().slice(0, 20000) || null;
+  const transcript = String(formData.get("transcript") ?? "").trim().slice(0, 200000) || null;
 
-  const score = mpcScore({ title, clearance, domains, summary });
+  const score = mpcScore({ title, clearance, domains, summary, transcript });
 
   await sql`
     update candidates
@@ -164,6 +177,11 @@ export async function updateCandidate(_prev: CandidateState, formData: FormData)
            linkedin_url = ${linkedin}, clearance = ${clearance},
            domains = ${domains}, comp_target = ${comp},
            summary = coalesce(${summary}, summary),
+           transcript = coalesce(${transcript}, transcript),
+           transcript_at = case
+             when ${transcript}::text is null then transcript_at
+             when ${transcript}::text is distinct from transcript then now()
+             else transcript_at end,
            mpc_score = ${score}, updated_at = now()
      where org_id = ${orgId} and id = ${id}
   `;

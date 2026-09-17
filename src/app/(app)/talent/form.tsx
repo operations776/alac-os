@@ -114,6 +114,20 @@ export function AnalyzeCandidateForm() {
       {field("LinkedIn", "linkedin", parsed?.linkedin_url)}
       {field("Target compensation", "comp", parsed?.comp_target)}
 
+      <label className="flex flex-col gap-1.5 text-[13px] text-[var(--alac-text-2)]">
+        Call transcript, if you have screened them
+        <textarea
+          name="transcript"
+          rows={6}
+          maxLength={200000}
+          placeholder="Paste the screening call. What they will move for, what they will not, the programmes they worked."
+          className="field resize-y"
+        />
+        <span className="text-[12px] text-[var(--alac-text-3)]">
+          Optional. Kept as said, separate from the profile text above, and read for clearance and domains.
+        </span>
+      </label>
+
       <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className="btn btn-primary">
           {pending ? "Analyzing" : "Analyze and search demand"}

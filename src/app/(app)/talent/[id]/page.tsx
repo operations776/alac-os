@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Check, ExternalLink } from "lucide-react";
 import { getOrgId } from "@/lib/server/queries/desk";
 import { candidateById, radar, type RadarRole } from "@/lib/server/queries/talent";
-import { Card, CardHeader, EmptyState, NoticeLine, PageHeader, Stat } from "@/components/ui/primitives";
+import { Card, CardHeader, EmptyState, NoticeLine, PageHeader, Stat, formatDate } from "@/components/ui/primitives";
 import { togglePitch } from "../actions";
 import { WhyMatch, WhyRole } from "@/components/ui/explain";
 import { DeactivateCandidate, ReactivateCandidate, EditCandidate } from "@/components/ui/candidate-controls";
+import { PushCandidateToBoard } from "@/components/ui/push-board";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,7 @@ export default async function CandidatePage({
           </a>
         ) : null}
         <span className="ml-auto flex items-center gap-2">
+          {candidate.active ? <PushCandidateToBoard candidateId={candidate.id} /> : null}
           <EditCandidate candidate={candidate} />
           {candidate.active
             ? <DeactivateCandidate candidateId={candidate.id} />
@@ -119,6 +121,29 @@ export default async function CandidatePage({
             {parsed.minAge ? `, open ${parsed.minAge}+ days` : ""}. Everything else in the search
             was matched as language against titles and domains.
           </NoticeLine>
+        </div>
+      ) : null}
+
+      {candidate.transcript ? (
+        <div className="mb-6">
+          <Card>
+            <CardHeader
+              title="Screening call"
+              sub={
+                candidate.transcript_at
+                  ? `Recorded ${formatDate(candidate.transcript_at)}. Kept as said.`
+                  : "Kept as said, not rewritten."
+              }
+            />
+            <details className="px-5 pb-5">
+              <summary className="cursor-pointer text-[13px] text-[var(--alac-text-2)] hover:text-[var(--alac-text)]">
+                Read the call
+              </summary>
+              <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--alac-text-2)]">
+                {candidate.transcript}
+              </p>
+            </details>
+          </Card>
         </div>
       ) : null}
 

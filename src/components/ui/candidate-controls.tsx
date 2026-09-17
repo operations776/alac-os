@@ -107,7 +107,7 @@ export function EditCandidate({ candidate }: { candidate: Candidate }) {
         {/* Keyed on the stored values, so a save remounts the fields rather
             than leaving them showing what they first rendered with. */}
         <form
-          key={`${candidate.title}-${candidate.clearance}-${candidate.domains}-${candidate.mpc_score}`}
+          key={`${candidate.title}-${candidate.clearance}-${candidate.domains}-${candidate.mpc_score}-${candidate.transcript_at ?? ""}`}
           action={action}
           className="flex flex-col gap-3"
         >
@@ -131,6 +131,20 @@ export function EditCandidate({ candidate }: { candidate: Candidate }) {
             />
             <span className="text-[12px] text-[var(--alac-text-3)]">
               What the match is run against. Leave it alone to keep what is stored.
+            </span>
+          </label>
+          <label className="flex flex-col gap-1.5 text-[13px] text-[var(--alac-text-2)]">
+            Call transcript
+            <textarea
+              name="transcript"
+              rows={8}
+              maxLength={200000}
+              defaultValue={candidate.transcript ?? ""}
+              placeholder="Paste the screening call. What they will move for, what they will not, the programmes they worked."
+              className="field resize-y"
+            />
+            <span className="text-[12px] text-[var(--alac-text-3)]">
+              Kept as said, separate from the pitch above. Read for clearance and domains, never rewritten.
             </span>
           </label>
 

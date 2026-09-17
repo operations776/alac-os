@@ -26,6 +26,9 @@ export type Candidate = {
   active: boolean;
   inactive_reason: string | null;
   deactivated_at: string | null;
+  /** Raw notes from the screening call. Evidence, kept apart from the pitch. */
+  transcript: string | null;
+  transcript_at: string | null;
   created_at: string;
 };
 
