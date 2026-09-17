@@ -5,6 +5,7 @@ import { RevealEmail } from "./reveal-email";
 import { MessageButton } from "./tracker";
 import { WhyRole } from "./explain";
 import { setMark } from "@/app/(app)/queue/[id]/tracker";
+import { PushToBoard } from "./push-board";
 
 /** What was written to whom, keyed on person name. */
 export type SentMap = Map<string, { body: string; sent_at: string | null; channel: string }>;
@@ -152,7 +153,10 @@ export function RoleList({
       <table className="w-full min-w-[720px] border-collapse">
         <thead>
           <tr className="text-left text-[11px] text-[var(--alac-text-3)]">
-            <th className="px-2 py-2 font-normal" title="Tick the roles you have already raised with them">
+            <th
+              className="px-2 py-2 font-normal"
+              title="Tick a role once you have put it to someone there. Ticked roles come off Today so the list stays the work you have not done yet. Nothing else changes and you can untick it."
+            >
               Raised
             </th>
             <th className="px-2 py-2 text-right font-normal" title="Commercial score out of 100: how hard to fill, times how long open">
@@ -162,6 +166,7 @@ export function RoleList({
             <th className="px-2 py-2 font-normal">Where</th>
             <th className="px-2 py-2 font-normal">Salary</th>
             <th className="px-2 py-2 font-normal">Posted</th>
+            <th className="px-2 py-2 font-normal"></th>
           </tr>
         </thead>
         <tbody>
@@ -171,8 +176,11 @@ export function RoleList({
               className={`row-hover border-t border-[var(--alac-line)] ${r.qualified ? "" : "opacity-55"}`}
             >
               <td className="px-2 py-2 align-top">
-                {/* Mentioned: he has already raised this role with someone
-                    there. A plain form, one row, toggled. */}
+                {/* Raised: he has already put this role to someone there.
+                    Ticking it takes the role off Today, which is the whole
+                    effect and is now said out loud: "what's the purpose
+                    behind the check marks, because I'm checking it and
+                    there's no next step in the process". */}
                 <form action={setMark}>
                   <input type="hidden" name="accountId" value={accountId} />
                   <input type="hidden" name="kind" value="role" />
@@ -182,8 +190,12 @@ export function RoleList({
                     type="submit"
                     role="checkbox"
                     aria-checked={mentioned?.has(r.id) ?? false}
-                    aria-label={mentioned?.has(r.id) ? "Mentioned, click to clear" : "Mark as mentioned"}
-                    title={mentioned?.has(r.id) ? "You have raised this role. Click to clear" : "Mark that you have raised this role with them"}
+                    aria-label={mentioned?.has(r.id) ? "Raised, click to clear" : "Mark as raised"}
+                    title={
+                      mentioned?.has(r.id)
+                        ? "You have raised this role, so it stays off Today. Click to put it back."
+                        : "Tick once you have put this role to someone there. It comes off Today and stays on this page."
+                    }
                     className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border ${
                       mentioned?.has(r.id)
                         ? "border-[var(--alac-good)] bg-[var(--alac-good)] text-[var(--alac-ground)]"
@@ -220,6 +232,9 @@ export function RoleList({
               </td>
               <td className="readout px-2 py-2 align-top text-[12px] text-[var(--alac-text-3)]">
                 {formatDate(r.first_seen ?? r.posted_at) ?? "undated"}
+              </td>
+              <td className="px-2 py-2 align-top">
+                <PushToBoard accountId={accountId} roleId={r.id} label="Work this" />
               </td>
             </tr>
           ))}

@@ -262,7 +262,10 @@ export default async function QueueAccountPage({
               ) : null}
 
               <div className="well px-4 py-3.5">
-                <div className="placard mb-2.5 text-[12px] text-[var(--alac-text-2)]">
+                <div
+                  className="placard mb-2.5 text-[12px] text-[var(--alac-text-2)]"
+                  title="What should be true before this company is worth your time. The desk ticks what it can see for itself; the rest you tick as you do them. Nothing here sends anything."
+                >
                   Before you review
                 </div>
                 <ul className="flex flex-col gap-2">
