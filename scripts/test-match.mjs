@@ -41,7 +41,7 @@ test("every difficulty carries the reasons behind it", () => {
 test("time open is the second half of the core, and it compounds", () => {
   assert.ok(aging("2026-08-26", AS_OF).value < aging("2026-07-01", AS_OF).value);
   assert.ok(aging("2026-07-01", AS_OF).value < aging("2026-01-01", AS_OF).value);
-  assert.equal(aging(null, AS_OF).value, 20);
+  assert.equal(aging(null, AS_OF).value, 40);
   assert.equal(aging("2026-07-01", AS_OF).age, 57);
 });
 
@@ -49,6 +49,29 @@ test("a hard role open a long time beats an easy one posted today", () => {
   const hardOld = roleScore({ title: "Principal GNC Engineer, TS/SCI", first_seen: "2026-06-01" }, AS_OF);
   const easyNew = roleScore({ title: "Recruiting Coordinator", first_seen: AS_OF }, AS_OF);
   assert.ok(hardOld > easyNew, `${hardOld} > ${easyNew}`);
+});
+
+test("age falls back to posted_at, because the scrapers never set first_seen", () => {
+  // The bug this pins: 532 live roles carried posted_at and no first_seen, so
+  // they scored as "just posted". A Radiation Effects Engineer open 353 days
+  // scored 22. Undated must not mean young.
+  const scraped = { title: "Radiation Effects Engineer", first_seen: null, posted_at: "2025-09-20" };
+  assert.equal(aging(scraped, AS_OF).age, 341);
+  assert.ok(
+    roleScore(scraped, AS_OF) > roleScore({ ...scraped, posted_at: AS_OF }, AS_OF),
+    "a year old must beat posted today",
+  );
+});
+
+test("a hard role open months reads as urgent, not as a 64", () => {
+  // Adrian, on the call: "the highest it caps out at is 64". The ceiling was
+  // the normalisation, not the data. A cleared scarce role open six months is
+  // the most commercially valuable thing the desk can hold, so it scores like it.
+  const s = roleScore(
+    { title: "Principal Flight Software Verification Engineer, TS/SCI", first_seen: "2026-01-05" },
+    AS_OF,
+  );
+  assert.ok(s >= 85, `expected 85+, got ${s}`);
 });
 
 test("an easy role open forever is still not a strong lead", () => {

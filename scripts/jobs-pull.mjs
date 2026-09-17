@@ -30,7 +30,14 @@ const arg = (flag, fallback) => {
   return i >= 0 ? process.argv[i + 1] : fallback;
 };
 const BAND = arg("--band", null);
-const PER_COMPANY = Number(arg("--limit", "100"));
+// 250, not 100. At 100, 45 of 58 companies came back truncated, and the
+// provider returns newest first, so what fell off the end were the oldest
+// requisitions: exactly the ones worth calling about. The cap is a guard
+// against a runaway response, not a sampling decision.
+//
+// This is one request per company either way, so a larger page costs no more
+// against the monthly request quota than a smaller one.
+const PER_COMPANY = Number(arg("--limit", "250"));
 const STALE_DAYS = Number(arg("--stale", "7"));
 // The bar Today uses for a live lead, so the URL check covers exactly the
 // roles the screen offers rather than a different set.
@@ -83,7 +90,17 @@ async function main() {
         missing += 1;
         continue;
       }
-      console.log(`  ${a.company_name}: ${String(err.message).slice(0, 80)}`);
+      // 402 is the monthly request quota, and 429 is the rate limit. Neither
+      // gets better by asking again for the next company: carrying on would
+      // print the same failure 58 times and then report zero new roles as
+      // though the market had gone quiet. Stop and say so.
+      if (err instanceof PredictLeadsError && (err.status === 402 || err.status === 429)) {
+        console.error(`\nStopped at ${a.company_name}: ${err.message}`);
+        console.error("Nothing further was pulled. Roles already stored are unchanged.");
+        process.exitCode = 1;
+        break;
+      }
+      console.log(`  ${a.company_name}: ${String(err.message).slice(0, 120)}`);
       continue;
     }
 

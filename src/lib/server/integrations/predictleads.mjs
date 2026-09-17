@@ -38,6 +38,27 @@ export function predictLeadsAvailable() {
   return Boolean(process.env.PREDICTLEADS_API_KEY && process.env.PREDICTLEADS_API_TOKEN);
 }
 
+/**
+ * Whatever this API called the problem, as a sentence.
+ *
+ * Seen live: a plain string, `{message}`, `{error}`, and on a 402 an object
+ * of field to reasons. Anything still not a string is JSON rather than
+ * "[object Object]", because the point is to be readable in a log.
+ */
+function errorText(json) {
+  const found = json?.message ?? json?.error ?? json?.errors;
+  if (found == null) return null;
+  if (typeof found === "string") return found;
+  if (Array.isArray(found)) return found.map((f) => (typeof f === "string" ? f : JSON.stringify(f))).join("; ");
+  if (typeof found === "object") {
+    const parts = Object.entries(found).map(
+      ([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : typeof v === "string" ? v : JSON.stringify(v)}`,
+    );
+    if (parts.length) return parts.join("; ");
+  }
+  return JSON.stringify(found).slice(0, 300);
+}
+
 async function call(endpoint, { limit = 100, page } = {}) {
   const key = process.env.PREDICTLEADS_API_KEY;
   const token = process.env.PREDICTLEADS_API_TOKEN;
@@ -64,8 +85,13 @@ async function call(endpoint, { limit = 100, page } = {}) {
   if (!res.ok) {
     // 404 means "no record for this domain", which is an ordinary answer for a
     // small company rather than a failure. The caller decides.
+    //
+    // The message is flattened rather than interpolated: this API answers a
+    // 402 with an object, and `${json.message}` rendered every failure as
+    // "[object Object]", which hid an exhausted plan behind a string that
+    // says nothing. An error nobody can read is an outage nobody can see.
     throw new PredictLeadsError(
-      redact(json?.message ?? json?.error ?? `HTTP ${res.status}`, key, token),
+      redact(errorText(json) ?? `HTTP ${res.status}`, key, token),
       { status: res.status, endpoint },
     );
   }

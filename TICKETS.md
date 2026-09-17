@@ -203,3 +203,6 @@ Daniyal's review after using the merged app.
 | ALAC-134 | Light theme only: toggle removed, the root layout fixes the theme | done |
 | ALAC-135 | Recurring and file actions refuse non-admins, matching their pages | done |
 | ALAC-136 | Emails draft themselves and are saved: GTM prospect options on add and on open, Draft all per account, desk messages on opening Message; grounded, never overwrite what a person wrote or sent, never sent by the app. `npm run draft` no longer overwrites a custom or sent message | done |
+| ALAC-137 | Aged requisitions first: age read from posted_at where the source set no first_seen (532 live roles were scored as new, one open 353 days scored 22), the core raised from 70 to 82 so a hard aged role reads in the 80s, 30/60/90 day bands as the default view, and the pull page raised from 100 to 250 because 45 of 58 companies were truncated and the provider returns newest first | done |
+| ALAC-138 | Push to the GTM board: one click from a requisition or an MPC to a card, keyed on external_id so pushing twice updates one card. Checkbox purpose stated wherever a tick changes what a list shows | done |
+| ALAC-139 | Call transcript on a candidate: kept apart from the pitch, read for clearance and domains, shown on the candidate page | done |

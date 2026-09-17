@@ -139,8 +139,16 @@ async function main() {
         console.log(`  ${a.company_name}: no record at ${a.domain}`);
         continue;
       }
+      // The quota and the rate limit are run-ending, not per-company: see
+      // the same guard in jobs-pull.mjs.
+      if (err instanceof PredictLeadsError && (err.status === 402 || err.status === 429)) {
+        console.error(`\nStopped at ${a.company_name}: ${err.message}`);
+        console.error("Nothing further was pulled. Signals already stored are unchanged.");
+        process.exitCode = 1;
+        break;
+      }
       failed += 1;
-      console.log(`  ${a.company_name}: ${String(err.message).slice(0, 90)}`);
+      console.log(`  ${a.company_name}: ${String(err.message).slice(0, 120)}`);
       continue;
     }
 

@@ -20,7 +20,9 @@ const pool = new pg.Pool({
 
 async function main() {
   const { rows } = await pool.query(
-    `select r.id, r.title, r.occupation, r.salary_text, r.first_seen,
+    // posted_at as well as first_seen: the scraped sources only ever set the
+    // former, and reading one date is what scored 532 aged roles as new.
+    `select r.id, r.title, r.occupation, r.salary_text, r.first_seen, r.posted_at,
             (select count(*)::int from account_roles x
               where x.account_id = r.account_id and x.qualified
                 and x.closed_at is null) as open_at_company
