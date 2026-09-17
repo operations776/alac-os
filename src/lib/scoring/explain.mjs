@@ -46,7 +46,7 @@ export function explainBand(a) {
 /** Why one role is worth calling about, in full. */
 export function explainRoleFull(r) {
   const d = difficulty(r.title, { occupation: r.occupation });
-  const a = aging(r.first_seen);
+  const a = aging(r);
   const facts = [
     { label: "How hard to fill", value: `${d.value} / 100` },
     { label: "How long open", value: a.age == null ? "unknown" : `${a.age} days` },

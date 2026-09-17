@@ -85,7 +85,9 @@ export default async function HowPage() {
       how: [
         "Urgency, out of 100, on every signal: how directly it implies hiring, how recent, how big, how sure the provider is. A funding round this month scores near the top; a partnership last year near the bottom.",
         "Commercial score, out of 100, on every role: how hard it is to fill (clearance, seniority, scarce specialism) times how long it has been open. A role open sixty days has beaten the employer's own pipeline, which is when an agency call lands.",
-        `The bars. A signal shows on Today at ${DESK.SIGNAL_MIN_HEAT} or above. A new role is a daily lead at difficulty ${DESK.LEAD_MIN_DIFFICULTY} or above. The month view shows the top tenth of roles by score, currently ${floor} and up. Everything below a bar is kept and one toggle away.`,
+        "How long open is read from the date the source gave, whichever one it set. A posting with no date is treated as unknown rather than new, because assuming new is what once buried the oldest requisitions at the bottom of the list.",
+        `Aged first. Open roles opens on requisitions open ${DESK.AGED_DEFAULT_DAYS} days or more, longest first, because a role the employer has failed to fill is the one worth calling about. ${DESK.AGED_BANDS.join(", ")} day views sit beside it, and today, this week and this month are a click away for what is new.`,
+        `The bars. A signal shows on Today at ${DESK.SIGNAL_MIN_HEAT} or above. A new role is a daily lead at difficulty ${DESK.LEAD_MIN_DIFFICULTY} or above; an aged one only has to clear ${DESK.AGED_MIN_DIFFICULTY}, because sitting open is itself evidence it is hard. The month view shows the top tenth of roles by score, currently ${floor} and up. Everything below a bar is kept and one toggle away.`,
       ],
       live: [
         { label: `Signals at ${DESK.SIGNAL_MIN_HEAT}+ this month`, value: num(s.strong_signals), href: "/signals" },

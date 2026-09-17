@@ -8,6 +8,7 @@ import { WhyRole } from "@/components/ui/explain";
 import { Hint } from "@/components/ui/hint";
 import { CheckRoles } from "@/components/ui/check-roles";
 import { Dismiss, Restore } from "@/components/ui/dismiss";
+import { PushToBoard } from "@/components/ui/push-board";
 import { DISMISS_REASONS } from "@/config/dismiss-reasons.mjs";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +21,20 @@ export const dynamic = "force-dynamic";
 // grade, because five live leads a day come from the top of the list, not
 // from four thousand rows. Everything else is one toggle away.
 
+// The aged bands come first because that is the order he works in: a role
+// open 90 days is a hiring manager who has failed to fill it twice, and a
+// role posted this morning is a job posting. The recent windows stay, one
+// click away, for the days he wants to see what is new.
 const RANGES = [
+  { key: "aged30", minAge: 30, label: "30+ days" },
+  { key: "aged60", minAge: 60, label: "60+ days" },
+  { key: "aged90", minAge: 90, label: "90+ days" },
   { key: "today", days: 1, label: "Today" },
   { key: "week", days: 7, label: "This week" },
   { key: "month", days: 30, label: "This month" },
 ] as const;
+
+const DEFAULT_RANGE = "aged30";
 
 function ago(d: string | null): string {
   if (!d) return "";
@@ -49,7 +59,7 @@ export default async function RolesPage({
     );
   }
 
-  const range = RANGES.find((r) => r.key === params.range) ?? RANGES[1];
+  const range = RANGES.find((r) => r.key === params.range) ?? RANGES[0];
   const showAll = params.all === "1";
   const showDismissed = params.dismissed === "1";
   const q = (params.q ?? "").trim().toLowerCase();
@@ -57,7 +67,7 @@ export default async function RolesPage({
 
   const href = (r: string, all: boolean, dismissed = showDismissed) => {
     const p = new URLSearchParams();
-    if (r !== "week") p.set("range", r);
+    if (r !== DEFAULT_RANGE) p.set("range", r);
     if (all) p.set("all", "1");
     if (dismissed) p.set("dismissed", "1");
     if (q) p.set("q", q);
@@ -65,20 +75,31 @@ export default async function RolesPage({
     return s ? `/roles?${s}` : "/roles";
   };
 
+  const aged = "minAge" in range;
   // A role posted this week cannot have aged, so the short windows gate on
   // how hard it is to fill and rank by the score; the month gates on the
-  // score itself, where time open has had time to count.
-  const fresh = range.key !== "month";
+  // score itself, where time open has had time to count. An aged role has
+  // already proven itself hard by sitting unfilled, so it sorts by age and
+  // clears a lower difficulty bar.
+  const fresh = !aged && range.key !== "month";
   const [allRoles, counts] = await Promise.all([
-    freshRoles(
+    freshRoles(orgId, {
       // The dismissed view ignores every bar: he took these off deliberately
       // and has to be able to find all of them again.
-      orgId, showDismissed ? 365 : range.days, showAll || showDismissed ? 400 : 120, "relevant",
-      showAll || showDismissed || fresh ? 0 : floor,
-      showAll || showDismissed || !fresh ? 0 : DESK.LEAD_MIN_DIFFICULTY,
-      showDismissed,
-    ),
-    freshRoleCounts(orgId, floor, DESK.LEAD_MIN_DIFFICULTY),
+      days: showDismissed ? 365 : aged ? undefined : (range as { days: number }).days,
+      minAge: showDismissed || !aged ? undefined : (range as { minAge: number }).minAge,
+      limit: showAll || showDismissed ? 400 : 120,
+      // By score, not by age, even here. The band already guarantees every
+      // role in it is old, so the useful question inside the band is which
+      // of these old roles is hardest to fill.
+      sort: "relevant",
+      floor: showAll || showDismissed || fresh || aged ? 0 : floor,
+      minDifficulty: showAll || showDismissed
+        ? 0
+        : aged ? DESK.AGED_MIN_DIFFICULTY : fresh ? DESK.LEAD_MIN_DIFFICULTY : 0,
+      dismissedOnly: showDismissed,
+    }),
+    freshRoleCounts(orgId, floor, DESK.LEAD_MIN_DIFFICULTY, DESK.AGED_MIN_DIFFICULTY),
   ]);
   // The market bars pass a city or a discipline word; it narrows in memory
   // because the list is already small.
@@ -91,15 +112,17 @@ export default async function RolesPage({
       <PageHeader
         eyebrow="Open roles"
         title="What to call about"
-        lede={fresh
+        lede={aged
+          ? `Requisitions open ${(range as { minAge: number }).minAge} days or more, longest first. These are the ones the employer has failed to fill alone, which is when an agency call lands. Graded by how hard they are to fill times how long they have been open. Dead postings are removed on every pull.`
+          : fresh
           ? `Live requisitions posted ${range.label.toLowerCase()} at the companies on your list, hardest to fill first. Only roles at difficulty ${DESK.LEAD_MIN_DIFFICULTY} or above: senior, cleared, or a scarce specialism. Dead postings are removed on every pull.`
           : `Live requisitions from the last month, graded by how hard they are to fill times how long they have been open. Showing the top tenth, score ${floor} and above.`}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Hard roles today" value={counts.today} hint="posted since yesterday" href={href("today", false)} />
-        <Stat label="This week" value={counts.week} hint="hard to fill, posted this week" href={href("week", false)} />
-        <Stat label="This month" value={counts.month} hint="top tenth by difficulty and age" href={href("month", false)} />
+        <Stat label="Open 30+ days" value={counts.aged_30} hint="their own pipeline is not working" href={href("aged30", false)} />
+        <Stat label="Open 60+ days" value={counts.aged_60} hint="two months without a hire" href={href("aged60", false)} />
+        <Stat label="Open 90+ days" value={counts.aged_90} hint="the most acute pain on the board" href={href("aged90", false)} />
         <Stat
           label="Processed"
           value={counts.total.toLocaleString()}
@@ -184,13 +207,31 @@ export default async function RolesPage({
                         </a>
                       ) : r.title}
                     </td>
-                    <td className="readout px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-3)]">{ago(r.first_seen)}</td>
+                    <td className="readout px-4 py-2.5 align-top text-[12.5px]">
+                      {typeof r.age_days === "number" ? (
+                        <span
+                          className={
+                            r.age_days >= 90 ? "text-[var(--alac-red-text)]"
+                            : r.age_days >= 30 ? "text-[var(--alac-warn)]"
+                            : "text-[var(--alac-text-3)]"
+                          }
+                          title={`First seen ${formatDate(r.first_seen) ?? "unknown"}`}
+                        >
+                          {r.age_days === 0 ? "today" : `${r.age_days} days`}
+                        </span>
+                      ) : (
+                        <span className="text-[var(--alac-text-3)]">{ago(r.first_seen)}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-2.5 align-top text-[12.5px] text-[var(--alac-text-2)]">
                       {[r.location, r.salary_text].filter(Boolean).join(" · ") || <span className="text-[var(--alac-text-3)]">--</span>}
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       <span className="flex items-center gap-3">
                         <WhyRole role={r} label="Why" />
+                        {showDismissed ? null : (
+                          <PushToBoard accountId={r.account_id} roleId={r.id} />
+                        )}
                         {showDismissed
                           ? <Restore kind="role" refId={r.id} />
                           : <Dismiss kind="role" refId={r.id} reasons={DISMISS_REASONS.role} />}

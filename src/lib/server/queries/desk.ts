@@ -1100,6 +1100,8 @@ export type FreshRole = {
   salary_text: string | null;
   seniority: string | null;
   first_seen: string | null;
+  /** Days open, from first_seen or posted_at, whichever the source set. */
+  age_days?: number | null;
   relevance: number | null;
   difficulty?: number | null;
   occupation?: string | null;
@@ -1121,19 +1123,32 @@ export type FreshRole = {
  */
 export async function freshRoles(
   orgId: string,
-  days = 7,
-  limit = 60,
-  sort: "new" | "relevant" = "new",
-  floor = 0,
-  minDifficulty = 0,
-  dismissedOnly = false,
+  opts: {
+    /** Newest first: only roles seen within this many days. */
+    days?: number;
+    /** Oldest first: only roles open at least this many days. The aged views. */
+    minAge?: number;
+    limit?: number;
+    sort?: "new" | "relevant";
+    floor?: number;
+    minDifficulty?: number;
+    dismissedOnly?: boolean;
+  } = {},
 ) {
+  const {
+    days = null, minAge = null, limit = 60, sort = "new",
+    floor = 0, minDifficulty = 0, dismissedOnly = false,
+  } = opts;
   const byRelevance = sort === "relevant";
   const dismissed = dismissedOnly ? 1 : 0;
+  // coalesce, because the scraped sources set posted_at and never first_seen.
+  // Filtering on first_seen alone hid every role they carry.
   return (await sql`
     select r.id, r.account_id, a.company_name, a.effective_band as work_band,
            r.title, r.url, r.location, r.salary_text, r.seniority,
-           r.first_seen, r.relevance, r.difficulty, r.occupation,
+           coalesce(r.first_seen, r.posted_at) as first_seen,
+           (current_date - coalesce(r.first_seen, r.posted_at)) as age_days,
+           r.relevance, r.difficulty, r.occupation,
            a.qualified_roles as open_at_company,
            (select h.what_happened from heat_signals h
              where h.account_id = a.id
@@ -1147,21 +1162,27 @@ export async function freshRoles(
        and coalesce(r.difficulty, 0) >= ${minDifficulty}
        and (${dismissed} = 1) = exists (select 1 from dismissals d
                                          where d.org_id = r.org_id and d.kind = 'role' and d.ref_id = r.id)
-       and r.first_seen >= current_date - ${days}::int
+       and (${days}::int is null
+            or coalesce(r.first_seen, r.posted_at) >= current_date - ${days}::int)
+       and (${minAge}::int is null
+            or coalesce(r.first_seen, r.posted_at) <= current_date - ${minAge}::int)
      order by case when ${byRelevance} then r.relevance end desc nulls last,
-              r.first_seen desc nulls last, a.company_name, r.title
+              coalesce(r.first_seen, r.posted_at) desc nulls last, a.company_name, r.title
      limit ${limit}
   `) as FreshRole[];
 }
 
 /** Counts for the fresh roles header. */
-export async function freshRoleCounts(orgId: string, floor = 0, minDifficulty = 0) {
+export async function freshRoleCounts(orgId: string, floor = 0, minDifficulty = 0, agedMinDifficulty = 0) {
   const rows = (await sql`
     select
-      count(*) filter (where r.first_seen >= current_date - 1 and r.difficulty >= ${minDifficulty})::int as today,
-      count(*) filter (where r.first_seen >= current_date - 7 and r.difficulty >= ${minDifficulty})::int as week,
-      count(*) filter (where r.first_seen >= current_date - 30 and r.relevance >= ${floor})::int as month,
-      count(distinct r.account_id) filter (where r.first_seen >= current_date - 7 and r.difficulty >= ${minDifficulty})::int as companies,
+      count(*) filter (where coalesce(r.first_seen, r.posted_at) >= current_date - 1 and r.difficulty >= ${minDifficulty})::int as today,
+      count(*) filter (where coalesce(r.first_seen, r.posted_at) >= current_date - 7 and r.difficulty >= ${minDifficulty})::int as week,
+      count(*) filter (where coalesce(r.first_seen, r.posted_at) >= current_date - 30 and r.relevance >= ${floor})::int as month,
+      count(*) filter (where coalesce(r.first_seen, r.posted_at) <= current_date - 30 and r.difficulty >= ${agedMinDifficulty})::int as aged_30,
+      count(*) filter (where coalesce(r.first_seen, r.posted_at) <= current_date - 60 and r.difficulty >= ${agedMinDifficulty})::int as aged_60,
+      count(*) filter (where coalesce(r.first_seen, r.posted_at) <= current_date - 90 and r.difficulty >= ${agedMinDifficulty})::int as aged_90,
+      count(distinct r.account_id) filter (where coalesce(r.first_seen, r.posted_at) >= current_date - 7 and r.difficulty >= ${minDifficulty})::int as companies,
       count(*) filter (where r.relevance >= ${floor})::int as top,
       count(*) filter (where exists (select 1 from dismissals d
                                       where d.org_id = r.org_id and d.kind = 'role'
@@ -1174,6 +1195,6 @@ export async function freshRoleCounts(orgId: string, floor = 0, minDifficulty = 
     join account_desk a on a.id = r.account_id
     where r.org_id = ${orgId} and r.qualified and r.closed_at is null
       and r.url_ok is distinct from false and a.disposition = 'Active'
-  `) as { today: number; week: number; month: number; companies: number; top: number; dismissed: number; total: number; closed: number; pulled_at: string | null }[];
+  `) as { today: number; week: number; month: number; aged_30: number; aged_60: number; aged_90: number; companies: number; top: number; dismissed: number; total: number; closed: number; pulled_at: string | null }[];
   return rows[0];
 }

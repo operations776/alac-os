@@ -30,6 +30,24 @@ export const DESK = {
   // A posting the provider has not seen for this long has come down.
   ROLE_STALE_DAYS: 7,
 
+  // Aged requisitions, which are the first priority rather than the last.
+  //
+  // "I would not focus on the jobs that get posted today, honestly. Let's
+  // look at the jobs that have been up 30 plus days, 60 plus days, 90 plus
+  // days. The ones that have been reposted, the hardest to find, the ones
+  // scoring the highest. Those would be my first priority because the hiring
+  // managers are feeling the most visceral pain." Adrian, 10 September.
+  //
+  // Every other view was a window on what arrived recently, so a role became
+  // harder to reach the longer it went unfilled, which is backwards.
+  AGED_BANDS: [30, 60, 90],
+  // The band the desk opens on. 30+ rather than 90+ so the default list is
+  // deep enough to work daily.
+  AGED_DEFAULT_DAYS: 30,
+  // Aged leads are already proven hard by the market, so the difficulty bar
+  // is lower here than for a role posted this morning.
+  AGED_MIN_DIFFICULTY: 40,
+
   // Heat at or above this makes a company a recommendation for the list.
   PROMOTE_HEAT: 60,
   // How often the feeds are pulled and the recommendations re-ranked.

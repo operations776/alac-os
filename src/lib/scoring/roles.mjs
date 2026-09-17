@@ -61,11 +61,20 @@ export function difficulty(title = "", extra = {}) {
 
   // Specialisms where the training pipeline is genuinely narrow.
   if (/\bguidance|navigation|gnc\b|flight software|avionics|propulsion|rf\b|radar|electronic warfare|ew\b|hypersonic|cryptograph|autonomy|embedded/.test(t)) {
-    d += 18;
-    terms.push({ term: "Scarce specialism", points: 18, input: "years of training, few people hold it" });
+    d += 24;
+    terms.push({ term: "Scarce specialism", points: 24, input: "years of training, few people hold it" });
   } else if (/\bmechanical|electrical|systems engineer|manufacturing|structures\b/.test(t)) {
     d += 8;
     terms.push({ term: "Engineering discipline", points: 8, input: "a real skill, a wider pool" });
+  }
+
+  // Two scarce things at once is not the sum of two searches, it is a much
+  // smaller pool than either: flight software AND verification, radar AND
+  // FPGA. These are the roles that sit open for six months.
+  const narrow = /\bverification|validation|certification|qualification|test engineer|flight test|integration|fpga|asic|rtos|kernel|firmware|signal processing|dsp\b|controls|trajectory|thermal|structures/;
+  if (d >= 50 && narrow.test(t)) {
+    d += 10;
+    terms.push({ term: "Two scarce skills at once", points: 10, input: "the pool is the overlap, not either one" });
   }
 
   // Roles a client can fill without an agency, whatever the industry.
@@ -78,29 +87,54 @@ export function difficulty(title = "", extra = {}) {
 }
 
 /**
+ * How old a posting is, from the best date the row carries.
+ *
+ * `first_seen` is PredictLeads' own first sighting and is the date to trust.
+ * The scraped sources never set it and carry `posted_at` instead, so reading
+ * only `first_seen` treated 532 live roles as undated. They were not undated,
+ * they were the oldest roles held: a Radiation Effects Engineer open 353 days
+ * scored 22 because "no date" was read as "just posted". The fallback is
+ * ordered by trust, and which date answered is reported so a score can say so.
+ */
+export function roleAge(r, asOf) {
+  for (const [field, source] of [["first_seen", "first seen"], ["posted_at", "posted"]]) {
+    const age = daysAgo(r?.[field], asOf);
+    if (age !== null && age >= 0) return { age, source };
+  }
+  return { age: null, source: null };
+}
+
+/**
  * Time open, out of 100, and why. A role open six weeks has beaten the
  * employer's own pipeline, which is exactly when an agency call lands.
  *
- * first_seen is when the posting entered our feed, which understates true age
- * on the first pull and is honest from then on.
+ * Takes the role rather than one date, so every caller gets the same fallback.
+ * A bare date string is still accepted, because the unit tests and the
+ * explain panel pass one.
  */
-export function aging(firstSeen, asOf) {
-  const age = daysAgo(firstSeen, asOf);
+export function aging(role, asOf) {
+  const r = typeof role === "string" || role instanceof Date ? { first_seen: role } : (role ?? {});
+  const { age, source } = roleAge(r, asOf);
   if (age === null) {
-    return { value: 20, age: null, terms: [{ term: "No posting date", points: 20, input: "assumed recent" }] };
+    // Unknown is not young. Scoring an undated role as fresh is what buried
+    // the aged ones, so it sits at the median and the term says why.
+    return { value: 40, age: null, terms: [{ term: "No posting date", points: 40, input: "age unknown, not assumed recent" }] };
   }
   const bands = [
-    [90, 100, "Open over 90 days", "their pipeline has clearly failed"],
-    [60, 88, "Open over 60 days", "two months of trying without a hire"],
-    [45, 78, "Open over 45 days", "past the point most roles fill"],
-    [30, 66, "Open over a month", "the internal team has not solved it"],
-    [21, 52, "Open three weeks", "starting to stall"],
-    [14, 40, "Open two weeks", "still early"],
-    [7, 26, "Open a week", "recent"],
-    [0, 12, "Just posted", "nobody has struggled with it yet"],
+    [180, 100, "Open over 180 days", "six months, they cannot fill this alone"],
+    [120, 96, "Open over 120 days", "four months of failure"],
+    [90, 92, "Open over 90 days", "their pipeline has clearly failed"],
+    [60, 84, "Open over 60 days", "two months of trying without a hire"],
+    [45, 74, "Open over 45 days", "past the point most roles fill"],
+    [30, 64, "Open over a month", "the internal team has not solved it"],
+    [21, 50, "Open three weeks", "starting to stall"],
+    [14, 38, "Open two weeks", "still early"],
+    [7, 24, "Open a week", "recent"],
+    [0, 10, "Just posted", "nobody has struggled with it yet"],
   ];
   const [, points, term, input] = bands.find(([floor]) => age >= floor);
-  return { value: points, age, terms: [{ term: `${term}, ${age} days`, points, input }] };
+  const dated = source === "posted" ? `${input}, by posting date` : input;
+  return { value: points, age, terms: [{ term: `${term}, ${age} days`, points, input: dated }] };
 }
 
 /**
@@ -113,10 +147,20 @@ export function aging(firstSeen, asOf) {
  */
 export function scoreRole(r, asOf) {
   const d = difficulty(r.title, { occupation: r.occupation });
-  const a = aging(r.first_seen, asOf);
+  const a = aging(r, asOf);
 
-  // The core, worth up to 70. Normalised so the product does not collapse.
-  const core = Math.round(((d.value * a.value) / 100) * 0.7);
+  // The core, worth up to 82.
+  //
+  // It was 70, and that was the bug behind "the highest it caps out at is
+  // 64". The product of two realistic numbers is far below the product of
+  // two perfect ones: the hardest real role scores about 78 for difficulty,
+  // so even open a year it reached 55 here and about 70 in total. The bar
+  // could never be cleared, so nothing was ever urgent.
+  //
+  // At 82 the same role open 90 days reaches the high 80s, which is what the
+  // number is for: a role open six months that needs a clearance and a scarce
+  // specialism should read as an emergency, because for the employer it is.
+  const core = Math.round(((d.value * a.value) / 100) * 0.82);
 
   // The difficulty and age terms explain how those two numbers were reached,
   // but they are inputs to the core rather than points in the total. They are
