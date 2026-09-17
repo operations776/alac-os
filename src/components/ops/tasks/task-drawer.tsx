@@ -92,8 +92,24 @@ function Body({
   return (
     <>
       <div className="anim-backdrop fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      {/* The wrapper centres, the panel animates. They cannot be the same
+          element: anim-pop animates a transform, and a transform on a fixed
+          element makes it the containing block for its own inset-0, so the
+          m-auto centring resolved against the panel rather than the viewport
+          and the dialog sat off screen with its top cut off. This is the
+          split .overlay already uses everywhere else in the app. */}
+      {/* This sits over the backdrop, so the click that closes has to be
+          handled here too. Only a press that starts on the wrapper itself
+          counts: a drag that begins on text inside the panel and releases
+          outside must not close it and lose the selection. */}
+      <div
+        className="fixed inset-0 z-50 grid place-items-center p-4"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
       <aside
-        className="anim-pop fixed inset-0 z-50 m-auto flex h-fit max-h-[88dvh] w-[calc(100%-32px)] max-w-xl flex-col overflow-hidden rounded-[var(--alac-radius)] border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
+        className="anim-pop flex max-h-[88dvh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--alac-radius)] border border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-2xl"
         role="dialog"
         aria-label="Task"
       >
@@ -443,6 +459,7 @@ function Body({
           </div>
         </div>
       </aside>
+      </div>
     </>
   )
 }
