@@ -207,3 +207,4 @@ Daniyal's review after using the merged app.
 | ALAC-138 | Push to the GTM board: one click from a requisition or an MPC to a card, keyed on external_id so pushing twice updates one card. Checkbox purpose stated wherever a tick changes what a list shows | done |
 | ALAC-139 | Call transcript on a candidate: kept apart from the pitch, read for clearance and domains, shown on the candidate page | done |
 | ALAC-140 | Task, content and metrics drawers sat off screen with their tops cut off: anim-pop animates a transform, and a transform on a fixed element makes it the containing block for its own inset-0, so m-auto centred against the panel rather than the viewport. Wrapper centres, panel animates | done |
+| ALAC-141 | Handoff guide: HANDOFF.md maps the repo, Vercel project and Neon store, every service and secret the new owner needs, the GitHub, Neon and Vercel transfer steps, and the open items they inherit | done |
