@@ -1,122 +1,164 @@
 # ALAC OS handoff
 
-How to move ALAC OS out of RecruiterGTM's accounts and into the new owner's GitHub, Vercel and Neon. Checked against the live accounts on 12 Nov 2026. No secret values are in this file.
+How to move ALAC OS from RecruiterGTM's accounts into the new owner's GitHub, Vercel and Neon, on free plans throughout. Checked against the live accounts on 12 Nov 2026. **No secret values belong in this file: the repo is public until step 2.4.**
 
 ## Where everything is today
 
 | Piece | Where | Notes |
 | --- | --- | --- |
-| Code | GitHub `operations776/alac-os` (**public**), branch `main` | Up to date with local. Old branches `ops-merge`, `ops-polish`, `ops-emails` are already merged. |
-| App | Vercel team `recruitergtm` (`operations-3595s-projects`), project `alac-os` (`prj_vXm6HcBAE53Eautpk4foBiMXOae1`) | Production is https://alac-os.vercel.app. Next.js 16, Node 24. Preview deploys sit behind Vercel SSO. |
-| Database | **Neon Postgres** (not Supabase), set up through the Vercel Marketplace inside our Vercel team | Postgres 17, AWS us-east-1, db `neondb`, about 40 MB. Schemas `public` (25 tables, the desk) and `mc` (68 tables, Mission Control). Last migration applied: `0029_candidate_transcript.sql`. |
-| Scheduled jobs | `vercel.json` (4 daily Vercel crons) and `.github/workflows/refresh.yml` (GitHub Actions, Mon and Thu 06:00 UTC, plus the 1st of the month) | |
-| Logins | Built into the app (`users` table, database-backed sessions). No outside auth provider. | 7 users: Adrian and operations@recruitergtm.com have passwords. 5 team members have no password yet. |
+| Code | GitHub `operations776/alac-os`, branch `main` | Public. No webhooks or deploy keys. |
+| App | Vercel team `recruitergtm`, project `alac-os` | https://alac-os.vercel.app. Next.js 16, Node 24. Four daily crons in `vercel.json`. |
+| Database | Neon project `alac-os-db`, created through Vercel Marketplace | Postgres 17, AWS US East 1 (N. Virginia), Free plan, database `neondb`, about 40 MB. Schemas `public` (desk) and `mc` (Mission Control). Last migration `0029_candidate_transcript.sql`. |
+| Refresh job | `.github/workflows/refresh.yml` | GitHub Actions, Mon and Thu 06:00 UTC, plus the 1st of the month. |
+| Logins | Built into the app (`users` table) | 7 users. Adrian and operations@recruitergtm.com have passwords, 5 team members do not yet. |
 
-The only Supabase involved is Adrian's **old** Mission Control project. Its data was never copied in (ticket ALAC-124). It is his account, not ours.
+A Neon database made through someone's Vercel account cannot be handed to another person. The new owner makes their own free Neon project and copies the data in (step 1).
 
-## What the new owner needs to sign up for
+## What it costs
 
-| Service | What for | Required? |
+Nothing on RecruiterGTM's side: the new owner is never added to our Vercel team (that would be a paid seat). Everything moves to their free plans:
+
+- GitHub: free.
+- Vercel: Hobby (free). Daily crons are allowed on Hobby. Vercel's terms reserve Hobby for non-commercial use, so upgrading to Pro is their call.
+- Neon: Free plan, 0.5 GB. The database is about 40 MB.
+
+## Before moving day (new owner, about 15 minutes)
+
+1. **GitHub:** have an account, and send Daniyal the username.
+2. **Vercel:** sign up at vercel.com on the Hobby plan with "Continue with GitHub", same GitHub account.
+3. **Neon:** sign up at neon.tech, Free plan. Create a project: **Postgres 17**, region **AWS US East 1 (N. Virginia)**. From **Connect**, copy two strings and keep them private:
+   - **pooled** (connection pooling on, host contains `-pooler`)
+   - **direct** (connection pooling off)
+4. **API keys**, all in their own name: OpenAI, Prospeo, Apify, PredictLeads (key and token), Exa (optional). A missing key turns that one feature off and the app says so. Nothing breaks.
+
+## Moving day
+
+Pick a quiet hour. The app is down for about 10 minutes between steps 3 and 4. **Nobody edits anything in the app from step 1 onward**, because anything written to the old database after the copy is lost.
+
+### Step 1. Copy the database (screen share, both)
+
+Daniyal gets the **source** string: in the old Neon project `alac-os-db`, click **Connect**, turn **Connection pooling off**, copy. It is the host without `-pooler`. Paste it straight into their screen during the share. Never send it over Slack or email.
+
+**Option A, Neon Import Data Assistant (no installs):**
+
+1. In the new owner's Neon console, open their new project.
+2. Open **Import Data** (the Import Data Assistant). If it is not on the project dashboard, use the Ask AI search box for "import".
+3. Paste the source string. If it is refused, remove `&channel_binding=require` from the end and try again.
+4. Choose their project, branch `main`, database `neondb` as the destination. Run it.
+
+**Option B, pg_dump (any machine with PostgreSQL 17 client tools):**
+
+```bash
+pg_dump --no-owner --no-acl -Fc "SOURCE_DIRECT_STRING" -f alac.dump
+```
+
+```bash
+pg_restore --no-owner --no-acl -d "THEIR_DIRECT_STRING" alac.dump
+```
+
+**Check the copy** in their Neon **SQL Editor**:
+
+```sql
+select count(*) from users;                -- expect 7
+select max(filename) from schema_migrations; -- expect 0029_candidate_transcript.sql
+delete from sessions;                       -- everyone signs in fresh on the new host
+```
+
+### Step 2. Clean up and hand over GitHub (Daniyal)
+
+GitHub **moves Actions secrets with the repo**, and today they hold RecruiterGTM's database string and PredictLeads keys. Remove them first.
+
+1. Delete the merged branches:
+   ```bash
+   git push origin --delete ops-emails ops-merge ops-polish
+   ```
+2. Delete RecruiterGTM's secrets:
+   ```bash
+   gh secret delete DATABASE_URL_UNPOOLED -R operations776/alac-os
+   ```
+   ```bash
+   gh secret delete PREDICTLEADS_API_KEY -R operations776/alac-os
+   ```
+   ```bash
+   gh secret delete PREDICTLEADS_API_TOKEN -R operations776/alac-os
+   ```
+3. Repo **Settings → General → Danger Zone → Change repository visibility → Private**.
+4. Same Danger Zone: **Transfer ownership**, enter their username, confirm. They accept from their email.
+
+### Step 3. Detach the old database from Vercel (Daniyal)
+
+Vercel → project **alac-os → Storage** → the Neon database → **Disconnect** from alac-os. The app goes down here until step 4.6. This leaves nothing in the project tied to RecruiterGTM's account before it moves.
+
+### Step 4. Hand over the Vercel project (Daniyal, then new owner)
+
+1. Daniyal creates a project transfer request (`POST /v1/projects/alac-os/transfer-request` with the RecruiterGTM team id). It returns a claim link, valid 24 hours: `https://vercel.com/claim-deployment?code=...`
+2. New owner opens the link, picks their account, accepts. The project moves with `alac-os.vercel.app`, its deployments and its crons.
+3. **Settings → Environment Variables**, Production. Replace any old copy of a var:
+
+   | Var | Value |
+   | --- | --- |
+   | `DATABASE_URL` | their **pooled** Neon string |
+   | `DATABASE_URL_UNPOOLED` | their **direct** Neon string |
+   | `NEXT_PUBLIC_SITE_URL` | `https://alac-os.vercel.app` |
+   | `CRON_SECRET` | any long random string |
+   | `OPENAI_API_KEY` | theirs |
+   | `PROSPEO_API_KEY` | theirs |
+   | `APIFY_TOKEN` | theirs |
+   | `EXA_API_KEY` | theirs, optional |
+   | `SLACK_BOT_TOKEN` | optional |
+   | `NEXT_PUBLIC_MARKETING_ASSETS_URL`, `NEXT_PUBLIC_SOP_FOLDER_URL` | optional Drive links |
+
+   Delete `FIBER_API_KEY` (nothing reads it) and any leftover `PG*` or `POSTGRES_*` vars.
+4. **Settings → Git**: connect their copy of the repo.
+5. **Deployments**: latest deployment, **Redeploy**.
+6. Test: sign in, open the board, and check that this returns 200 rather than 503:
+   ```bash
+   curl -H "Authorization: Bearer THEIR_CRON_SECRET" https://alac-os.vercel.app/api/cron/reminders
+   ```
+
+### Step 5. GitHub Actions secrets (new owner)
+
+Their repo **Settings → Secrets and variables → Actions**, add `DATABASE_URL_UNPOOLED` (their direct string), `PREDICTLEADS_API_KEY`, `PREDICTLEADS_API_TOKEN`. Then **Actions → Refresh the desk → Run workflow** once to check it.
+
+## After it is confirmed working
+
+**Daniyal:**
+
+1. Delete the old database: Vercel → RecruiterGTM team → **Storage** → `alac-os-db` → **Settings → Delete**. This also kills the old connection string that was shared on moving day. Cannot be undone, which is why it waits.
+2. Revoke RecruiterGTM's OpenAI, Prospeo, Apify, Exa and PredictLeads keys used here.
+
+**New owner:**
+
+1. In the app, **Admin → Team members**: set passwords for the 5 team members, and remove `operations@recruitergtm.com` if RecruiterGTM should no longer have access.
+2. **Settings → Environments** in GitHub: `Preview` and `Production` can be deleted; Vercel recreates them.
+3. In `CLAUDE.md`, change "Commits are authored as `operations776`" to their GitHub user. Hobby only deploys commits by the account owner.
+
+## Secrets reference
+
+| Var | Where | Needed for |
 | --- | --- | --- |
-| GitHub | Hosts the code, runs CI and the twice-weekly refresh | Yes |
-| Vercel (Pro plan, since this is a business app and Hobby is for non-commercial use) | Hosting and crons | Yes |
-| Neon | The database. Either neon.tech directly or Vercel Marketplace, then Neon | Yes |
-| OpenAI | The reasoning pass and AI task descriptions | Strongly recommended. Without it, scores still work and the UI says AI is off. |
-| PredictLeads | Signals feed (funding, exec moves, headcount) | Needed for the refresh |
-| Prospeo | People search and the email reveal button | Needed for reveal |
-| Apify | LinkedIn job postings and company ids | Needed for job pulls |
-| Exa | Recent news behind a signal when drafting a message | Optional |
-| Slack app (bot token) | Posts queued Slack messages | Optional, not live today |
+| `DATABASE_URL` | Vercel | Every request. The app cannot boot without it. |
+| `DATABASE_URL_UNPOOLED` | Vercel, GitHub Actions, local | Migrations, importers, the refresh job |
+| `NEXT_PUBLIC_SITE_URL` | Vercel | Auth redirects |
+| `CRON_SECRET` | Vercel | The four crons. Unset means they return 503. |
+| `OPENAI_API_KEY` | Vercel | Reasoning pass and AI task descriptions |
+| `PROSPEO_API_KEY` | Vercel | People search and email reveal |
+| `APIFY_TOKEN` | Vercel, local | Job postings and LinkedIn company ids |
+| `EXA_API_KEY` | Vercel | News behind a signal when drafting |
+| `PREDICTLEADS_API_KEY`, `PREDICTLEADS_API_TOKEN` | GitHub Actions, local | The refresh. Both halves required. |
+| `SLACK_BOT_TOKEN` | Vercel | Optional Slack delivery |
+| `ALAC_DATA_DIR`, `ALAC_SEED_PASSWORD`, `TEAM_TZ`, `MC_DATABASE_URL` | local only | Scripts |
 
-Every key in our Vercel project today belongs to RecruiterGTM. The new owner should create their own, or we keep paying for their usage.
-
-## Secrets, and where each one goes
-
-**Vercel → Project → Settings → Environment Variables (Production)**
-
-| Var | Value |
-| --- | --- |
-| `DATABASE_URL` | Their Neon **pooled** connection string. Filled in automatically if Neon is added through Vercel Marketplace. |
-| `DATABASE_URL_UNPOOLED` | Their Neon **direct** connection string. Same as above. |
-| `NEXT_PUBLIC_SITE_URL` | Their production URL, e.g. `https://alac-os.vercel.app` |
-| `CRON_SECRET` | Any long random string. **Unset today, so all four crons return 503.** |
-| `OPENAI_API_KEY` | Their OpenAI key |
-| `PROSPEO_API_KEY` | Their Prospeo key |
-| `APIFY_TOKEN` | Their Apify token |
-| `EXA_API_KEY` | Their Exa key (optional) |
-| `SLACK_BOT_TOKEN` | Optional. Unset means messages stay queued and in-app notifications still work. |
-| `NEXT_PUBLIC_MARKETING_ASSETS_URL`, `NEXT_PUBLIC_SOP_FOLDER_URL` | Optional Drive folder links |
-
-**GitHub → repo → Settings → Secrets and variables → Actions** (used by `refresh.yml`)
-
-| Var | Value |
-| --- | --- |
-| `DATABASE_URL_UNPOOLED` | Same direct Neon string as above |
-| `PREDICTLEADS_API_KEY` | Their PredictLeads key |
-| `PREDICTLEADS_API_TOKEN` | Their PredictLeads token (both halves are required) |
-
-**Local `.env.local` only** (for running scripts on a laptop, never in Vercel): `ALAC_DATA_DIR` (folder holding the Desk Command Center workbook), `ALAC_SEED_PASSWORD`, `TEAM_TZ`, `MC_DATABASE_URL` (the old Mission Control Supabase, one-time import), plus the database and PredictLeads vars above.
-
-**You can skip these:** `FIBER_API_KEY` (still set in Vercel, but no code reads it; PredictLeads replaced it), `SESSION_SECRET` (ARCHITECTURE.md lists it, but sessions are database-backed and the code never reads it), the `PG*` and `POSTGRES_*` aliases (Neon adds them, the app ignores them), and the two `NEXT_PUBLIC_SUPABASE_*` secrets in `ci.yml` (left over from the template, not needed).
-
-## Transfer steps
-
-### 1. GitHub
-
-On `operations776/alac-os`, go to Settings → General → Transfer ownership, and enter their account or org. Issues, history and Actions come with it. **Actions secrets do not come with it.** Add the three listed above again.
-
-While you're there, think about making the repo **private**. It's public today, and while client data is kept out of it, there's no reason for it to be visible.
-
-### 2. Database (Neon)
-
-1. The new owner creates a Neon project: **Postgres 17, AWS us-east-1** (same as now, which keeps latency the same).
-2. Copy the data across. Either option works:
-   - **Neon Import Data Assistant** (Neon console → Import). Paste our direct connection string as the source.
-   - **pg_dump**, from any machine with PostgreSQL 17 client tools installed (this machine doesn't have them):
-     ```bash
-     pg_dump --no-owner --no-acl -Fc "$OLD_DATABASE_URL_UNPOOLED" -f alac.dump
-     ```
-     ```bash
-     pg_restore --no-owner --no-acl -d "$NEW_DATABASE_URL_UNPOOLED" alac.dump
-     ```
-3. Check it worked: `npm run migrate` against the new DB should report nothing pending, because `schema_migrations` comes along with the data.
-4. Run `delete from sessions;` on the new DB, so everyone signs in fresh on the new host.
-
-Freeze writes during the copy, or do it at a quiet time. Anything written to the old database after the dump is lost.
-
-### 3. Vercel
-
-**Option A, transfer the project (recommended, because it keeps the `alac-os.vercel.app` URL).** Go to Project → Settings → General → Transfer, and pick their team. Domains, deployment history and `vercel.json` crons come with it. The Neon database does **not**: it's a Marketplace store owned by our team. So after the transfer, connect their Neon (Storage tab) and overwrite `DATABASE_URL` and `DATABASE_URL_UNPOOLED`, then swap every API key for theirs.
-
-**Option B, start fresh.** In their Vercel, import the GitHub repo (Next.js preset, Node 24), add the env vars above, then deploy. They'll get a new `*.vercel.app` URL unless we delete our project first to free up `alac-os`.
-
-In both cases, redeploy after changing env vars, then test: sign in, open the board, and call one cron with `Authorization: Bearer <CRON_SECRET>` to make sure it no longer returns 503.
-
-### 4. Logins
-
-- Their admin signs in. Adrian's account already has a password.
-- Create passwords for the 5 team members from Admin → Team members, or run `npm run create:user`.
-- Once they've confirmed everything works, delete the `operations@recruitergtm.com` user if RecruiterGTM should no longer have access.
-
-### 5. Things to change in the repo after the transfer
-
-- `CLAUDE.md` line 25 says commits must be authored as `operations776`, because Vercel blocks foreign commit authors on our account. Change it to the new owner's GitHub user, or their deploys will be rejected the same way.
-- `README.md`, `ARCHITECTURE.md` section 8 and `.env.example` mention RecruiterGTM's OpenAI key and `alac-os.vercel.app`. Update them if anything changes.
-
-### 6. Shut down our side (only after their production is verified)
-
-- Revoke or rotate the RecruiterGTM OpenAI, Prospeo, Apify, Exa and PredictLeads keys that were used here.
-- Delete the old Neon store in our Vercel team (Storage tab). This can't be undone, so take a final dump first.
-- Delete our Vercel project, if Option B was used.
+Not needed: `FIBER_API_KEY`, `SESSION_SECRET` (listed in ARCHITECTURE.md, never read), the `PG*` and `POSTGRES_*` aliases, and the `NEXT_PUBLIC_SUPABASE_*` lines in `ci.yml`.
 
 ## Open items they inherit
 
 | Item | State |
 | --- | --- |
-| Demo data | 332 fictional rows from the demo week are still in production. Remove them exactly with `npm run seed:demo -- --remove`. |
-| Crons | `CRON_SECRET` was never set, so verify-roles, recurring, slack and reminders have never run in production. |
-| Mission Control import (ALAC-124) | `npm run import:ops -- --apply` with `MC_DATABASE_URL` from Adrian's old Supabase. Not done. The script uses `session_replication_role = replica`, which Neon's owner role may refuse, so test it first. |
-| Slack | No bot token, so nothing is posted. Also check that `mc.slack_settings.is_connected` is true. |
-| SourceWhale API | Waiting on written OK from SourceWhale for AI use (ARCHITECTURE.md section 9). The CSV bridge covers it until then. |
+| Demo data | 332 fictional rows still in production. `npm run seed:demo -- --remove` takes out exactly those. |
+| Crons | `CRON_SECRET` was never set, so the four crons have never run in production. Fixed by step 4.3. |
+| Mission Control import (ALAC-124) | `npm run import:ops -- --apply` with `MC_DATABASE_URL` from Adrian's old Supabase. Not done. It uses `session_replication_role = replica`, which Neon's owner role may refuse, so test first. |
+| Slack | No bot token. Also check `mc.slack_settings.is_connected` is true. |
+| SourceWhale API | Waiting on SourceWhale's written OK for AI use (ARCHITECTURE.md section 9). The CSV bridge covers it until then. |
 
-Read next: `README.md` (setup and commands), `ARCHITECTURE.md` (system and env table), `CLAUDE.md` (rules for agents working in the repo), `TICKETS.md` (work log).
+Read next: `README.md` (setup, commands), `ARCHITECTURE.md` (system, env table), `CLAUDE.md` (rules for agents), `TICKETS.md` (work log).
