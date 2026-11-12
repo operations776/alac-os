@@ -26,9 +26,7 @@ Nothing on RecruiterGTM's side: the new owner is never added to our Vercel team 
 
 1. **GitHub:** have an account, and send Daniyal the username.
 2. **Vercel:** sign up at vercel.com on the Hobby plan with "Continue with GitHub", same GitHub account.
-3. **Neon:** sign up at neon.tech, Free plan. Create a project: **Postgres 17**, region **AWS US East 1 (N. Virginia)**. From **Connect**, copy two strings and keep them private:
-   - **pooled** (connection pooling on, host contains `-pooler`)
-   - **direct** (connection pooling off)
+3. **Neon:** sign up at neon.tech, Free plan. **Do not create a project yet**: the import in step 1 creates it.
 4. **API keys**, all in their own name: OpenAI, Prospeo, Apify, PredictLeads (key and token), Exa (optional). A missing key turns that one feature off and the app says so. Nothing breaks.
 
 ## Moving day
@@ -37,14 +35,15 @@ Pick a quiet hour. The app is down for about 10 minutes between steps 3 and 4. *
 
 ### Step 1. Copy the database (screen share, both)
 
-Daniyal gets the **source** string: in the old Neon project `alac-os-db`, click **Connect**, turn **Connection pooling off**, copy. It is the host without `-pooler`. Paste it straight into their screen during the share. Never send it over Slack or email.
+Daniyal gets the **source** string: in the old Neon project `alac-os-db`, click **Connect**, turn **Connection pooling off**, copy. It is the host without `-pooler`. Get it to the new owner privately: type it into their field yourself over a screen share with remote control, or send a one-time secret link (for example onetimesecret.com). Never in a Slack or email message.
 
-**Option A, Neon Import Data Assistant (no installs):**
+**Option A, Neon Import Data Assistant (no installs, under 10 GB, 1 hour limit):** ([Neon docs](https://neon.com/docs/import/import-data-assistant))
 
-1. In the new owner's Neon console, open their new project.
-2. Open **Import Data** (the Import Data Assistant). If it is not on the project dashboard, use the Ask AI search box for "import".
-3. Paste the source string. If it is refused, remove `&channel_binding=require` from the end and try again.
-4. Choose their project, branch `main`, database `neondb` as the destination. Run it.
+1. New owner, in their Neon console, goes to the **Projects page** (the list of all projects, not inside a project) and clicks the **Import** option there to launch the Import Data Assistant.
+2. Paste the source string into the **connection string** box and click **Run Checks**. If it is refused, remove `&channel_binding=require` from the end and run again.
+3. Click **Create new Neon project**: **Postgres 17**, region **AWS US East 1 (N. Virginia)**. Click **Create**.
+4. Click **Start import process**. The old database is only read, never changed.
+5. When it finishes, open the new project, click **Connect**, and copy two strings for step 4.3: **pooled** (pooling on, host has `-pooler`) and **direct** (pooling off).
 
 **Option B, pg_dump (any machine with PostgreSQL 17 client tools):**
 
